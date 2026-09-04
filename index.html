@@ -572,14 +572,14 @@ function renderLanding(){
 
 function enterRole(role){
   if(role==='business'){
-    state.role='business';
     if(sb && !state.authed){ openSheet('signIn', {intent:'business'}); return; }
+    state.role='business';
     const mine = sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : DB.businesses;
     if(mine.length){ go('bizPicker'); }
     else openSheet('bizSignup');
   } else if(role==='delivery'){
-    state.role='delivery';
     if(sb && !state.authed){ openSheet('signIn', {intent:'delivery'}); return; }
+    state.role='delivery';
     const mine = sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery;
     if(mine.length){ go('delPicker'); }
     else openSheet('delSignup');
@@ -603,7 +603,8 @@ function renderPicker(list, kind){
       ${items}
       <button class="btn btn-outline" style="margin-top:8px;" onclick="${kind==='biz'?"openSheet('bizSignup')":"openSheet('delSignup')"}">+ ${kind==='biz'?'Register another store':'Add delivery profile'}</button>
       <button class="link-btn" style="margin-top:16px;" onclick="switchRole()">← Back to shopping</button>
-    </div>`;
+    </div>
+    ${sheetHTML()}`;
 }
 function chooseBiz(id){ state.role='business'; go('bizHome', {activeBizId:id}); }
 function chooseDel(id){ state.role='delivery'; go('delHome', {activeDelId:id}); }
@@ -792,10 +793,10 @@ function submitDelSignup(){
 function currentBiz(){ return DB.businesses.find(b=>b.id===state.activeBizId); }
 
 function renderBusiness(){
+  if(state.screen==='bizPicker') return renderPicker(sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : DB.businesses,'biz');
   const biz = currentBiz();
   if(!biz){ go('bizPicker'); return; }
   const t = tierInfo(biz);
-  if(state.screen==='bizPicker') return renderPicker(sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : DB.businesses,'biz');
   if(state.screen==='bizHome') return renderBizHome(biz,t);
   if(state.screen==='bizItems') return renderBizItems(biz,t);
   if(state.screen==='bizOrders') return renderBizOrders(biz);
@@ -1074,9 +1075,9 @@ function fontSizeControl(){
 function currentDel(){ return DB.delivery.find(d=>d.id===state.activeDelId); }
 
 function renderDelivery(){
+  if(state.screen==='delPicker') return renderPicker(sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery,'del');
   const d = currentDel();
   if(!d){ go('delPicker'); return; }
-  if(state.screen==='delPicker') return renderPicker(sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery,'del');
   if(state.screen==='delHome') return renderDelHome(d);
   if(state.screen==='delHistory') return renderDelHistory(d);
 }

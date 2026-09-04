@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Maldexpress</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg1:#04222c;
+    --bg2:#0a4a5c;
+    --bg3:#0f7a8c;
+    --lagoon:#22b8c8;
+    --coral:#ff8a5c;
+    --coral-dk:#e8663a;
+    --sand:#f6ecd9;
+    --ink:#eafdff;
+    --ink-dim:rgba(234,253,255,.68);
+    --glass:rgba(255,255,255,.10);
+    --glass-brd:rgba(255,255,255,.22);
+    --glass-hi:rgba(255,255,255,.18);
+    --danger:#ff6b6b;
+    --good:#3ddc97;
+    --warn:#ffcf5c;
+    --radius:22px;
+    --fs:16px;
+    font-size:var(--fs);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 800px at 15% -10%, rgba(34,184,200,.35), transparent 60%),
+      radial-gradient(900px 700px at 110% 10%, rgba(255,138,92,.20), transparent 55%),
+      linear-gradient(160deg, var(--bg1), var(--bg2) 55%, var(--bg3) 130%);
+    background-attachment:fixed;
+    overflow-x:hidden;
+    font-size:1rem;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0; z-index:-1;
+    background-image:
+      repeating-linear-gradient(100deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,.035) 2px, transparent 2px, transparent 90px),
+      repeating-linear-gradient(80deg, rgba(255,255,255,.02) 0px, rgba(255,255,255,.02) 2px, transparent 2px, transparent 140px);
+    animation: drift 40s linear infinite;
+  }
+  @keyframes drift{ 0%{background-position:0 0, 0 0;} 100%{background-position:400px 200px, -300px 260px;} }
+  h1,h2,h3,.display{font-family:'Fraunces',serif; letter-spacing:.2px;}
+  h1{font-size:1.9em; font-weight:700; margin:0;}
+  h2{font-size:1.25em; font-weight:600; margin:0 0 .6em;}
+  h3{font-size:1.05em; font-weight:600; margin:0;}
+  p{margin:0; line-height:1.5;}
+  button{font-family:inherit; cursor:pointer;}
+  input,select,textarea{font-family:inherit; font-size:1em;}
+  a{color:inherit;}
+
+  .glass{
+    background:var(--glass);
+    border:1px solid var(--glass-brd);
+    border-radius:var(--radius);
+    backdrop-filter:blur(22px) saturate(140%);
+    -webkit-backdrop-filter:blur(22px) saturate(140%);
+    box-shadow:0 8px 32px rgba(0,10,15,.28), inset 0 1px 0 rgba(255,255,255,.15);
+  }
+
+  /* ---------- App shell ---------- */
+  #app{max-width:520px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:92px;}
+
+  /* Landing */
+  .landing{min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:28px 22px;}
+  .landing-mark{text-align:center; margin-bottom:36px;}
+  .landing-mark .glyph{font-size:2.6em; display:block; margin-bottom:6px;}
+  .landing-mark h1{font-size:2.1em;}
+  .landing-mark p{color:var(--ink-dim); margin-top:6px;}
+  .role-card{
+    padding:20px 20px; margin-bottom:14px; display:flex; align-items:center; gap:16px;
+    transition:transform .18s ease, background .18s ease;
+  }
+  .role-card:active{transform:scale(.98);}
+  .role-card .ic{
+    width:52px; height:52px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+    font-size:1.5em; background:linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,.06));
+    border:1px solid var(--glass-brd); flex-shrink:0;
+  }
+  .role-card .txt{flex:1;}
+  .role-card .txt small{color:var(--ink-dim); font-size:.85em;}
+  .role-card .arrow{color:var(--coral); font-size:1.3em;}
+
+  /* Header */
+  .topbar{
+    position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px;
+    padding:16px 18px; margin-bottom:6px;
+  }
+  .topbar .iconbtn{
+    width:42px; height:42px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass);
+    display:flex; align-items:center; justify-content:center; font-size:1.15em; color:var(--ink); flex-shrink:0;
+  }
+  .topbar .titles{flex:1; min-width:0;}
+  .topbar .titles h1{font-size:1.15em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .topbar .titles .sub{font-size:.78em; color:var(--ink-dim);}
+  .badge{
+    padding:3px 10px; border-radius:999px; font-size:.72em; font-weight:700; letter-spacing:.3px;
+    border:1px solid var(--glass-brd);
+  }
+  .badge.free{background:rgba(255,207,92,.18); color:var(--warn);}
+  .badge.pro{background:rgba(61,220,151,.18); color:var(--good);}
+
+  main{padding:0 16px;}
+  .section{margin-bottom:20px;}
+  .section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .section-head h2{margin:0;}
+  .link-btn{color:var(--lagoon); font-size:.9em; font-weight:700; background:none; border:none; padding:4px;}
+
+  /* Cards */
+  .card{padding:16px; margin-bottom:12px;}
+  .card.tight{padding:14px 16px;}
+  .row{display:flex; align-items:center; gap:12px;}
+  .row.between{justify-content:space-between;}
+  .stack{display:flex; flex-direction:column; gap:10px;}
+  .muted{color:var(--ink-dim);}
+  .price{color:var(--coral); font-weight:800;}
+
+  .item-card{padding:14px; display:flex; gap:12px; align-items:center; margin-bottom:10px;}
+  .item-thumb{
+    width:56px; height:56px; border-radius:14px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:1.5em;
+    background:linear-gradient(145deg, rgba(255,138,92,.35), rgba(34,184,200,.25));
+    border:1px solid var(--glass-brd);
+  }
+  .item-info{flex:1; min-width:0;}
+  .item-info h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+  .qty-ctrl{display:flex; align-items:center; gap:8px;}
+  .qty-ctrl button{
+    width:30px; height:30px; border-radius:10px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  /* Buttons */
+  .btn{
+    border:none; border-radius:16px; padding:13px 18px; font-weight:700; font-size:.95em;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  .btn:active{transform:scale(.97);}
+  .btn-primary{background:linear-gradient(135deg, var(--coral), var(--coral-dk)); color:#241005; box-shadow:0 6px 18px rgba(255,138,92,.35);}
+  .btn-ghost{background:var(--glass); border:1px solid var(--glass-brd); color:var(--ink);}
+  .btn-outline{background:transparent; border:1px solid var(--glass-brd); color:var(--ink);}
+  .btn-good{background:linear-gradient(135deg, #4de3a8, #23b47c); color:#04241a;}
+  .btn-sm{padding:9px 14px; font-size:.85em; width:auto;}
+  .btn[disabled]{opacity:.4; pointer-events:none;}
+
+  .fab{
+    position:fixed; right:20px; bottom:110px; z-index:25;
+    width:58px; height:58px; border-radius:50%; border:none;
+    background:linear-gradient(135deg, var(--coral), var(--coral-dk)); color:#241005;
+    font-size:1.6em; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 26px rgba(255,138,92,.45); max-width:520px; margin:0 auto;
+  }
+
+  /* Bottom nav */
+  .bottomnav{
+    position:fixed; left:0; right:0; bottom:14px; z-index:30;
+    max-width:480px; margin:0 auto; padding:0 20px;
+  }
+  .bottomnav .bar{
+    display:flex; justify-content:space-around; padding:10px 6px; border-radius:24px;
+  }
+  .navbtn{
+    background:none; border:none; color:var(--ink-dim); display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-size:.68em; font-weight:700; padding:6px 10px; border-radius:14px; flex:1;
+  }
+  .navbtn .ic{font-size:1.35em;}
+  .navbtn.active{color:var(--sand); background:rgba(255,255,255,.12);}
+
+  /* Drawer / menu */
+  .overlay{
+    position:fixed; inset:0; background:rgba(2,15,20,.55); backdrop-filter:blur(4px); z-index:60;
+    opacity:0; pointer-events:none; transition:opacity .22s ease;
+  }
+  .overlay.show{opacity:1; pointer-events:auto;}
+  .drawer{
+    position:fixed; top:0; bottom:0; left:0; width:78%; max-width:320px; z-index:61;
+    padding:26px 18px; transform:translateX(-105%); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+    border-radius:0 26px 26px 0; display:flex; flex-direction:column;
+  }
+  .drawer.show{transform:translateX(0);}
+  .drawer .who{padding:8px 6px 18px; border-bottom:1px solid var(--glass-brd); margin-bottom:14px;}
+  .drawer .who .av{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--lagoon),var(--coral)); display:flex;align-items:center;justify-content:center; font-weight:800; margin-bottom:8px;}
+  .drawer-item{
+    display:flex; align-items:center; gap:12px; padding:13px 10px; border-radius:14px; color:var(--ink); background:none; border:none; width:100%; text-align:left; font-size:.95em; font-weight:600;
+  }
+  .drawer-item:active{background:var(--glass);}
+  .drawer-item .ic{width:22px; text-align:center;}
+  .drawer-spacer{flex:1;}
+
+  /* Modal / popup sheets */
+  .sheet-wrap{
+    position:fixed; inset:0; z-index:70; display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .sheet-wrap.show{opacity:1; pointer-events:auto;}
+  .sheet-wrap .backdrop{position:absolute; inset:0; background:rgba(2,12,16,.6); backdrop-filter:blur(3px);}
+  .sheet{
+    position:relative; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+    border-radius:26px 26px 0 0; padding:20px 20px 26px; transform:translateY(30px); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+  }
+  .sheet-wrap.show .sheet{transform:translateY(0);}
+  .sheet .handle{width:44px; height:5px; border-radius:99px; background:var(--glass-brd); margin:0 auto 16px;}
+  .sheet-close{position:absolute; right:16px; top:16px; width:34px; height:34px; border-radius:50%; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:.82em; color:var(--ink-dim); margin-bottom:6px; font-weight:600;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--glass-brd); background:rgba(255,255,255,.08);
+    color:var(--ink); outline:none;
+  }
+  .field input::placeholder, .field textarea::placeholder{color:rgba(234,253,255,.4);}
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--lagoon); background:rgba(255,255,255,.13);}
+  .field.file{position:relative;}
+  .field .filebtn{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px; border:1.5px dashed var(--glass-brd); border-radius:16px; color:var(--ink-dim); font-weight:600;}
+
+  .toast-wrap{position:fixed; top:16px; left:0; right:0; z-index:90; display:flex; justify-content:center; pointer-events:none;}
+  .toast{padding:12px 20px; border-radius:16px; font-weight:700; font-size:.9em; display:flex; align-items:center; gap:8px; transform:translateY(-80px); transition:transform .3s ease; max-width:90%;}
+  .toast.show{transform:translateY(0);}
+  .toast.good{background:rgba(61,220,151,.25); border:1px solid rgba(61,220,151,.5); color:#c6ffe5;}
+  .toast.bad{background:rgba(255,107,107,.25); border:1px solid rgba(255,107,107,.5); color:#ffd6d6;}
+
+  .status-pill{padding:4px 11px; border-radius:99px; font-size:.72em; font-weight:800;}
+  .status-pill.wait{background:rgba(255,207,92,.2); color:var(--warn);}
+  .status-pill.ok{background:rgba(61,220,151,.2); color:var(--good);}
+  .status-pill.mid{background:rgba(34,184,200,.22); color:var(--lagoon);}
+  .status-pill.bad{background:rgba(255,107,107,.2); color:var(--danger);}
+
+  .acct-box{
+    padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.07); border:1px dashed var(--glass-brd); margin-top:10px;
+  }
+  .acct-box .lbl{font-size:.72em; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px;}
+  .acct-box .val{font-weight:700; font-size:1.05em; margin-top:2px;}
+
+  .empty{text-align:center; padding:50px 16px; color:var(--ink-dim);}
+  .empty .ic{font-size:2.4em; margin-bottom:10px; display:block;}
+
+  .tabs{display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px;}
+  .tab{padding:9px 16px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink-dim); font-weight:700; font-size:.85em; white-space:nowrap;}
+  .tab.active{background:linear-gradient(135deg, rgba(255,138,92,.9), rgba(232,102,58,.9)); color:#241005; border-color:transparent;}
+
+  .cart-fab{
+    position:fixed; left:16px; right:16px; bottom:96px; z-index:24; max-width:488px; margin:0 auto;
+    padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-radius:20px;
+    background:linear-gradient(135deg, var(--coral), var(--coral-dk)); color:#241005; box-shadow:0 10px 26px rgba(255,138,92,.4);
+  }
+
+  .slider-row{display:flex; align-items:center; gap:12px;}
+  input[type=range]{-webkit-appearance:none; flex:1; height:6px; border-radius:99px; background:var(--glass-brd); outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:var(--coral); border:3px solid var(--sand); cursor:pointer;}
+  .fs-demo{font-size:1em; padding:12px; border-radius:14px; background:rgba(255,255,255,.06); text-align:center; margin-top:10px;}
+
+  .hidden{display:none !important;}
+  .divider{height:1px; background:var(--glass-brd); margin:14px 0;}
+
+  ::-webkit-scrollbar{width:0; height:0;}
+</style>
+</head>
+<body>
+
+<div class="toast-wrap"><div id="toast" class="toast"></div></div>
+<div id="app"></div>
+
+<script>
+/* =================== SUPABASE CONFIG =================== */
+/* 1. Create a free project at https://supabase.com
+   2. Run the SQL in the schema comment near the bottom of this file (Supabase SQL editor)
+   3. In Authentication → Providers, make sure Email is on (magic link is enabled by default)
+   4. Paste your project URL + anon public key below (Settings → API) */
+const SUPABASE_URL = "YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+const sb = (SUPABASE_URL.startsWith('http'))
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+/* ---- SQL to run once in Supabase → SQL Editor ----
+create extension if not exists "pgcrypto";
+
+create table businesses (
+  id text primary key,
+  owner_id uuid references auth.users(id) not null,
+  name text not null,
+  owner_name text not null,
+  phone text,
+  account_number text not null,
+  account_name text not null,
+  tier text default 'free',
+  join_date timestamptz default now(),
+  paid_at timestamptz,
+  category text
+);
+
+create table items (
+  id text primary key,
+  business_id text references businesses(id) on delete cascade,
+  name text not null,
+  price numeric not null,
+  stock int default 0,
+  category text
+);
+
+create table delivery_persons (
+  id text primary key,
+  user_id uuid references auth.users(id) not null,
+  name text not null,
+  phone text
+);
+
+create table orders (
+  id text primary key,
+  business_id text references businesses(id),
+  business_name text,
+  customer_id uuid references auth.users(id),
+  customer_email text,
+  customer_name text,
+  customer_phone text,
+  items jsonb not null,
+  items_total numeric not null,
+  delivery_fee numeric not null,
+  total numeric not null,
+  zone text,
+  delivery_person_id text references delivery_persons(id),
+  delivery_person_name text,
+  payment_method text,
+  payment_status text default 'pending_transfer',
+  status text default 'placed',
+  slip_url text,
+  created_at timestamptz default now()
+);
+
+alter table businesses enable row level security;
+alter table items enable row level security;
+alter table delivery_persons enable row level security;
+alter table orders enable row level security;
+
+-- Everyone (including logged-out visitors) can browse stores & items
+create policy "public read businesses" on businesses for select using (true);
+create policy "public read items" on items for select using (true);
+create policy "public read delivery" on delivery_persons for select using (true);
+
+-- Only the signed-in owner can create/edit their own store, and only the
+-- signed-in rider can create/edit their own delivery profile.
+create policy "owner insert business" on businesses for insert with check (auth.uid() = owner_id);
+create policy "owner update business" on businesses for update using (auth.uid() = owner_id);
+create policy "owner delete business" on businesses for delete using (auth.uid() = owner_id);
+
+create policy "self insert delivery" on delivery_persons for insert with check (auth.uid() = user_id);
+create policy "self update delivery" on delivery_persons for update using (auth.uid() = user_id);
+
+-- Items can only be managed by the business's own owner
+create policy "owner manage items" on items for all
+  using (exists (select 1 from businesses b where b.id = items.business_id and b.owner_id = auth.uid()))
+  with check (exists (select 1 from businesses b where b.id = items.business_id and b.owner_id = auth.uid()));
+
+-- Orders: only a signed-in customer can create their own order
+create policy "customer insert own order" on orders for insert
+  with check (auth.uid() = customer_id);
+-- Orders can be read broadly (store/rider dashboards need to see them);
+-- updates are restricted to the business that owns the order or the rider
+-- assigned to it (riders can also claim an unassigned order).
+create policy "read orders" on orders for select using (true);
+create policy "business update own orders" on orders for update
+  using (exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid()));
+create policy "rider update assigned or open orders" on orders for update
+  using (
+    orders.delivery_person_id is null
+    or exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+  );
+--------------------------------------------------- */
+
+/* =================== DATA LAYER =================== */
+const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons' };
+let DB = { businesses:[], items:[], orders:[], delivery:[] };
+let storageReady = false;
+
+function toDbRow(part, o){
+  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category };
+  if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
+  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString() };
+}
+function fromDbRow(part, r){
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category };
+  if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime() };
+}
+
+async function loadDB(){
+  if(!sb){
+    toast('Add your Supabase URL & key in the script to connect a real backend', 'bad');
+    storageReady = true;
+    return;
+  }
+  try{
+    const [b,i,o,d] = await Promise.all([
+      sb.from('businesses').select('*'),
+      sb.from('items').select('*'),
+      sb.from('orders').select('*'),
+      sb.from('delivery_persons').select('*')
+    ]);
+    DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
+    DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
+    DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
+  }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
+  storageReady = true;
+}
+async function saveDB(part){
+  if(!sb) return;
+  try{
+    const rows = DB[part].map(o=>toDbRow(part,o));
+    const { error } = await sb.from(TABLES[part]).upsert(rows);
+    if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); }
+  }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); }
+}
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+const ZONES = {
+  male: { label:"Malé", fee:15 },
+  hulhumale1: { label:"Hulhumalé Phase 1", fee:20 },
+  hulhumale2: { label:"Hulhumalé Phase 2", fee:25 }
+};
+function zoneFee(zoneKey){ return (ZONES[zoneKey]||ZONES.male).fee; }
+function money(n){ return 'MVR ' + Number(n).toFixed(2); }
+function daysBetween(a,b){ return Math.floor((b-a)/(1000*60*60*24)); }
+
+/* Seed demo businesses only when running with no backend configured yet, so the UI isn't empty */
+function seedIfEmpty(){
+  if(sb || DB.businesses.length) return;
+  const now = Date.now();
+  DB.businesses = [
+    {id:'biz_reef', name:'Reef Corner Store', ownerName:'Aisha Hassan', phone:'7712345', accountNumber:'7770000123456', accountName:'Aisha Hassan', tier:'free', joinDate: now - 5*86400000, paidAt:null, category:'Grocery'},
+    {id:'biz_atoll', name:'Atoll Bakes', ownerName:'Moosa Ibrahim', phone:'7798765', accountNumber:'7770009876543', accountName:'Moosa Ibrahim', tier:'pro', joinDate: now - 60*86400000, paidAt: now-60*86400000, category:'Bakery'}
+  ];
+  DB.items = [
+    {id:uid('it'), businessId:'biz_reef', name:'Fresh Rice 5kg', price:145, stock:20, category:'Grocery'},
+    {id:uid('it'), businessId:'biz_reef', name:'Coconut Oil 1L', price:65, stock:15, category:'Grocery'},
+    {id:uid('it'), businessId:'biz_reef', name:'Instant Noodles (pack)', price:22, stock:40, category:'Grocery'},
+    {id:uid('it'), businessId:'biz_atoll', name:'Coconut Bondi Cake', price:180, stock:8, category:'Bakery'},
+    {id:uid('it'), businessId:'biz_atoll', name:'Short Eats Box (12pc)', price:120, stock:12, category:'Bakery'}
+  ];
+  DB.delivery = [
+    {id:'del_shifau', name:'Shifau Rasheed', phone:'7701122'}
+  ];
+  DB.orders = [];
+}
+
+function tierInfo(biz){
+  const now = Date.now();
+  const trialDaysLeft = 30 - daysBetween(biz.joinDate, now);
+  const trialActive = biz.tier==='free' && trialDaysLeft > 0;
+  const trialExpired = biz.tier==='free' && trialDaysLeft <= 0;
+  const limit = biz.tier==='pro' ? 500 : 10;
+  return { trialDaysLeft: Math.max(trialDaysLeft,0), trialActive, trialExpired, limit };
+}
+
+/* =================== STATE =================== */
+let state = {
+  role: 'customer',          // 'business' | 'delivery' | 'customer'
+  screen: 'custHome',
+  activeBizId: null,        // for business role, which store they're signed into
+  activeDelId: null,
+  authed: false,
+  customerId: null,
+  customerEmail: null,
+  customerName: 'Guest',
+  cart: {},                 // {itemId: qty}
+  browseBizId: null,        // customer: which store is being browsed
+  drawerOpen: false,
+  sheet: null,              // current open sheet name
+  sheetData: null,
+  fontSize: 16,
+  toastTimer: null,
+  filterCat: 'All'
+};
+
+function applySession(session){
+  if(session && session.user){
+    state.authed = true;
+    state.customerId = session.user.id;
+    state.customerEmail = session.user.email;
+    state.customerName = session.user.email.split('@')[0];
+  } else {
+    state.authed = false;
+    state.customerId = null;
+    state.customerEmail = null;
+    state.customerName = 'Guest';
+  }
+}
+
+function setFont(px){
+  state.fontSize = px;
+  document.documentElement.style.setProperty('--fs', px+'px');
+}
+
+function toast(msg, kind='good'){
+  const el = document.getElementById('toast');
+  el.textContent = (kind==='good'?'✓ ':'⚠ ') + msg;
+  el.className = 'toast show ' + kind;
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(()=> el.classList.remove('show'), 2400);
+}
+
+function go(screen, extra={}){
+  Object.assign(state, extra);
+  state.screen = screen;
+  state.drawerOpen = false;
+  render();
+  window.scrollTo(0,0);
+}
+
+/* =================== RENDER ROOT =================== */
+function render(){
+  const app = document.getElementById('app');
+  if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
+  if(state.screen==='landing') return renderLanding();
+  if(state.role==='business') return renderBusiness();
+  if(state.role==='delivery') return renderDelivery();
+  if(state.role==='customer') return renderCustomer();
+}
+
+/* =================== LANDING =================== */
+function renderLanding(){
+  document.getElementById('app').innerHTML = `
+  <div class="landing">
+    <div class="landing-mark">
+      <span class="glyph">🌊</span>
+      <h1>Maldexpress</h1>
+      <p>One app for the store, the delivery, and the customer</p>
+    </div>
+    <button class="glass role-card" onclick="enterRole('business')">
+      <div class="ic">🏝️</div>
+      <div class="txt"><h3>I run a business</h3><small>List items, manage orders, get paid</small></div>
+      <div class="arrow">→</div>
+    </button>
+    <button class="glass role-card" onclick="enterRole('delivery')">
+      <div class="ic">🛵</div>
+      <div class="txt"><h3>I deliver</h3><small>Pick up jobs, collect cash, settle up</small></div>
+      <div class="arrow">→</div>
+    </button>
+    <button class="glass role-card" onclick="enterRole('customer')">
+      <div class="ic">🛍️</div>
+      <div class="txt"><h3>I'm shopping</h3><small>Browse local stores near you</small></div>
+      <div class="arrow">→</div>
+    </button>
+  </div>`;
+}
+
+function enterRole(role){
+  if(role==='business'){
+    state.role='business';
+    if(sb && !state.authed){ openSheet('signIn', {intent:'business'}); return; }
+    const mine = sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : DB.businesses;
+    if(mine.length){ go('bizPicker'); }
+    else openSheet('bizSignup');
+  } else if(role==='delivery'){
+    state.role='delivery';
+    if(sb && !state.authed){ openSheet('signIn', {intent:'delivery'}); return; }
+    const mine = sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery;
+    if(mine.length){ go('delPicker'); }
+    else openSheet('delSignup');
+  } else {
+    state.role='customer'; go('custHome');
+  }
+}
+
+/* =================== BUSINESS / DELIVERY PICKER (scoped to the signed-in account) === */
+function renderPicker(list, kind){
+  const app = document.getElementById('app');
+  const items = list.map(b => `
+    <button class="glass role-card" onclick="${kind==='biz'?`chooseBiz('${b.id}')`:`chooseDel('${b.id}')`}">
+      <div class="ic">${kind==='biz'?'🏪':'🛵'}</div>
+      <div class="txt"><h3>${b.name}</h3><small>${kind==='biz'?b.ownerName:b.phone}</small></div>
+      <div class="arrow">→</div>
+    </button>`).join('');
+  app.innerHTML = `
+    <div class="landing" style="justify-content:flex-start; padding-top:60px;">
+      <div class="landing-mark"><h1>${kind==='biz'?'Your stores':'Your delivery profile'}</h1><p>Signed in as ${state.customerEmail}</p></div>
+      ${items}
+      <button class="btn btn-outline" style="margin-top:8px;" onclick="${kind==='biz'?"openSheet('bizSignup')":"openSheet('delSignup')"}">+ ${kind==='biz'?'Register another store':'Add delivery profile'}</button>
+      <button class="link-btn" style="margin-top:16px;" onclick="switchRole()">← Back to shopping</button>
+    </div>`;
+}
+function chooseBiz(id){ state.role='business'; go('bizHome', {activeBizId:id}); }
+function chooseDel(id){ state.role='delivery'; go('delHome', {activeDelId:id}); }
+
+/* =================== SHARED UI: topbar / drawer / bottomnav / sheet ==== */
+function topbar(title, sub, opts={}){
+  return `
+  <div class="topbar glass">
+    <button class="iconbtn" onclick="toggleDrawer(true)">☰</button>
+    <div class="titles">
+      <h1>${title}</h1>
+      ${sub? `<div class="sub">${sub}</div>`:''}
+    </div>
+    ${opts.badge||''}
+  </div>`;
+}
+
+function drawerHTML(role){
+  const nameMap = {business:'Store owner', delivery:'Delivery partner', customer:'Customer'};
+  let bizName = '';
+  if(role==='business'){ const b = DB.businesses.find(x=>x.id===state.activeBizId); bizName = b?b.name:''; }
+  if(role==='delivery'){ const d = DB.delivery.find(x=>x.id===state.activeDelId); bizName = d?d.name:''; }
+  if(role==='customer'){ bizName = state.authed ? state.customerEmail : 'Guest browsing'; }
+  let items = '';
+  if(role==='business'){
+    items = `
+      <button class="drawer-item" onclick="go('bizHome')"><span class="ic">🏠</span> Dashboard</button>
+      <button class="drawer-item" onclick="go('bizItems')"><span class="ic">📦</span> My items</button>
+      <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
+      <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">🛵</span> Delivery payouts</button>
+      <button class="drawer-item" onclick="openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
+    `;
+  } else if(role==='delivery'){
+    items = `
+      <button class="drawer-item" onclick="go('delHome')"><span class="ic">🏠</span> My jobs</button>
+      <button class="drawer-item" onclick="go('delHistory')"><span class="ic">🧾</span> History</button>
+      <button class="drawer-item" onclick="openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
+    `;
+  } else {
+    items = `
+      <button class="drawer-item" onclick="go('custHome')"><span class="ic">🏠</span> Browse stores</button>
+      <button class="drawer-item" onclick="go('custOrders')"><span class="ic">🧾</span> My orders</button>
+      <button class="drawer-item" onclick="openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
+      <div class="divider"></div>
+      ${state.authed
+        ? `<button class="drawer-item" onclick="signOutCustomer()"><span class="ic">🚪</span> Sign out</button>`
+        : `<button class="drawer-item" onclick="toggleDrawer(false); openSheet('signIn')"><span class="ic">✉️</span> Sign in to order</button>`}
+      <div class="divider"></div>
+      <button class="drawer-item" onclick="toggleDrawer(false); enterRole('business')"><span class="ic">🏪</span> List your business</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); enterRole('delivery')"><span class="ic">🛵</span> Deliver with us</button>
+    `;
+  }
+  const trailing = role==='customer' ? '' : `
+    <div class="drawer-spacer"></div>
+    ${sb ? `<div class="muted" style="font-size:.75em; padding:0 10px 8px;">Signed in as ${state.customerEmail}</div>` : ''}
+    <button class="drawer-item" onclick="switchRole()"><span class="ic">🛍️</span> Back to shopping</button>
+    ${sb ? `<button class="drawer-item" onclick="signOutCustomer()"><span class="ic">🚪</span> Sign out</button>` : ''}`;
+  return `
+  <div class="glass drawer ${state.drawerOpen?'show':''}" id="drawer">
+    <div class="who">
+      <div class="av">${(bizName||'?').slice(0,1).toUpperCase()}</div>
+      <div style="font-weight:800; word-break:break-all;">${bizName || nameMap[role]}</div>
+      <div class="muted" style="font-size:.8em;">${nameMap[role]}</div>
+    </div>
+    ${items}
+    ${trailing}
+  </div>`;
+}
+
+function bottomNav(role, active){
+  const cfg = {
+    business:[['bizHome','🏠','Home'],['bizItems','📦','Items'],['bizOrders','🧾','Orders'],['bizPayouts','🛵','Payouts']],
+    delivery:[['delHome','🛵','Jobs'],['delHistory','🧾','History']],
+    customer:[['custHome','🛍️','Shop'],['custOrders','🧾','Orders'],['custCart','🛒','Cart']]
+  };
+  const tabs = cfg[role].map(([scr,ic,label])=>`
+    <button class="navbtn ${active===scr?'active':''}" onclick="go('${scr}')"><span class="ic">${ic}</span>${label}</button>
+  `).join('');
+  return `<div class="bottomnav"><div class="glass bar">${tabs}</div></div>`;
+}
+
+function wrapShell(role, active, contentHTML, extra=''){
+  return `
+    <div class="overlay ${state.drawerOpen?'show':''}" onclick="toggleDrawer(false)"></div>
+    ${drawerHTML(role)}
+    <main>${contentHTML}</main>
+    ${bottomNav(role, active)}
+    ${extra}
+    ${sheetHTML()}
+  `;
+}
+
+function toggleDrawer(v){ state.drawerOpen = v; render(); }
+function switchRole(){ state = {...state, role:'customer', screen:'custHome', activeBizId:null, activeDelId:null, drawerOpen:false, browseBizId:null}; render(); }
+
+/* =================== SHEETS (bottom popups) =================== */
+function openSheet(name, data=null){ state.sheet = name; state.sheetData = data; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function closeSheet(){ const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
+
+function sheetHTML(){
+  if(!state.sheet) return '';
+  let body = '';
+  if(state.sheet==='bizSignup') body = sheetBizSignup();
+  else if(state.sheet==='delSignup') body = sheetDelSignup();
+  else if(state.sheet==='bizSettings') body = sheetBizSettings();
+  else if(state.sheet==='delSettings') body = sheetGenericSettings('delivery');
+  else if(state.sheet==='custSettings') body = sheetGenericSettings('customer');
+  else if(state.sheet==='addItem') body = sheetAddItem();
+  else if(state.sheet==='upgradeTier') body = sheetUpgrade();
+  else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
+  else if(state.sheet==='approvePayment') body = sheetApprovePayment();
+  else if(state.sheet==='markCash') body = sheetMarkCash();
+  else if(state.sheet==='payoutAction') body = sheetPayoutAction();
+  else if(state.sheet==='checkout') body = sheetCheckout();
+  else if(state.sheet==='signIn') body = sheetSignIn();
+  return `
+  <div class="sheet-wrap show" id="sheetWrap">
+    <div class="backdrop" onclick="closeSheet()"></div>
+    <div class="glass sheet">
+      <div class="handle"></div>
+      <button class="sheet-close" onclick="closeSheet()">✕</button>
+      ${body}
+    </div>
+  </div>`;
+}
+
+/* ---- Business signup ---- */
+function sheetBizSignup(){
+  return `
+  <h2>Register your business</h2>
+  ${sb ? `<p class="muted" style="margin-bottom:10px;">Linked to ${state.customerEmail}</p>` : ''}
+  <div class="field"><label>Store name</label><input id="f_name" placeholder="e.g. Reef Corner Store"></div>
+  <div class="field"><label>Owner name</label><input id="f_owner" placeholder="Your full name"></div>
+  <div class="field"><label>Phone</label><input id="f_phone" placeholder="7XXXXXX"></div>
+  <div class="field"><label>Category</label>
+    <select id="f_cat"><option>Grocery</option><option>Bakery</option><option>Café</option><option>Hardware</option><option>Fashion</option><option>Other</option></select>
+  </div>
+  <div class="field"><label>Bank account number</label><input id="f_acc" placeholder="77700001234567"></div>
+  <div class="field"><label>Account holder name</label><input id="f_accname" placeholder="Same as owner or business name"></div>
+  <div class="card tight" style="background:rgba(255,207,92,.1); border:1px solid rgba(255,207,92,.3);">
+    <p style="font-size:.85em;">🎁 First month free — list up to <strong>10 items</strong>. Upgrade to Pro anytime for MVR 500 to list up to <strong>500 items</strong>.</p>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitBizSignup()">Create store</button>`;
+}
+function submitBizSignup(){
+  if(sb && !state.authed){ toast('Sign in first','bad'); return; }
+  const name=val('f_name'), owner=val('f_owner'), phone=val('f_phone'), cat=val('f_cat'), acc=val('f_acc'), accname=val('f_accname');
+  if(!name||!owner||!acc||!accname){ toast('Please fill in store name, owner, and account details','bad'); return; }
+  const biz = {id:uid('biz'), ownerId:state.customerId, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat};
+  DB.businesses.push(biz); saveDB('businesses');
+  closeSheet();
+  state.role='business';
+  go('bizHome', {activeBizId:biz.id});
+  toast('Store created! Your free month has started 🎉');
+}
+function val(id){ const el=document.getElementById(id); return el? el.value.trim(): ''; }
+
+/* ---- Delivery signup ---- */
+function sheetDelSignup(){
+  return `
+  <h2>Register as delivery partner</h2>
+  ${sb ? `<p class="muted" style="margin-bottom:10px;">Linked to ${state.customerEmail}</p>` : ''}
+  <div class="field"><label>Full name</label><input id="d_name" placeholder="Your name"></div>
+  <div class="field"><label>Phone</label><input id="d_phone" placeholder="7XXXXXX"></div>
+  <div class="card tight" style="background:rgba(34,184,200,.12); border:1px solid rgba(34,184,200,.3);">
+    <p style="font-size:.85em; margin-bottom:8px;">You earn a flat fee per delivery based on zone:</p>
+    <div class="row between" style="font-size:.85em;"><span>Malé</span><strong>MVR 15</strong></div>
+    <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 1</span><strong>MVR 20</strong></div>
+    <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 2</span><strong>MVR 25</strong></div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitDelSignup()">Start delivering</button>`;
+}
+function submitDelSignup(){
+  if(sb && !state.authed){ toast('Sign in first','bad'); return; }
+  const name=val('d_name'), phone=val('d_phone');
+  if(!name||!phone){ toast('Please enter your name and phone','bad'); return; }
+  const d = {id:uid('del'), userId:state.customerId, name, phone};
+  DB.delivery.push(d); saveDB('delivery');
+  closeSheet();
+  state.role='delivery';
+  go('delHome', {activeDelId:d.id});
+  toast('Welcome aboard! Jobs will show here');
+}
+
+/* =================== BUSINESS SIDE =================== */
+function currentBiz(){ return DB.businesses.find(b=>b.id===state.activeBizId); }
+
+function renderBusiness(){
+  const biz = currentBiz();
+  if(!biz){ go('bizPicker'); return; }
+  const t = tierInfo(biz);
+  if(state.screen==='bizPicker') return renderPicker(sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : DB.businesses,'biz');
+  if(state.screen==='bizHome') return renderBizHome(biz,t);
+  if(state.screen==='bizItems') return renderBizItems(biz,t);
+  if(state.screen==='bizOrders') return renderBizOrders(biz);
+  if(state.screen==='bizPayouts') return renderBizPayouts(biz);
+}
+
+function renderBizHome(biz,t){
+  const myOrders = DB.orders.filter(o=>o.businessId===biz.id);
+  const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded').length;
+  const activeOrders = myOrders.filter(o=>o.status!=='delivered').length;
+  const myItems = DB.items.filter(i=>i.businessId===biz.id);
+  const badge = biz.tier==='pro'
+    ? `<span class="badge pro">PRO</span>`
+    : `<span class="badge free">FREE · ${t.trialDaysLeft}d left</span>`;
+
+  const trialBanner = t.trialExpired ? `
+    <div class="card" style="background:rgba(255,107,107,.14); border:1px solid rgba(255,107,107,.35);">
+      <div class="row" style="gap:14px;">
+        <div style="font-size:1.6em;">⏰</div>
+        <div style="flex:1;">
+          <h3>Your free month has ended</h3>
+          <p class="muted" style="margin-top:4px; font-size:.88em;">Pay MVR 500 to keep listing and unlock the Pro tier — up to 500 items.</p>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="openSheet('upgradeTier')">Pay MVR 500 now</button>
+    </div>` : (biz.tier==='free' ? `
+    <div class="card" style="background:rgba(34,184,200,.12); border:1px solid rgba(34,184,200,.3);">
+      <div class="row between">
+        <div><h3>Free trial</h3><p class="muted" style="font-size:.85em;">${t.trialDaysLeft} days left · up to 10 items</p></div>
+        <button class="btn btn-sm btn-outline" onclick="openSheet('upgradeTier')">Go Pro</button>
+      </div>
+    </div>`:'');
+
+  document.getElementById('app').innerHTML = wrapShell('business','bizHome', `
+    ${topbar(biz.name, biz.category, {badge})}
+    <div style="padding:4px 16px 0;">
+      ${trialBanner}
+      <div class="row" style="gap:10px; margin:14px 0 18px;">
+        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
+        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
+        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em; color:${pendingApproval?'var(--warn)':'inherit'};">${pendingApproval}</h1><div class="muted" style="font-size:.78em;">Awaiting approval</div></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Store account</h2></div>
+        <div class="glass card">
+          <div class="row between"><span class="muted">Account name</span><strong>${biz.accountName}</strong></div>
+          <div class="divider"></div>
+          <div class="row between"><span class="muted">Account number</span><strong>${biz.accountNumber}</strong></div>
+          <p class="muted" style="font-size:.78em; margin-top:10px;">Shown to customers and delivery partners so they can pay you directly.</p>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Needs your attention</h2><button class="link-btn" onclick="go('bizOrders')">See all</button></div>
+        ${pendingApproval===0 ? `<div class="empty"><span class="ic">✅</span>Nothing waiting on you right now</div>` :
+          myOrders.filter(o=>o.paymentStatus==='slip_uploaded').slice(0,3).map(o=>orderCardBiz(o)).join('')}
+      </div>
+    </div>
+  `);
+}
+
+function daysLabel(t){ return t.trialActive? `${t.trialDaysLeft} days left` : 'Trial ended'; }
+
+function sheetUpgrade(){
+  const biz = currentBiz();
+  return `
+    <h2>Upgrade to Pro</h2>
+    <div class="card tight" style="background:rgba(61,220,151,.1); border:1px solid rgba(61,220,151,.3);">
+      <div class="row between"><span>List up to</span><strong>500 items</strong></div>
+      <div class="divider"></div>
+      <div class="row between"><span>One-time fee</span><strong class="price">${money(500)}</strong></div>
+    </div>
+    <p class="muted" style="font-size:.85em; margin:12px 0;">This simulates payment for the demo. In production this would connect to a real payment gateway.</p>
+    <button class="btn btn-primary" onclick="payForPro()">Pay MVR 500 & activate Pro</button>`;
+}
+function payForPro(){
+  const biz = currentBiz();
+  biz.tier='pro'; biz.paidAt=Date.now();
+  saveDB('businesses');
+  closeSheet();
+  toast('Pro tier activated — up to 500 items unlocked!');
+  render();
+}
+
+function orderCardBiz(o){
+  const pm = o.paymentMethod==='transfer' ? 'Bank transfer' : 'Cash to delivery';
+  let pillHtml = paymentStatusPill(o);
+  return `
+  <div class="glass card" onclick="openOrderDetailBiz('${o.id}')">
+    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${pillHtml}</div>
+    <p class="muted" style="font-size:.85em; margin-top:4px;">${o.customerName} · ${pm} · ${o.deliveryPersonName||'Unassigned'}</p>
+    <div class="row between" style="margin-top:8px;"><span class="price">${money(o.total)}</span><span class="muted" style="font-size:.8em;">${new Date(o.createdAt).toLocaleDateString()}</span></div>
+  </div>`;
+}
+function paymentStatusPill(o){
+  if(o.paymentStatus==='paid'||o.paymentStatus==='settled') return `<span class="status-pill ok">Paid ✓</span>`;
+  if(o.paymentStatus==='slip_uploaded') return `<span class="status-pill mid">Slip uploaded</span>`;
+  if(o.paymentStatus==='cash_collected') return `<span class="status-pill mid">Cash with rider</span>`;
+  return `<span class="status-pill wait">Awaiting payment</span>`;
+}
+
+function renderBizItems(biz,t){
+  const myItems = DB.items.filter(i=>i.businessId===biz.id);
+  const cats = ['All', ...new Set(myItems.map(i=>i.category||'General'))];
+  const canAdd = myItems.length < t.limit;
+  document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
+    ${topbar('My items', `${myItems.length} / ${t.limit} listed`)}
+    <div style="padding:4px 16px 0;">
+      ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
+      <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+      ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>`
+        <div class="glass item-card">
+          <div class="item-thumb">📦</div>
+          <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock</p></div>
+          <div class="price">${money(i.price)}</div>
+        </div>`).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
+    </div>
+  `, canAdd? `<button class="fab" onclick="openSheet('addItem')">+</button>` : '');
+}
+
+function sheetAddItem(){
+  return `
+  <h2>Add item</h2>
+  <div class="field"><label>Item name</label><input id="i_name" placeholder="e.g. Fresh Rice 5kg"></div>
+  <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
+  <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
+  <div class="field"><label>Category</label><input id="i_cat" placeholder="e.g. Grocery"></div>
+  <button class="btn btn-primary" onclick="submitAddItem()">Add to store</button>`;
+}
+function submitAddItem(){
+  const biz = currentBiz(); const t = tierInfo(biz);
+  const myCount = DB.items.filter(i=>i.businessId===biz.id).length;
+  if(myCount>=t.limit){ toast(`Item limit reached (${t.limit})`,'bad'); return; }
+  const name=val('i_name'), price=Number(val('i_price')), stock=Number(val('i_stock')||0), cat=val('i_cat')||'General';
+  if(!name||!price){ toast('Enter item name and price','bad'); return; }
+  DB.items.push({id:uid('it'), businessId:biz.id, name, price, stock, category:cat});
+  saveDB('items'); closeSheet(); toast('Item added'); render();
+}
+
+function renderBizOrders(biz){
+  const myOrders = DB.orders.filter(o=>o.businessId===biz.id).sort((a,b)=>b.createdAt-a.createdAt);
+  document.getElementById('app').innerHTML = wrapShell('business','bizOrders', `
+    ${topbar('Orders & payments')}
+    <div style="padding:4px 16px 0;">
+      ${myOrders.length? myOrders.map(o=>orderCardBiz(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No orders yet</div>`}
+    </div>
+  `);
+}
+function openOrderDetailBiz(id){
+  const o = DB.orders.find(x=>x.id===id);
+  openSheet('orderDetailBiz', o);
+}
+// custom sheet content injected directly (handled in sheetHTML switch below via generic fallback)
+const _origSheetHTML = sheetHTML;
+sheetHTML = function(){
+  if(state.sheet==='orderDetailBiz') return wrapSheetOnly(orderDetailBizBody(state.sheetData));
+  return _origSheetHTML();
+};
+function wrapSheetOnly(body){
+  return `
+  <div class="sheet-wrap show" id="sheetWrap">
+    <div class="backdrop" onclick="closeSheet()"></div>
+    <div class="glass sheet"><div class="handle"></div><button class="sheet-close" onclick="closeSheet()">✕</button>${body}</div>
+  </div>`;
+}
+function orderDetailBizBody(o){
+  const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
+  const cutAmt = Math.round(o.deliveryFee);
+  let actionArea = '';
+  if(o.paymentMethod==='transfer'){
+    if(o.paymentStatus==='pending_transfer'){
+      actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for customer to transfer & upload slip.</p></div>`;
+    } else if(o.paymentStatus==='slip_uploaded'){
+      actionArea = `
+        <div class="card tight" style="background:rgba(34,184,200,.12);">
+          <p style="font-size:.85em; margin-bottom:8px;">Customer uploaded a transfer slip:</p>
+          ${o.slipDataUrl ? `<img src="${o.slipDataUrl}" style="width:100%; border-radius:12px; max-height:220px; object-fit:cover;">` : `<p class="muted" style="font-size:.8em;">(slip image not available)</p>`}
+        </div>
+        <button class="btn btn-good" style="margin-top:12px;" onclick="approveOrderPayment('${o.id}')">Mark payment received ✓</button>`;
+    } else {
+      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>`;
+    }
+  } else {
+    if(o.paymentStatus==='pending_cash'){
+      actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Delivery partner will collect ${money(o.total)} cash from the customer.</p></div>`;
+    } else if(o.paymentStatus==='cash_collected'){
+      actionArea = `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash. They owe you ${money(o.total-cutAmt)} (after their ${money(cutAmt)} cut). See Payouts tab once they settle.</p></div>`;
+    } else {
+      actionArea = `<div class="status-pill ok" style="display:inline-block;">Settled with rider</div>`;
+    }
+  }
+  return `
+    <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
+    <p class="muted" style="margin-bottom:12px;">${o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
+    <div class="glass card tight">${itemsList}<div class="divider"></div>
+      <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-cutAmt)}</span></div>
+      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}</span><span>${money(cutAmt)}</span></div>
+      <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>
+    </div>
+    <div style="margin-top:14px;">${actionArea}</div>
+  `;
+}
+function approveOrderPayment(id){
+  const o = DB.orders.find(x=>x.id===id);
+  o.paymentStatus='paid';
+  saveDB('orders');
+  closeSheet(); toast('Payment marked as received'); render();
+}
+
+function renderBizPayouts(biz){
+  const cashOrders = DB.orders.filter(o=>o.businessId===biz.id && o.paymentMethod==='cash_to_delivery');
+  document.getElementById('app').innerHTML = wrapShell('business','bizPayouts', `
+    ${topbar('Delivery payouts', 'Settle cash collected by riders')}
+    <div style="padding:4px 16px 0;">
+      ${cashOrders.length? cashOrders.map(o=>{
+        const cutAmt = Math.round(o.deliveryFee);
+        const owed = o.total - cutAmt;
+        let pill = o.paymentStatus==='settled' ? `<span class="status-pill ok">Settled</span>` : o.paymentStatus==='cash_collected' ? `<span class="status-pill mid">Rider owes you ${money(owed)}</span>` : `<span class="status-pill wait">Not delivered yet</span>`;
+        return `
+        <div class="glass card">
+          <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${pill}</div>
+          <p class="muted" style="font-size:.85em; margin-top:4px;">${o.deliveryPersonName} collected ${money(o.total)} cash</p>
+          <div class="row between" style="margin-top:8px;"><span class="muted">Rider's cut</span><span>${money(cutAmt)}</span></div>
+          ${o.paymentStatus==='cash_collected' ? `<button class="btn btn-good btn-sm" style="margin-top:10px; width:100%;" onclick="settlePayout('${o.id}')">Confirm received from rider</button>` : ''}
+        </div>`;
+      }).join('') : `<div class="empty"><span class="ic">🛵</span>No cash-collection orders yet</div>`}
+    </div>
+  `);
+}
+function settlePayout(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='settled'; saveDB('orders'); toast('Payout settled with rider'); render(); }
+
+/* =================== BUSINESS SETTINGS ==================== */
+function sheetBizSettings(){
+  const biz = currentBiz();
+  return `
+  <h2>Store settings</h2>
+  <div class="field"><label>Store name</label><input id="s_name" value="${biz.name}"></div>
+  <div class="field"><label>Account holder name</label><input id="s_accname" value="${biz.accountName}"></div>
+  <div class="field"><label>Account number</label><input id="s_acc" value="${biz.accountNumber}"></div>
+  <button class="btn btn-primary" onclick="saveBizSettings()">Save changes</button>
+  <div class="divider"></div>
+  ${fontSizeControl()}
+  `;
+}
+function saveBizSettings(){
+  const biz = currentBiz();
+  biz.name = val('s_name')||biz.name;
+  biz.accountName = val('s_accname')||biz.accountName;
+  biz.accountNumber = val('s_acc')||biz.accountNumber;
+  saveDB('businesses'); closeSheet(); toast('Settings saved'); render();
+}
+
+function sheetGenericSettings(role){
+  return `
+  <h2>Settings</h2>
+  ${fontSizeControl()}
+  <div class="divider"></div>
+  <button class="btn btn-outline" onclick="switchRole()">Switch role</button>
+  `;
+}
+function fontSizeControl(){
+  return `
+  <div class="field">
+    <label>Text size</label>
+    <div class="slider-row">
+      <span>A</span>
+      <input type="range" min="13" max="22" value="${state.fontSize}" oninput="setFont(this.value); document.getElementById('fsDemo').style.fontSize=this.value+'px';">
+      <span style="font-size:1.3em;">A</span>
+    </div>
+    <div class="fs-demo" id="fsDemo" style="font-size:${state.fontSize}px;">This is how text will look across the app</div>
+  </div>`;
+}
+
+/* =================== DELIVERY SIDE =================== */
+function currentDel(){ return DB.delivery.find(d=>d.id===state.activeDelId); }
+
+function renderDelivery(){
+  const d = currentDel();
+  if(!d){ go('delPicker'); return; }
+  if(state.screen==='delPicker') return renderPicker(sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery,'del');
+  if(state.screen==='delHome') return renderDelHome(d);
+  if(state.screen==='delHistory') return renderDelHistory(d);
+}
+
+function renderDelHome(d){
+  const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status!=='delivered');
+  document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
+    ${topbar(d.name, `MVR 15–25 per delivery, by zone`)}
+    <div style="padding:4px 16px 0;">
+      <div class="section-head"><h2>Active jobs</h2></div>
+      ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
+      <div class="section" style="margin-top:22px;">
+        <div class="section-head"><h2>Unassigned orders nearby</h2></div>
+        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered').map(o=>`
+          <div class="glass card">
+            <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(o.deliveryFee)}</span></div>
+            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
+            <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="claimJob('${o.id}')">Accept job</button>
+          </div>`).join('') || `<div class="empty"><span class="ic">📭</span>No open jobs right now</div>`}
+      </div>
+    </div>
+  `);
+}
+function claimJob(id){
+  const o = DB.orders.find(x=>x.id===id); const d = currentDel();
+  o.deliveryPersonId = d.id; o.deliveryPersonName = d.name;
+  saveDB('orders'); toast('Job accepted'); render();
+}
+function delJobCard(o){
+  const biz = DB.businesses.find(b=>b.id===o.businessId);
+  const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  return `
+  <div class="glass card">
+    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">${money(o.total)}</span></div>
+    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.customerName} · ${pm}</p>
+    <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} delivery fee</span><strong>${money(o.deliveryFee)}</strong></div>
+    ${o.paymentMethod==='transfer' && o.paymentStatus!=='paid' ? `
+      <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${biz?biz.accountName:''} · ${biz?biz.accountNumber:''}</div></div>
+      <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the business marks payment received.</p>
+    ` : ''}
+    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
+      <button class="btn btn-good btn-sm" style="width:100%;" onclick="openSheet('markCash', '${o.id}')">Mark cash received from customer</button>
+    ` : ''}
+    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
+      <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">You owe the store ${money(o.total - Math.round(o.deliveryFee))} after your ${money(Math.round(o.deliveryFee))} cut.</p></div>
+    ` : ''}
+    <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="markDelivered('${o.id}')">Mark delivered</button>
+  </div>`;
+}
+function sheetMarkCash(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  return `
+  <h2>Confirm cash received</h2>
+  <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · Total ${money(o.total)}</p>
+  <div class="card tight" style="margin:14px 0; background:rgba(61,220,151,.1);">
+    <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. Your cut (${money(Math.round(o.deliveryFee))}) stays with you — you'll owe the store <strong>${money(o.total-Math.round(o.deliveryFee))}</strong>.</p>
+  </div>
+  <button class="btn btn-good" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
+}
+function confirmCashReceived(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='cash_collected'; saveDB('orders'); closeSheet(); toast('Marked as cash received'); render(); }
+function markDelivered(id){ const o=DB.orders.find(x=>x.id===id); o.status='delivered'; saveDB('orders'); toast('Marked delivered'); render(); }
+
+function renderDelHistory(d){
+  const done = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status==='delivered');
+  document.getElementById('app').innerHTML = wrapShell('delivery','delHistory', `
+    ${topbar('Delivery history')}
+    <div style="padding:4px 16px 0;">
+      ${done.length? done.map(o=>`
+        <div class="glass card">
+          <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
+          <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName}</p>
+          <div class="row between" style="margin-top:8px;"><span>Your cut</span><span class="price">${money(Math.round(o.deliveryFee))}</span></div>
+        </div>`).join('') : `<div class="empty"><span class="ic">🧾</span>No completed deliveries yet</div>`}
+    </div>
+  `);
+}
+
+/* =================== CUSTOMER SIDE =================== */
+function renderCustomer(){
+  if(state.screen==='custHome') return renderCustHome();
+  if(state.screen==='custStore') return renderCustStore();
+  if(state.screen==='custCart') return renderCustCart();
+  if(state.screen==='custOrders') return renderCustOrders();
+}
+function renderCustHome(){
+  const cats = ['All', ...new Set(DB.businesses.map(b=>b.category))];
+  const list = DB.businesses.filter(b=> state.filterCat==='All' || b.category===state.filterCat);
+  document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    ${topbar('Browse stores', 'Local businesses near you')}
+    <div style="padding:4px 16px 0;">
+      <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c||(!state.filterCat&&c==='All')?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+      ${list.map(b=>{
+        const n = DB.items.filter(i=>i.businessId===b.id).length;
+        return `
+        <button class="glass role-card" style="text-align:left;" onclick="openStore('${b.id}')">
+          <div class="ic">🏪</div>
+          <div class="txt"><h3>${b.name}</h3><small>${b.category} · ${n} items</small></div>
+          <div class="arrow">→</div>
+        </button>`;
+      }).join('') || `<div class="empty"><span class="ic">🏝️</span>No stores yet</div>`}
+    </div>
+  `);
+}
+function openStore(id){ go('custStore', {browseBizId:id}); }
+function renderCustStore(){
+  const biz = DB.businesses.find(b=>b.id===state.browseBizId);
+  const items = DB.items.filter(i=>i.businessId===biz.id);
+  const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
+  document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    ${topbar(biz.name, biz.category)}
+    <div style="padding:4px 16px 0;">
+      ${items.map(i=>{
+        const qty = state.cart[i.id]||0;
+        return `
+        <div class="glass item-card">
+          <div class="item-thumb">🛍️</div>
+          <div class="item-info"><h3>${i.name}</h3><p class="price">${money(i.price)}</p></div>
+          ${qty===0 ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${i.id}')">Add</button>` : `
+            <div class="qty-ctrl">
+              <button onclick="changeQty('${i.id}',-1)">−</button><strong>${qty}</strong><button onclick="changeQty('${i.id}',1)">+</button>
+            </div>`}
+        </div>`;
+      }).join('') || `<div class="empty"><span class="ic">📭</span>No items listed yet</div>`}
+    </div>
+  `, cartCount>0 ? `<div class="cart-fab" onclick="go('custCart')"><span>🛒 ${cartCount} item${cartCount>1?'s':''}</span><span>View cart →</span></div>`:'');
+}
+function addToCart(itemId){ state.cart[itemId] = (state.cart[itemId]||0)+1; render(); }
+function changeQty(itemId, d){ state.cart[itemId] = Math.max(0,(state.cart[itemId]||0)+d); if(state.cart[itemId]===0) delete state.cart[itemId]; render(); }
+
+function renderCustCart(){
+  const entries = Object.entries(state.cart);
+  const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const total = lines.reduce((s,l)=>s+l.it.price*l.qty,0);
+  document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
+    ${topbar('Your cart')}
+    <div style="padding:4px 16px 0;">
+      ${lines.length? lines.map(l=>`
+        <div class="glass item-card">
+          <div class="item-thumb">🛍️</div>
+          <div class="item-info"><h3>${l.it.name}</h3><p class="muted" style="font-size:.85em;">${money(l.it.price)} each</p></div>
+          <div class="qty-ctrl"><button onclick="changeQty('${l.it.id}',-1)">−</button><strong>${l.qty}</strong><button onclick="changeQty('${l.it.id}',1)">+</button></div>
+        </div>`).join('') : `<div class="empty"><span class="ic">🛒</span>Your cart is empty</div>`}
+      ${lines.length? `
+      <div class="glass card" style="margin-top:16px;">
+        <div class="row between"><span class="muted">Total</span><strong class="price">${money(total)}</strong></div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="goCheckout()">Checkout</button>` : ''}
+    </div>
+  `);
+}
+function sheetCheckout(){
+  const entries = Object.entries(state.cart);
+  const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const itemsTotal = lines.reduce((s,l)=>s+l.it.price*l.qty,0);
+  const biz = DB.businesses.find(b=>b.id===state.browseBizId) || DB.businesses.find(b=>b.id===lines[0]?.it.businessId);
+  if(!_selectedZone) _selectedZone = 'male';
+  const fee = zoneFee(_selectedZone);
+  return `
+  <h2>Checkout</h2>
+  <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${state.customerEmail}</strong>` : 'Demo mode — connect Supabase to require sign-in'}</p></div>
+  <div class="field"><label>Your name</label><input id="c_name" value="${state.customerName}"></div>
+  <div class="field"><label>Phone</label><input id="c_phone" placeholder="7XXXXXX"></div>
+  <div class="field">
+    <label>Delivery zone</label>
+    <select id="c_zone" onchange="_selectedZone=this.value; refreshCheckoutTotals()">
+      ${Object.entries(ZONES).map(([k,z])=>`<option value="${k}" ${k===_selectedZone?'selected':''}>${z.label} — MVR ${z.fee}</option>`).join('')}
+    </select>
+  </div>
+  <div class="glass card tight" style="margin-bottom:14px;">
+    <div class="row between"><span class="muted">Items</span><span id="ck_items">${money(itemsTotal)}</span></div>
+    <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="ck_fee">${money(fee)}</span></div>
+    <div class="divider"></div>
+    <div class="row between"><strong>Total</strong><strong class="price" id="ck_total">${money(itemsTotal+fee)}</strong></div>
+  </div>
+  <div class="field">
+    <label>How will you pay?</label>
+    <div class="stack">
+      <button class="glass role-card" style="padding:14px;" onclick="selectPay('transfer')" id="pay_transfer">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
+        <div class="txt"><h3 style="font-size:1em;">Bank transfer to store</h3><small>Upload your slip after paying</small></div>
+      </button>
+      <button class="glass role-card" style="padding:14px;" onclick="selectPay('cash_to_delivery')" id="pay_cash">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💵</div>
+        <div class="txt"><h3 style="font-size:1em;">Cash to delivery person</h3><small>Pay when your order arrives</small></div>
+      </button>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="placeOrder('${biz?biz.id:''}')">Place order</button>`;
+}
+function refreshCheckoutTotals(){
+  const entries = Object.entries(state.cart);
+  const itemsTotal = entries.reduce((s,[id,qty])=>{ const it=DB.items.find(i=>i.id===id); return s+(it?it.price*qty:0); },0);
+  const fee = zoneFee(_selectedZone);
+  document.getElementById('ck_items').textContent = money(itemsTotal);
+  document.getElementById('ck_fee').textContent = money(fee);
+  document.getElementById('ck_total').textContent = money(itemsTotal+fee);
+}
+function goCheckout(){
+  if(sb && !state.authed){ openSheet('signIn'); return; }
+  openSheet('checkout');
+}
+function sheetSignIn(){
+  const intent = state.sheetData && state.sheetData.intent;
+  const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
+    : intent==='delivery' ? "You'll need to sign in to pick up delivery jobs — this keeps your earnings and history tied to your account."
+    : "Browsing stays open to everyone, but placing an order needs a quick email check.";
+  return `
+  <h2>Sign in</h2>
+  <p class="muted">We'll email you a secure sign-in link — no password needed. ${copy}</p>
+  <div class="field" style="margin-top:14px;"><label>Email address</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
+  <button class="btn btn-primary" onclick="sendMagicLink()">Send sign-in link</button>
+  <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>`;
+}
+async function sendMagicLink(){
+  if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
+  const email = val('auth_email');
+  if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href } });
+  if(error){ toast(error.message,'bad'); return; }
+  closeSheet();
+  toast('Check your email for the sign-in link!');
+}
+async function signOutCustomer(){
+  if(sb) await sb.auth.signOut();
+  applySession(null);
+  state.role='customer'; state.activeBizId=null; state.activeDelId=null; state.drawerOpen=false;
+  go('custHome');
+  toast('Signed out');
+}
+let _selectedPay = 'transfer';
+let _selectedZone = 'male';
+function selectPay(m){ _selectedPay=m; document.getElementById('pay_transfer').style.outline = m==='transfer'?'2px solid var(--coral)':'none'; document.getElementById('pay_cash').style.outline = m==='cash_to_delivery'?'2px solid var(--coral)':'none'; }
+function placeOrder(bizId){
+  const entries = Object.entries(state.cart);
+  const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {itemId:id, name:it.name, price:it.price, qty}; });
+  const itemsTotal = lines.reduce((s,l)=>s+l.price*l.qty,0);
+  const biz = DB.businesses.find(b=>b.id===bizId);
+  const name = val('c_name')||state.customerName; const phone = val('c_phone');
+  if(!lines.length){ toast('Your cart is empty','bad'); return; }
+  const fee = zoneFee(_selectedZone);
+  state.customerName = name;
+  const order = {
+    id: uid('ord'), businessId: biz.id, businessName: biz.name,
+    customerId: state.customerId, customerEmail: state.customerEmail,
+    customerName: name, customerPhone: phone, items: lines,
+    itemsTotal, deliveryFee: fee, total: itemsTotal+fee, zone:_selectedZone,
+    deliveryPersonId:null, deliveryPersonName:null,
+    paymentMethod: _selectedPay,
+    paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
+    status:'placed', createdAt: Date.now(), slipDataUrl:null
+  };
+  DB.orders.push(order); saveDB('orders');
+  state.cart = {};
+  closeSheet();
+  go('custOrders');
+  toast('Order placed!');
+}
+
+function renderCustOrders(){
+  if(sb && !state.authed){
+    document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
+      ${topbar('My orders')}
+      <div style="padding:4px 16px 0;">
+        <div class="empty">
+          <span class="ic">🔒</span>Sign in with your email to see your orders
+          <button class="btn btn-primary" style="margin-top:16px;" onclick="openSheet('signIn')">Sign in</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  const mine = sb ? DB.orders.filter(o=>o.customerId===state.customerId) : DB.orders;
+  const sorted = mine.sort((a,b)=>b.createdAt-a.createdAt);
+  document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
+    ${topbar('My orders')}
+    <div style="padding:4px 16px 0;">
+      ${sorted.length? sorted.map(o=>custOrderCard(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No orders yet — go browse a store!</div>`}
+    </div>
+  `);
+}
+function custOrderCard(o){
+  const biz = DB.businesses.find(b=>b.id===o.businessId);
+  const showAcct = o.paymentMethod==='transfer' && o.paymentStatus!=='paid';
+  return `
+  <div class="glass card">
+    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
+    <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · ${money(o.total)}</p>
+    ${showAcct ? `
+      <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${biz.accountName} · ${biz.accountNumber}</div></div>
+      ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
+    ` : ''}
+    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready for your delivery partner.</p>` : ''}
+  </div>`;
+}
+function sheetUploadSlip(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  return `
+  <h2>Upload transfer slip</h2>
+  <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · ${money(o.total)}</p>
+  <div class="field" style="margin-top:14px;">
+    <label>Slip / screenshot</label>
+    <input type="file" accept="image/*" id="slipFile" style="display:none;" onchange="previewSlip(event)">
+    <label for="slipFile" class="filebtn">📎 Tap to choose an image</label>
+    <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
+  </div>
+  <button class="btn btn-primary" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
+}
+let _slipData = null;
+function previewSlip(e){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{ _slipData = reader.result; const img=document.getElementById('slipPreview'); img.src=_slipData; img.style.display='block'; };
+  reader.readAsDataURL(f);
+}
+function submitSlip(id){
+  const o = DB.orders.find(x=>x.id===id);
+  o.paymentStatus='slip_uploaded'; o.slipDataUrl = _slipData;
+  saveDB('orders'); _slipData=null; closeSheet(); toast('Slip submitted — waiting for store approval'); render();
+}
+
+/* =================== INIT =================== */
+(async function init(){
+  await loadDB();
+  seedIfEmpty();
+  if(sb){
+    const { data:{ session } } = await sb.auth.getSession();
+    applySession(session);
+    sb.auth.onAuthStateChange((_event, session)=>{ applySession(session); render(); });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

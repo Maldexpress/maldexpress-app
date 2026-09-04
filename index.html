@@ -203,17 +203,18 @@
 
   /* Modal / popup sheets */
   .sheet-wrap{
-    position:fixed; inset:0; z-index:70; display:flex; align-items:flex-end; justify-content:center;
+    position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center; padding:20px;
     opacity:0; pointer-events:none; transition:opacity .2s ease;
   }
   .sheet-wrap.show{opacity:1; pointer-events:auto;}
   .sheet-wrap .backdrop{position:absolute; inset:0; background:rgba(2,12,16,.6); backdrop-filter:blur(3px);}
   .sheet{
-    position:relative; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
-    border-radius:26px 26px 0 0; padding:20px 20px 26px; transform:translateY(30px); transition:transform .26s cubic-bezier(.2,.9,.3,1);
+    position:relative; width:100%; max-width:520px; max-height:85vh; overflow-y:auto;
+    border-radius:26px; padding:24px 20px 26px; transform:scale(.94); opacity:0;
+    transition:transform .22s cubic-bezier(.2,.9,.3,1), opacity .18s ease;
   }
-  .sheet-wrap.show .sheet{transform:translateY(0);}
-  .sheet .handle{width:44px; height:5px; border-radius:99px; background:var(--glass-brd); margin:0 auto 16px;}
+  .sheet-wrap.show .sheet{transform:scale(1); opacity:1;}
+  .sheet .handle{display:none;}
   .sheet-close{position:absolute; right:16px; top:16px; width:34px; height:34px; border-radius:50%; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;}
 
   .field{margin-bottom:14px;}

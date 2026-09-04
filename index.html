@@ -367,10 +367,19 @@ create policy "owner manage items" on items for all
 -- Orders: only a signed-in customer can create their own order
 create policy "customer insert own order" on orders for insert
   with check (auth.uid() = customer_id);
--- Orders can be read broadly (store/rider dashboards need to see them);
--- updates are restricted to the business that owns the order or the rider
--- assigned to it (riders can also claim an unassigned order).
-create policy "read orders" on orders for select using (true);
+-- Orders are only readable by the customer who placed them, the business
+-- that owns them, or a delivery partner (their own assigned jobs, plus
+-- unassigned orders so riders can see jobs to pick up). Updates are
+-- restricted the same way (business owner, or assigned/claiming rider).
+create policy "customer read own orders" on orders for select
+  using (auth.uid() = customer_id);
+create policy "business read own orders" on orders for select
+  using (exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid()));
+create policy "rider read assigned or open orders" on orders for select
+  using (
+    exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+    or (orders.delivery_person_id is null and exists (select 1 from delivery_persons d where d.user_id = auth.uid()))
+  );
 create policy "business update own orders" on orders for update
   using (exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid()));
 create policy "rider update assigned or open orders" on orders for update

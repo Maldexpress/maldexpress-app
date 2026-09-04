@@ -17,11 +17,10 @@ Maldexpress: a marketplace + delivery app for the Maldives. Three portals in one
 - Store account number/name are only shown to the customer/rider while payment is unconfirmed.
 
 ## Known follow-ups (not yet done)
-1. **Order read access is public** (`orders for select using (true)` in the RLS policy). Any signed-in user can currently read all orders, not just their own. Needs scoping to: the order's own customer, the business that owns it, or the assigned rider.
-2. **Split the single HTML file** into a real project structure (components/modules) once it grows further — it's still manageable as one file for now, but don't let it double again without restructuring.
-3. **Slip uploads** are stored as base64 data URLs directly in the `orders.slip_url` column. Move to Supabase Storage once volume matters — cheaper and keeps table rows small.
-4. **No business/delivery admin oversight** — e.g. no way to suspend a store, dispute a payment claim, or handle a customer complaint. Out of scope for MVP but worth flagging.
-5. Payment for the Pro tier upgrade (`payForPro()`) is currently simulated client-side with no real payment gateway. Needs BML/real payment integration before launch.
+1. **Split the single HTML file** into a real project structure (components/modules) once it grows further — it's still manageable as one file for now, but don't let it double again without restructuring.
+2. **Slip uploads** are stored as base64 data URLs directly in the `orders.slip_url` column. Move to Supabase Storage once volume matters — cheaper and keeps table rows small.
+3. **No business/delivery admin oversight** — e.g. no way to suspend a store, dispute a payment claim, or handle a customer complaint. Out of scope for MVP but worth flagging.
+4. Payment for the Pro tier upgrade (`payForPro()`) is currently simulated client-side with no real payment gateway. Needs BML/real payment integration before launch.
 
 ## Conventions
 - Keep everything mobile-first; this is meant to be used primarily on phones.

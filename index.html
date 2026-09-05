@@ -420,11 +420,64 @@ as $$
   select email from user_profiles where phone = p_phone limit 1;
 $$;
 grant execute on function resolve_login_email(text) to anon, authenticated;
+
+-- Super Admin: a manually-seeded allowlist (no self-service signup for
+-- this — add rows directly in SQL). is_admin() is security-definer so
+-- it can be used inside other tables' RLS policies without those
+-- tables needing their own read access to `admins`.
+create table admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table admins enable row level security;
+create policy "admin read own admin row" on admins for select using (auth.uid() = user_id);
+
+create or replace function is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists(select 1 from admins where user_id = auth.uid());
+$$;
+grant execute on function is_admin() to authenticated;
+
+-- Admins can update tier/paid_at on any business (owners can already
+-- update their own via the existing "owner update business" policy —
+-- Postgres OR's multiple permissive policies for the same command).
+create policy "admin update any business" on businesses for update using (is_admin());
+-- Admins can also see phone/email for any user who's set up mobile
+-- sign-in, useful for cross-checking a business owner's identity.
+create policy "admin read all profiles" on user_profiles for select using (is_admin());
+
+-- Pro-tier upgrade requests: bank transfer (needs manual admin
+-- approval) or Swipe (auto-approved by the payment webhook, no admin
+-- action needed — logged here for visibility).
+create table pro_upgrade_requests (
+  id text primary key,
+  business_id text references businesses(id) on delete cascade,
+  payment_method text not null check (payment_method in ('bank_transfer','swipe')),
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  amount numeric not null default 500,
+  slip_url text,
+  swipe_reference text,
+  swipe_payment_link text,
+  created_at timestamptz default now(),
+  resolved_at timestamptz,
+  resolved_by uuid references auth.users(id)
+);
+alter table pro_upgrade_requests enable row level security;
+create policy "owner insert own upgrade request" on pro_upgrade_requests for insert
+  with check (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
+create policy "owner read own upgrade requests" on pro_upgrade_requests for select
+  using (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
+create policy "admin read all upgrade requests" on pro_upgrade_requests for select using (is_admin());
+create policy "admin update upgrade requests" on pro_upgrade_requests for update using (is_admin());
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
-const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons' };
-let DB = { businesses:[], items:[], orders:[], delivery:[] };
+const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons', proRequests:'pro_upgrade_requests' };
+let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[] };
 let storageReady = false;
 
 function toDbRow(part, o){
@@ -432,12 +485,14 @@ function toDbRow(part, o){
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString() };
+  if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime() };
+  if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
 }
 
 async function loadDB(){
@@ -447,16 +502,18 @@ async function loadDB(){
     return;
   }
   try{
-    const [b,i,o,d] = await Promise.all([
+    const [b,i,o,d,pr] = await Promise.all([
       sb.from('businesses').select('*'),
       sb.from('items').select('*'),
       sb.from('orders').select('*'),
-      sb.from('delivery_persons').select('*')
+      sb.from('delivery_persons').select('*'),
+      sb.from('pro_upgrade_requests').select('*')
     ]);
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
+    DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
 }
@@ -525,7 +582,11 @@ let state = {
   sheetData: null,
   fontSize: 16,
   toastTimer: null,
-  filterCat: 'All'
+  filterCat: 'All',
+  adminMode: typeof location!=='undefined' && /[?&]admin\b/.test(location.search),
+  isAdmin: false,
+  adminSearch: '',
+  adminTab: 'businesses'    // 'businesses' | 'bankRequests' | 'swipeRequests'
 };
 
 function applySession(session){
@@ -546,6 +607,13 @@ async function checkLoginProfile(){
   if(!sb || !state.authed) return;
   const { data } = await sb.from('user_profiles').select('user_id').eq('user_id', state.customerId).maybeSingle();
   if(!data && state.sheet!=='setupLogin'){ openSheet('setupLogin'); }
+}
+
+async function checkAdminStatus(){
+  if(!sb || !state.authed){ state.isAdmin = false; return; }
+  const { data } = await sb.rpc('is_admin');
+  state.isAdmin = !!data;
+  render();
 }
 
 function setFont(px){
@@ -573,10 +641,135 @@ function go(screen, extra={}){
 function render(){
   const app = document.getElementById('app');
   if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
+  if(state.adminMode) return renderAdmin();
   if(state.screen==='landing') return renderLanding();
   if(state.role==='business') return renderBusiness();
   if(state.role==='delivery') return renderDelivery();
   if(state.role==='customer') return renderCustomer();
+}
+
+/* =================== SUPER ADMIN (?admin) =================== */
+function renderAdmin(){
+  const app = document.getElementById('app');
+  if(!sb){
+    app.innerHTML = `<div class="empty" style="padding-top:40vh;">Admin dashboard needs Supabase connected.</div>`;
+    return;
+  }
+  if(!state.authed){
+    if(state.sheet!=='signIn'){ state.sheet='signIn'; state.sheetData={intent:'admin'}; }
+    app.innerHTML = `
+    <div class="landing" style="justify-content:flex-start; padding-top:80px;">
+      <div class="landing-mark"><h1>Super Admin</h1><p>Sign in to continue</p></div>
+    </div>
+    ${sheetHTML()}`;
+    return;
+  }
+  if(!state.isAdmin){
+    app.innerHTML = `
+    <div class="landing" style="justify-content:flex-start; padding-top:80px;">
+      <div class="landing-mark"><h1>Not authorized</h1><p>${state.customerEmail} doesn't have Super Admin access on this account.</p></div>
+      <button class="btn btn-outline" style="margin-top:16px;" onclick="signOutCustomer()">Sign out</button>
+    </div>`;
+    return;
+  }
+  const q = state.adminSearch.trim().toLowerCase();
+  const businesses = DB.businesses.filter(b=>{
+    if(!q) return true;
+    return b.name.toLowerCase().includes(q) || (b.ownerName||'').toLowerCase().includes(q) || (b.phone||'').includes(q);
+  }).sort((a,b)=>b.joinDate-a.joinDate);
+  const bankPending = DB.proRequests.filter(r=>r.paymentMethod==='bank_transfer' && r.status==='pending');
+  const swipeLog = DB.proRequests.filter(r=>r.paymentMethod==='swipe');
+  app.innerHTML = `
+  <div style="padding:20px 16px 90px;">
+    <h1 style="margin-bottom:4px;">Super Admin</h1>
+    <p class="muted" style="margin-bottom:16px; font-size:.85em;">Signed in as ${state.customerEmail} · <a href="javascript:void(0)" onclick="signOutCustomer()" style="color:var(--lagoon);">Sign out</a></p>
+    <div class="row" style="gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+      <button class="btn ${state.adminTab==='businesses'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='businesses'; render();">Businesses</button>
+      <button class="btn ${state.adminTab==='bankRequests'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='bankRequests'; render();">Bank transfer approvals${bankPending.length?` (${bankPending.length})`:''}</button>
+      <button class="btn ${state.adminTab==='swipeRequests'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='swipeRequests'; render();">Paid via Swipe</button>
+    </div>
+    ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
+    ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
+    ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
+  </div>
+  ${sheetHTML()}`;
+}
+function adminBusinessesTab(list){
+  return `
+  <div class="field" style="margin-bottom:14px;">
+    <input id="adminSearchInput" placeholder="Search by store, owner, or phone…" value="${state.adminSearch}" oninput="adminSearchInput(this.value)">
+  </div>
+  ${list.length? list.map(b=>`
+    <div class="glass card" style="margin-bottom:10px;">
+      <div class="row between"><h3>${b.name}</h3><span class="badge ${b.tier}">${b.tier==='pro'?'PRO':'FREE'}</span></div>
+      <p class="muted" style="font-size:.85em; margin-top:4px;">${b.ownerName} · ${b.phone||'—'} · ${b.category||'—'}</p>
+      <p class="muted" style="font-size:.78em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${b.paidAt?` · Paid ${new Date(b.paidAt).toLocaleDateString()}`:''}</p>
+      <div class="row" style="gap:8px; margin-top:10px;">
+        ${b.tier==='pro'
+          ? `<button class="btn btn-outline btn-sm" onclick="adminSetTier('${b.id}','free')">Revoke Pro</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="adminSetTier('${b.id}','pro')">Grant Pro</button>`}
+      </div>
+    </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
+  `;
+}
+function adminBankRequestsTab(list){
+  return list.length ? list.map(r=>{
+    const biz = DB.businesses.find(b=>b.id===r.businessId);
+    return `
+    <div class="glass card" style="margin-bottom:10px;">
+      <div class="row between"><h3>${biz?biz.name:'Unknown store'}</h3><span class="status-pill wait">Pending</span></div>
+      <p class="muted" style="font-size:.85em; margin-top:4px;">${money(r.amount)} · Requested ${new Date(r.createdAt).toLocaleDateString()}</p>
+      ${r.slipDataUrl ? `<img src="${r.slipDataUrl}" style="width:100%; border-radius:14px; margin-top:10px; max-height:200px; object-fit:cover;">` : ''}
+      <div class="row" style="gap:8px; margin-top:10px;">
+        <button class="btn btn-primary btn-sm" onclick="adminResolveRequest('${r.id}', true)">Approve</button>
+        <button class="btn btn-outline btn-sm" onclick="adminResolveRequest('${r.id}', false)">Reject</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty"><span class="ic">🏦</span>No pending bank transfer requests</div>`;
+}
+function adminSwipeRequestsTab(list){
+  return list.length ? list.map(r=>{
+    const biz = DB.businesses.find(b=>b.id===r.businessId);
+    const pill = r.status==='approved' ? `<span class="status-pill ok">Auto-approved</span>` : r.status==='pending' ? `<span class="status-pill wait">Awaiting payment</span>` : `<span class="status-pill bad">Failed</span>`;
+    return `
+    <div class="glass card" style="margin-bottom:10px;">
+      <div class="row between"><h3>${biz?biz.name:'Unknown store'}</h3>${pill}</div>
+      <p class="muted" style="font-size:.85em; margin-top:4px;">${money(r.amount)} · ${new Date(r.createdAt).toLocaleDateString()}${r.swipeReference?` · Ref ${r.swipeReference}`:''}</p>
+    </div>`;
+  }).join('') : `<div class="empty"><span class="ic">💳</span>No Swipe payments yet</div>`;
+}
+function adminSearchInput(v){
+  state.adminSearch = v;
+  render();
+  const el = document.getElementById('adminSearchInput');
+  if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+async function adminSetTier(bizId, tier){
+  const biz = DB.businesses.find(b=>b.id===bizId);
+  if(!biz) return;
+  const paidAt = tier==='pro' ? Date.now() : null;
+  const { error } = await sb.from('businesses').update({ tier, paid_at: paidAt?new Date(paidAt).toISOString():null }).eq('id', bizId);
+  if(error){ toast('Failed: '+error.message,'bad'); return; }
+  biz.tier = tier; biz.paidAt = paidAt;
+  toast(tier==='pro' ? 'Pro granted' : 'Pro revoked');
+  render();
+}
+async function adminResolveRequest(reqId, approve){
+  const req = DB.proRequests.find(r=>r.id===reqId);
+  if(!req) return;
+  const status = approve ? 'approved' : 'rejected';
+  const nowIso = new Date().toISOString();
+  const { error } = await sb.from('pro_upgrade_requests').update({ status, resolved_at: nowIso, resolved_by: state.customerId }).eq('id', reqId);
+  if(error){ toast('Failed: '+error.message,'bad'); return; }
+  req.status = status; req.resolvedAt = Date.now(); req.resolvedBy = state.customerId;
+  if(approve){
+    const { error: bizErr } = await sb.from('businesses').update({ tier:'pro', paid_at: nowIso }).eq('id', req.businessId);
+    if(bizErr){ toast('Approved request but failed to grant Pro: '+bizErr.message,'bad'); return; }
+    const biz = DB.businesses.find(b=>b.id===req.businessId);
+    if(biz){ biz.tier='pro'; biz.paidAt=Date.now(); }
+  }
+  toast(approve ? 'Approved — Pro granted' : 'Rejected');
+  render();
 }
 
 /* =================== LANDING =================== */
@@ -750,6 +943,7 @@ function sheetHTML(){
   else if(state.sheet==='custSettings') body = sheetGenericSettings('customer');
   else if(state.sheet==='addItem') body = sheetAddItem();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
+  else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
   else if(state.sheet==='approvePayment') body = sheetApprovePayment();
   else if(state.sheet==='markCash') body = sheetMarkCash();
@@ -901,6 +1095,14 @@ function daysLabel(t){ return t.trialActive? `${t.trialDaysLeft} days left` : 'T
 
 function sheetUpgrade(){
   const biz = currentBiz();
+  const existing = DB.proRequests.find(r=>r.businessId===biz.id && r.status==='pending');
+  if(existing){
+    return `
+    <h2>Upgrade to Pro</h2>
+    <div class="card tight" style="background:rgba(255,207,92,.1); border:1px solid rgba(255,207,92,.3);">
+      <p style="font-size:.9em;">Your ${existing.paymentMethod==='swipe'?'Swipe':'bank transfer'} payment is ${existing.paymentMethod==='swipe'?'awaiting confirmation':'awaiting admin approval'}. We'll activate Pro as soon as it's confirmed.</p>
+    </div>`;
+  }
   return `
     <h2>Upgrade to Pro</h2>
     <div class="card tight" style="background:rgba(61,220,151,.1); border:1px solid rgba(61,220,151,.3);">
@@ -908,16 +1110,56 @@ function sheetUpgrade(){
       <div class="divider"></div>
       <div class="row between"><span>One-time fee</span><strong class="price">${money(500)}</strong></div>
     </div>
-    <p class="muted" style="font-size:.85em; margin:12px 0;">This simulates payment for the demo. In production this would connect to a real payment gateway.</p>
-    <button class="btn btn-primary" onclick="payForPro()">Pay MVR 500 & activate Pro</button>`;
+    <p class="muted" style="font-size:.85em; margin:12px 0;">Choose how you'd like to pay:</p>
+    <div class="stack">
+      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('bank_transfer')">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
+        <div class="txt"><h3 style="font-size:1em;">Bank transfer</h3><small>Upload a slip — reviewed by our team</small></div>
+      </button>
+      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('swipe')">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💳</div>
+        <div class="txt"><h3 style="font-size:1em;">Pay with Swipe</h3><small>Instant activation once payment confirms</small></div>
+      </button>
+    </div>`;
 }
-function payForPro(){
+async function startProPayment(method){
   const biz = currentBiz();
-  biz.tier='pro'; biz.paidAt=Date.now();
-  saveDB('businesses');
+  if(method==='bank_transfer'){ openSheet('upgradeBankSlip'); return; }
+  toast('Creating your Swipe payment link…');
+  try{
+    const { data, error } = await sb.functions.invoke('create-swipe-payment', { body: { businessId: biz.id, amount: 500 } });
+    if(error || !data || !data.paymentLink){ toast("Swipe payment isn't set up yet — try bank transfer for now",'bad'); return; }
+    const reqId = uid('pr');
+    const { error: insErr } = await sb.from('pro_upgrade_requests').insert({ id:reqId, business_id:biz.id, payment_method:'swipe', status:'pending', amount:500, swipe_reference:data.reference||null, swipe_payment_link:data.paymentLink });
+    if(insErr){ toast('Failed to start payment: '+insErr.message,'bad'); return; }
+    window.open(data.paymentLink, '_blank');
+    closeSheet();
+    toast('Complete payment in the new tab — Pro activates automatically once confirmed');
+    await loadDB(); render();
+  }catch(e){ toast("Swipe payment isn't set up yet — try bank transfer for now",'bad'); }
+}
+function sheetUpgradeBankSlip(){
+  return `
+  <h2>Bank transfer — Pro upgrade</h2>
+  <p class="muted">MVR 500 one-time. Upload your transfer slip and we'll review it.</p>
+  <div class="field" style="margin-top:14px;">
+    <label>Slip / screenshot</label>
+    <input type="file" accept="image/*" id="proSlipFile" style="display:none;" onchange="previewSlip(event)">
+    <label for="proSlipFile" class="filebtn">📎 Tap to choose an image</label>
+    <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
+  </div>
+  <button class="btn btn-primary" onclick="submitProBankSlip()">Submit for approval</button>`;
+}
+async function submitProBankSlip(){
+  if(!_slipData){ toast('Choose a slip image first','bad'); return; }
+  const biz = currentBiz();
+  const reqId = uid('pr');
+  const { error } = await sb.from('pro_upgrade_requests').insert({ id:reqId, business_id:biz.id, payment_method:'bank_transfer', status:'pending', amount:500, slip_url:_slipData });
+  if(error){ toast('Failed: '+error.message,'bad'); return; }
+  _slipData = null;
   closeSheet();
-  toast('Pro tier activated — up to 500 items unlocked!');
-  render();
+  toast('Submitted — waiting for admin approval');
+  await loadDB(); render();
 }
 
 function orderCardBiz(o){
@@ -1322,6 +1564,7 @@ function sheetSignIn(){
   const intent = state.sheetData && state.sheetData.intent;
   const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
     : intent==='delivery' ? "You'll need to sign in to pick up delivery jobs — this keeps your earnings and history tied to your account."
+    : intent==='admin' ? "Sign in with the account that has Super Admin access."
     : "Browsing stays open to everyone, but placing an order needs a quick email check.";
   if(_signInMode==='password'){
     return `
@@ -1491,8 +1734,12 @@ function submitSlip(id){
   if(sb){
     const { data:{ session } } = await sb.auth.getSession();
     applySession(session);
-    if(state.authed) await checkLoginProfile();
-    sb.auth.onAuthStateChange((_event, session)=>{ applySession(session); if(state.authed) checkLoginProfile(); render(); });
+    if(state.authed){ if(state.adminMode) await checkAdminStatus(); else await checkLoginProfile(); }
+    sb.auth.onAuthStateChange((_event, session)=>{
+      applySession(session);
+      if(state.authed){ if(state.adminMode) checkAdminStatus(); else checkLoginProfile(); }
+      render();
+    });
   }
   render();
 })();

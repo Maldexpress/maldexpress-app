@@ -391,6 +391,35 @@ create policy "rider update assigned or open orders" on orders for update
   with check (
     exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   );
+
+-- Mobile number + password sign-in (set up after a user's first magic-link
+-- login). Password auth itself is Supabase's built-in email+password —
+-- this table just maps a phone number to the account's email so a
+-- not-yet-signed-in visitor can look up which email to authenticate,
+-- and enforces phone uniqueness (email uniqueness is already enforced
+-- natively by auth.users).
+create table user_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  phone text unique not null,
+  email text unique not null,
+  created_at timestamptz default now()
+);
+alter table user_profiles enable row level security;
+create policy "self read own profile" on user_profiles for select using (auth.uid() = user_id);
+create policy "self insert own profile" on user_profiles for insert with check (auth.uid() = user_id);
+
+-- Security-definer lookup so an unauthenticated visitor can resolve a
+-- phone number to its account email (only that one field, nothing else)
+-- before calling signInWithPassword. Safe to expose to anon.
+create or replace function resolve_login_email(p_phone text)
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+  select email from user_profiles where phone = p_phone limit 1;
+$$;
+grant execute on function resolve_login_email(text) to anon, authenticated;
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
@@ -511,6 +540,12 @@ function applySession(session){
     state.customerEmail = null;
     state.customerName = 'Guest';
   }
+}
+
+async function checkLoginProfile(){
+  if(!sb || !state.authed) return;
+  const { data } = await sb.from('user_profiles').select('user_id').eq('user_id', state.customerId).maybeSingle();
+  if(!data && state.sheet!=='setupLogin'){ openSheet('setupLogin'); }
 }
 
 function setFont(px){
@@ -703,7 +738,7 @@ function switchRole(){ state = {...state, role:'customer', screen:'custHome', ac
 
 /* =================== SHEETS (bottom popups) =================== */
 function openSheet(name, data=null){ state.sheet = name; state.sheetData = data; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
-function closeSheet(){ const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
+function closeSheet(){ if(state.sheet==='setupLogin') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
   if(!state.sheet) return '';
@@ -721,12 +756,14 @@ function sheetHTML(){
   else if(state.sheet==='payoutAction') body = sheetPayoutAction();
   else if(state.sheet==='checkout') body = sheetCheckout();
   else if(state.sheet==='signIn') body = sheetSignIn();
+  else if(state.sheet==='setupLogin') body = sheetSetupLogin();
+  const dismissable = state.sheet!=='setupLogin';
   return `
   <div class="sheet-wrap show" id="sheetWrap">
-    <div class="backdrop" onclick="closeSheet()"></div>
+    <div class="backdrop" ${dismissable?`onclick="closeSheet()"`:''}></div>
     <div class="glass sheet">
       <div class="handle"></div>
-      <button class="sheet-close" onclick="closeSheet()">✕</button>
+      ${dismissable?`<button class="sheet-close" onclick="closeSheet()">✕</button>`:''}
       ${body}
     </div>
   </div>`;
@@ -1280,17 +1317,28 @@ function goCheckout(){
   if(sb && !state.authed){ openSheet('signIn'); return; }
   openSheet('checkout');
 }
+let _signInMode = 'magiclink';
 function sheetSignIn(){
   const intent = state.sheetData && state.sheetData.intent;
   const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
     : intent==='delivery' ? "You'll need to sign in to pick up delivery jobs — this keeps your earnings and history tied to your account."
     : "Browsing stays open to everyone, but placing an order needs a quick email check.";
+  if(_signInMode==='password'){
+    return `
+    <h2>Sign in</h2>
+    <p class="muted">${copy}</p>
+    <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="auth_phone" placeholder="7XXXXXX"></div>
+    <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
+    <button class="btn btn-primary" onclick="signInWithPhonePassword()">Sign in</button>
+    <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='magiclink'; render();">Use email link instead</button>`;
+  }
   return `
   <h2>Sign in</h2>
   <p class="muted">We'll email you a secure sign-in link — no password needed. ${copy}</p>
   <div class="field" style="margin-top:14px;"><label>Email address</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
   <button class="btn btn-primary" onclick="sendMagicLink()">Send sign-in link</button>
-  <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>`;
+  <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>
+  <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='password'; render();">Sign in with mobile & password</button>`;
 }
 async function sendMagicLink(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
@@ -1300,6 +1348,43 @@ async function sendMagicLink(){
   if(error){ toast(error.message,'bad'); return; }
   closeSheet();
   toast('Check your email for the sign-in link!');
+}
+async function signInWithPhonePassword(){
+  if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
+  const phone = val('auth_phone'), pass = val('auth_pass');
+  if(!phone || !pass){ toast('Enter your mobile number and password','bad'); return; }
+  const { data: email, error: lookupErr } = await sb.rpc('resolve_login_email', { p_phone: phone });
+  if(lookupErr || !email){ toast('No account found for that mobile number','bad'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ toast('Incorrect mobile number or password','bad'); return; }
+  closeSheet();
+  toast('Signed in!');
+}
+function sheetSetupLogin(){
+  return `
+  <h2>Set up faster sign-in</h2>
+  <p class="muted">Add a mobile number and password so you don't have to wait for a new email link every time you sign in.</p>
+  <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="su_phone" placeholder="7XXXXXX"></div>
+  <div class="field"><label>Password</label><input id="su_pass" type="password" placeholder="At least 6 characters"></div>
+  <div class="field"><label>Confirm password</label><input id="su_pass2" type="password" placeholder="Re-enter password"></div>
+  <button class="btn btn-primary" onclick="submitLoginSetup()">Save & continue</button>
+  <p class="muted" style="font-size:.78em; margin-top:12px;">You're signed in as ${state.customerEmail}. This just adds a faster way back in next time.</p>`;
+}
+async function submitLoginSetup(){
+  const phone = val('su_phone'), pass = val('su_pass'), pass2 = val('su_pass2');
+  if(!phone){ toast('Enter your mobile number','bad'); return; }
+  if(!pass || pass.length<6){ toast('Password must be at least 6 characters','bad'); return; }
+  if(pass!==pass2){ toast('Passwords do not match','bad'); return; }
+  const { error: passErr } = await sb.auth.updateUser({ password: pass });
+  if(passErr){ toast(passErr.message,'bad'); return; }
+  const { error: profErr } = await sb.from('user_profiles').insert({ user_id: state.customerId, phone, email: state.customerEmail });
+  if(profErr){
+    if(profErr.code==='23505' || /duplicate/i.test(profErr.message)) toast('That mobile number is already registered to another account','bad');
+    else toast('Could not save: '+profErr.message,'bad');
+    return;
+  }
+  state.sheet = null; state.sheetData = null; render();
+  toast('You can now sign in with your mobile number and password!');
 }
 async function signOutCustomer(){
   if(sb) await sb.auth.signOut();
@@ -1406,7 +1491,8 @@ function submitSlip(id){
   if(sb){
     const { data:{ session } } = await sb.auth.getSession();
     applySession(session);
-    sb.auth.onAuthStateChange((_event, session)=>{ applySession(session); render(); });
+    if(state.authed) await checkLoginProfile();
+    sb.auth.onAuthStateChange((_event, session)=>{ applySession(session); if(state.authed) checkLoginProfile(); render(); });
   }
   render();
 })();

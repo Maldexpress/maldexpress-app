@@ -1,19 +1,35 @@
-// Receives Swipe's payment-confirmation webhook (Standard Webhooks format:
+// Receives a Swipe payment-confirmation webhook (Standard Webhooks format:
 // https://www.standardwebhooks.com/) and, once verified, auto-approves the
 // matching pro_upgrade_requests row and grants Pro tier - no admin action
 // needed. This is the only piece that's allowed to bypass RLS (via the
 // service role key), because the signature check below is what proves the
-// request genuinely came from Swipe.
+// event genuinely originated from Swipe.
+//
+// NOT called by Swipe directly. Maldexpress shares one Swipe client with
+// SeaFare, and Swipe only supports one webhook URL per client - it's
+// registered to SeaFare's endpoint (https://seafare.onrender.com/api/webhooks/swipe).
+// SeaFare's webhook handler forwards any event whose reference is prefixed
+// "maldexpress_" here, server-to-server, preserving the original
+// webhook-id/webhook-timestamp/webhook-signature headers and raw body
+// exactly as Swipe sent them. Because it's the same shared signing secret,
+// the verification below still passes on a forwarded call - SeaFare isn't
+// vouching for the event, it's relaying the same signed proof Swipe gave
+// it. This function has no way to tell a direct Swipe call from a
+// forwarded one, and doesn't need to.
 //
 // Requires this secret (Supabase Dashboard -> Edge Functions -> Secrets):
-//   SWIPE_WEBHOOK_SECRET  - the signing secret from Swipe's Merchant Portal,
+//   SWIPE_WEBHOOK_SECRET  - the SAME signing secret SeaFare uses (it's one
+//                           webhook registration in Swipe's Merchant
+//                           Portal) - pull it from SeaFare's own Render env
+//                           vars rather than regenerating anything,
 //                           typically formatted like "whsec_<base64>"
 // SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are auto-provided by the runtime.
 //
 // IMPORTANT deployment step: this function must have JWT verification
-// disabled (Swipe's calls carry no Supabase auth token) - toggle "Enforce
-// JWT Verification" off for this function in the Dashboard, or deploy with
-// `supabase functions deploy swipe-webhook --no-verify-jwt` via the CLI.
+// disabled (the forwarded call carries no Supabase auth token) - toggle
+// "Enforce JWT Verification" off for this function in the Dashboard, or
+// deploy with `supabase functions deploy swipe-webhook --no-verify-jwt`
+// via the CLI.
 //
 // TODO once the Swipe OpenAPI spec is confirmed:
 //   - the success event type name(s) (assumed: "payment.completed" / "payment.succeeded")

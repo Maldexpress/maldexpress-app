@@ -31,9 +31,13 @@
 // deploy with `supabase functions deploy swipe-webhook --no-verify-jwt`
 // via the CLI.
 //
-// TODO once the Swipe OpenAPI spec is confirmed:
-//   - the success event type name(s) (assumed: "payment.completed" / "payment.succeeded")
-//   - where the reference we sent at creation time is echoed back (assumed: data.reference, falls back to data.id)
+// CONFIRMED: a fulfilled payment's status is "FULFILLED" (not "COMPLETED" -
+// see the isSuccess check below for why both are checked anyway).
+//
+// TODO once the real webhook payload sample is confirmed:
+//   - whether status lives at event.status or event.data.status (checking both)
+//   - whether there's a dotted event.type at all (assumed guess kept as a fallback: "payment.completed" / "payment.succeeded")
+//   - where the reference we sent at creation time is echoed back (checking event.data.reference, event.data.id, event.reference, event.id)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -104,13 +108,23 @@ Deno.serve(async (req) => {
     }
 
     const event = JSON.parse(body);
+    // CONFIRMED (from SeaFare's production code, the hard way - it originally
+    // checked only "COMPLETED" and payments silently never registered):
+    // Swipe reports a completed payment's status as "FULFILLED", not
+    // "COMPLETED". Checking both, plus the original event.type guess, since
+    // the overall webhook envelope shape (does status live at event.status
+    // or event.data.status? is there a type field at all?) is still
+    // unconfirmed pending the actual webhook payload sample from SeaFare.
+    const status = String(event.data?.status ?? event.status ?? "").toUpperCase();
     const eventType = event.type;
-    const paymentRef = event.data?.reference ?? event.data?.id;
+    const isSuccess = status === "FULFILLED" || status === "COMPLETED"
+      || eventType === "payment.completed" || eventType === "payment.succeeded";
 
-    if (eventType !== "payment.completed" && eventType !== "payment.succeeded") {
+    if (!isSuccess) {
       // Not a success event (e.g. failed/expired/pending) - ack and ignore.
       return new Response("ok", { status: 200 });
     }
+    const paymentRef = event.data?.reference ?? event.data?.id ?? event.reference ?? event.id;
     if (!paymentRef) {
       return new Response("Missing payment reference in event payload", { status: 400 });
     }

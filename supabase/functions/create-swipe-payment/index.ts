@@ -6,13 +6,21 @@
 // wallet/client for this app. Swipe only supports one webhook URL per
 // client, and it's registered to SeaFare's endpoint
 // (https://seafare.onrender.com/api/webhooks/swipe), NOT to this project's
-// swipe-webhook function. SeaFare's webhook handler inspects the
-// `reference` on every confirmation it receives; anything prefixed
-// "maldexpress_" gets forwarded (original headers + body, unmodified) to
-// this project's swipe-webhook function, which independently verifies the
-// Standard Webhooks signature using the same shared secret. That's why the
-// reference below is prefixed - it's the only signal SeaFare's webhook
-// uses to route the event here instead of processing it as its own.
+// swipe-webhook function.
+//
+// Swipe generates its own opaque `reference` for each payment and returns
+// it in the create-payment response - the request has no field for the
+// caller to supply one (confirmed against SeaFare's real production
+// request shape, which sends only { amount, currency, type, description }).
+// That rules out tagging our own payments with an identifiable prefix, so
+// routing works the other way around: SeaFare's webhook handler forwards
+// any confirmation it does NOT recognize as one of its own payments
+// (server-to-server, original headers + body unmodified) to this project's
+// swipe-webhook function, which independently verifies the Standard
+// Webhooks signature using the same shared secret, then checks whether
+// *it* recognizes the reference (a pending pro_upgrade_requests row).
+// Neither side needs to understand the other's reference format - each
+// just recognizes its own.
 //
 // Requires these secrets (Supabase Dashboard -> Edge Functions -> Secrets):
 //   SWIPE_TOKEN_URL      - OAuth2 client-credentials token endpoint (shared with SeaFare)
@@ -25,6 +33,7 @@
 //   - token response field names (assumed: access_token, expires_in - standard OAuth2 names)
 //   - payment amount units (assumed: MVR major units, not cents/laari)
 //   - response field name for the payment link (checks payment_link, link, url)
+//   - response field name for Swipe's generated reference (checks reference, id - matches SeaFare's confirmed request shape, but the response field name is still a guess)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -95,13 +104,8 @@ Deno.serve(async (req) => {
 
     const accessToken = await getSwipeAccessToken();
 
-    // Our own reference, sent to Swipe and expected to be echoed back in the
-    // webhook payload - this is what we match on later, not Swipe's internal
-    // id. The "maldexpress_" prefix is load-bearing: it's how SeaFare's
-    // shared webhook handler knows to forward this confirmation here
-    // instead of processing it as one of its own payments.
-    const reference = `maldexpress_pro_${businessId}_${Date.now()}`;
-
+    // No reference field here - Swipe generates its own and returns it
+    // below. Matches SeaFare's confirmed real request shape exactly.
     const paymentRes = await fetch(`${SWIPE_API_BASE_URL}/api/v1/payments`, {
       method: "POST",
       headers: {
@@ -112,7 +116,6 @@ Deno.serve(async (req) => {
         type: "LINK",
         amount,
         currency: "MVR",
-        reference,
         description: `Maldexpress Pro upgrade - ${biz.name}`,
       }),
     });
@@ -124,9 +127,10 @@ Deno.serve(async (req) => {
 
     const payment = await paymentRes.json();
     const paymentLink = payment.payment_link ?? payment.link ?? payment.url;
-    if (!paymentLink) {
-      console.error("Swipe response had no recognizable payment link field:", JSON.stringify(payment));
-      return new Response(JSON.stringify({ error: "Swipe response missing payment link" }), { status: 502 });
+    const reference = payment.reference ?? payment.id;
+    if (!paymentLink || !reference) {
+      console.error("Swipe response missing payment link and/or reference:", JSON.stringify(payment));
+      return new Response(JSON.stringify({ error: "Swipe response missing payment link or reference" }), { status: 502 });
     }
 
     return new Response(JSON.stringify({ paymentLink, reference }), {

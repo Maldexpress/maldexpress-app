@@ -471,6 +471,10 @@ create policy "owner insert own upgrade request" on pro_upgrade_requests for ins
   with check (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
 create policy "owner read own upgrade requests" on pro_upgrade_requests for select
   using (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
+-- Lets create-swipe-payment roll back its own just-inserted row if
+-- registering the reference with SeaFare fails right after.
+create policy "owner delete own upgrade request" on pro_upgrade_requests for delete
+  using (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
 create policy "admin read all upgrade requests" on pro_upgrade_requests for select using (is_admin());
 create policy "admin update upgrade requests" on pro_upgrade_requests for update using (is_admin());
 --------------------------------------------------- */
@@ -1129,9 +1133,10 @@ async function startProPayment(method){
   try{
     const { data, error } = await sb.functions.invoke('create-swipe-payment', { body: { businessId: biz.id, amount: 500 } });
     if(error || !data || !data.paymentLink){ toast("Swipe payment isn't set up yet — try bank transfer for now",'bad'); return; }
-    const reqId = uid('pr');
-    const { error: insErr } = await sb.from('pro_upgrade_requests').insert({ id:reqId, business_id:biz.id, payment_method:'swipe', status:'pending', amount:500, swipe_reference:data.reference||null, swipe_payment_link:data.paymentLink });
-    if(insErr){ toast('Failed to start payment: '+insErr.message,'bad'); return; }
+    // The edge function already recorded the pro_upgrade_requests row and
+    // registered the reference with SeaFare before returning this link —
+    // both must succeed there before a link is ever payable, so there's
+    // nothing left to track client-side.
     window.open(data.paymentLink, '_blank');
     closeSheet();
     toast('Complete payment in the new tab — Pro activates automatically once confirmed');

@@ -8,14 +8,20 @@
 // NOT called by Swipe directly. Maldexpress shares one Swipe client with
 // SeaFare, and Swipe only supports one webhook URL per client - it's
 // registered to SeaFare's endpoint (https://seafare.onrender.com/api/webhooks/swipe).
-// SeaFare's webhook handler forwards any event whose reference is prefixed
-// "maldexpress_" here, server-to-server, preserving the original
-// webhook-id/webhook-timestamp/webhook-signature headers and raw body
-// exactly as Swipe sent them. Because it's the same shared signing secret,
-// the verification below still passes on a forwarded call - SeaFare isn't
-// vouching for the event, it's relaying the same signed proof Swipe gave
-// it. This function has no way to tell a direct Swipe call from a
-// forwarded one, and doesn't need to.
+// Swipe assigns its own opaque reference per payment (no caller-supplied
+// id), so routing is registration-based rather than prefix-based:
+// create-swipe-payment registers each reference with SeaFare's internal
+// endpoint the moment it's created, before ever handing a payment link
+// back to the client. SeaFare's webhook handler forwards only references
+// it finds registered as external here, server-to-server, preserving the
+// original webhook-id/webhook-timestamp/webhook-signature headers and raw
+// body exactly as Swipe sent them. Because it's the same shared signing
+// secret, the verification below still passes on a forwarded call -
+// SeaFare isn't vouching for the event, it's relaying the same signed
+// proof Swipe gave it. This function has no way to tell a direct Swipe
+// call from a forwarded one, and doesn't need to - it only needs to
+// recognize whether the reference matches one of its own pending
+// pro_upgrade_requests rows, which is unaffected by how the call arrived.
 //
 // Requires this secret (Supabase Dashboard -> Edge Functions -> Secrets):
 //   SWIPE_WEBHOOK_SECRET  - the SAME signing secret SeaFare uses (it's one

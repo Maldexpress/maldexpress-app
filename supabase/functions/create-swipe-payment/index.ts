@@ -52,6 +52,24 @@ const SWIPE_CLIENT_SECRET = Deno.env.get("SWIPE_CLIENT_SECRET")!;
 const SEAFARE_REGISTER_URL = Deno.env.get("SEAFARE_REGISTER_URL")!;
 const SEAFARE_INTERNAL_SECRET = Deno.env.get("SEAFARE_INTERNAL_SECRET")!;
 
+// Deno.env.get returns undefined (not a throw) for an unset secret - the "!"
+// above is a TS-only assertion, stripped at runtime. Without this check, a
+// missing secret fails deep inside a fetch() call with a confusing
+// "Invalid URL" TypeError that looks like a Swipe/SeaFare outage instead of
+// a config problem. Check once per cold start and fail every request
+// clearly until it's fixed.
+const REQUIRED_SECRETS: Record<string, string> = {
+  SWIPE_TOKEN_URL,
+  SWIPE_API_BASE_URL,
+  SWIPE_CLIENT_ID,
+  SWIPE_CLIENT_SECRET,
+  SEAFARE_REGISTER_URL,
+  SEAFARE_INTERNAL_SECRET,
+};
+const missingSecrets = Object.entries(REQUIRED_SECRETS)
+  .filter(([, v]) => !v)
+  .map(([k]) => k);
+
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 async function getSwipeAccessToken(): Promise<string> {
@@ -113,6 +131,14 @@ async function registerReferenceWithSeaFare(reference: string): Promise<boolean>
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
+  }
+
+  if (missingSecrets.length > 0) {
+    console.error(`create-swipe-payment misconfigured - missing secret(s): ${missingSecrets.join(", ")}`);
+    return new Response(
+      JSON.stringify({ error: `Swipe payment is misconfigured: missing secret(s) ${missingSecrets.join(", ")}` }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   try {

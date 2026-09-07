@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
     }
 
     const payment = await paymentRes.json();
-    const paymentLink = payment.payment_link ?? payment.link ?? payment.url;
+    const paymentLink = payment.payment_url ?? payment.payment_link ?? payment.link ?? payment.url;
     const reference = payment.reference ?? payment.id;
     if (!paymentLink || !reference) {
       console.error("Swipe response missing payment link and/or reference:", JSON.stringify(payment));

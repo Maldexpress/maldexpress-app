@@ -92,6 +92,11 @@ Deno.serve(async (req) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  if (!WEBHOOK_SECRET) {
+    console.error("swipe-webhook misconfigured - missing secret: SWIPE_WEBHOOK_SECRET");
+    return new Response("Server misconfigured: missing SWIPE_WEBHOOK_SECRET", { status: 500 });
+  }
+
   try {
     const id = req.headers.get("webhook-id") ?? "";
     const timestamp = req.headers.get("webhook-timestamp") ?? "";

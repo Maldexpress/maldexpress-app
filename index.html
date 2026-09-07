@@ -1132,7 +1132,16 @@ async function startProPayment(method){
   toast('Creating your Swipe payment link…');
   try{
     const { data, error } = await sb.functions.invoke('create-swipe-payment', { body: { businessId: biz.id, amount: 500 } });
-    if(error || !data || !data.paymentLink){ toast("Swipe payment isn't set up yet — try bank transfer for now",'bad'); return; }
+    if(error || !data || !data.paymentLink){
+      // The edge function returns a JSON { error } body on failure - log it so
+      // misconfiguration (e.g. a missing secret) is diagnosable from the
+      // browser console instead of only showing this generic toast.
+      let detail = error?.message || data?.error;
+      if(error?.context?.json){ try{ detail = (await error.context.json()).error || detail; }catch(_){} }
+      console.error('create-swipe-payment failed:', detail || error || data);
+      toast("Swipe payment isn't set up yet — try bank transfer for now",'bad');
+      return;
+    }
     // The edge function already recorded the pro_upgrade_requests row and
     // registered the reference with SeaFare before returning this link —
     // both must succeed there before a link is ever payable, so there's

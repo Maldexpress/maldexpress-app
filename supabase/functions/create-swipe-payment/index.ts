@@ -45,6 +45,23 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// Called directly from the browser via sb.functions.invoke(), so the
+// preflight OPTIONS request and every actual response (success or error)
+// need these headers, or the browser blocks the response before our code
+// ever sees it.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
+
 const SWIPE_TOKEN_URL = Deno.env.get("SWIPE_TOKEN_URL")!;
 const SWIPE_API_BASE_URL = Deno.env.get("SWIPE_API_BASE_URL")!;
 const SWIPE_CLIENT_ID = Deno.env.get("SWIPE_CLIENT_ID")!;
@@ -129,16 +146,17 @@ async function registerReferenceWithSeaFare(reference: string): Promise<boolean>
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response("Method not allowed", { status: 405, headers: CORS_HEADERS });
   }
 
   if (missingSecrets.length > 0) {
     console.error(`create-swipe-payment misconfigured - missing secret(s): ${missingSecrets.join(", ")}`);
-    return new Response(
-      JSON.stringify({ error: `Swipe payment is misconfigured: missing secret(s) ${missingSecrets.join(", ")}` }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
+    return jsonResponse({ error: `Swipe payment is misconfigured: missing secret(s) ${missingSecrets.join(", ")}` }, 500);
   }
 
   try {
@@ -151,12 +169,12 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
-      return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401 });
+      return jsonResponse({ error: "Not authenticated" }, 401);
     }
 
     const { businessId, amount } = await req.json();
     if (!businessId || !amount) {
-      return new Response(JSON.stringify({ error: "businessId and amount are required" }), { status: 400 });
+      return jsonResponse({ error: "businessId and amount are required" }, 400);
     }
 
     // RLS-scoped client (not service role) - this query only succeeds if the
@@ -167,7 +185,7 @@ Deno.serve(async (req) => {
       .eq("id", businessId)
       .single();
     if (bizErr || !biz || biz.owner_id !== user.id) {
-      return new Response(JSON.stringify({ error: "Not your business" }), { status: 403 });
+      return jsonResponse({ error: "Not your business" }, 403);
     }
 
     const accessToken = await getSwipeAccessToken();
@@ -190,7 +208,7 @@ Deno.serve(async (req) => {
 
     if (!paymentRes.ok) {
       console.error("Swipe payment creation failed:", paymentRes.status, await paymentRes.text());
-      return new Response(JSON.stringify({ error: "Swipe payment creation failed" }), { status: 502 });
+      return jsonResponse({ error: "Swipe payment creation failed" }, 502);
     }
 
     const payment = await paymentRes.json();
@@ -198,7 +216,7 @@ Deno.serve(async (req) => {
     const reference = payment.reference ?? payment.id;
     if (!paymentLink || !reference) {
       console.error("Swipe response missing payment link and/or reference:", JSON.stringify(payment));
-      return new Response(JSON.stringify({ error: "Swipe response missing payment link or reference" }), { status: 502 });
+      return jsonResponse({ error: "Swipe response missing payment link or reference" }, 502);
     }
 
     // Record the pending upgrade and register its reference with SeaFare
@@ -232,20 +250,18 @@ Deno.serve(async (req) => {
     });
     if (insertErr) {
       console.error("Failed to record pro_upgrade_requests row:", insertErr);
-      return new Response(JSON.stringify({ error: "Failed to set up payment tracking" }), { status: 500 });
+      return jsonResponse({ error: "Failed to set up payment tracking" }, 500);
     }
 
     if (!(await registerReferenceWithSeaFare(reference))) {
       const { error: rollbackErr } = await admin.from("pro_upgrade_requests").delete().eq("id", requestId);
       if (rollbackErr) console.error(`Rollback of ${requestId} failed:`, rollbackErr);
-      return new Response(JSON.stringify({ error: "Failed to set up payment routing" }), { status: 502 });
+      return jsonResponse({ error: "Failed to set up payment routing" }, 502);
     }
 
-    return new Response(JSON.stringify({ paymentLink, reference }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ paymentLink, reference });
   } catch (e) {
     console.error(e);
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500 });
+    return jsonResponse({ error: "Internal error" }, 500);
   }
 });

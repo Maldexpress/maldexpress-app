@@ -380,7 +380,13 @@ create policy "customer insert own order" on orders for insert
 -- Orders are only readable by the customer who placed them, the business
 -- that owns them, or a delivery partner (their own assigned jobs, plus
 -- unassigned orders so riders can see jobs to pick up). Updates are
--- restricted the same way (business owner, or assigned/claiming rider).
+-- restricted the same way (customer on their own order, business owner, or
+-- assigned/claiming rider) - no column-level restriction yet, so all three
+-- roles can currently write any column on a row they own (submitSlip(),
+-- submitCompleteAuctionOrder(), confirmCashReceived(), markDelivered(),
+-- approveOrderPayment(), settlePayout(), markPayoutPaid() all rely on this).
+-- Revisit alongside a payout-lockdown SECURITY DEFINER pass if total/
+-- payment_status/payout_status/delivery_partner_payout need tightening.
 create policy "customer read own orders" on orders for select
   using (auth.uid() = customer_id);
 create policy "business read own orders" on orders for select
@@ -390,6 +396,9 @@ create policy "rider read assigned or open orders" on orders for select
     exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
     or (orders.delivery_person_id is null and exists (select 1 from delivery_persons d where d.user_id = auth.uid()))
   );
+create policy "customer update own order" on orders for update
+  using (auth.uid() = customer_id)
+  with check (auth.uid() = customer_id);
 create policy "business update own orders" on orders for update
   using (exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid()));
 create policy "rider update assigned or open orders" on orders for update

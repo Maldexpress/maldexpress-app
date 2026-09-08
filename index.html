@@ -511,9 +511,9 @@ create policy "owner insert own auction" on auction_listings for insert
 -- winning bidder) since the lazy active->ended transition needs to happen
 -- from whoever's browser next views an expired listing. Blocked once
 -- 'settled' - a won auction's order has already been created and shouldn't
--- be touched again. The real bid-amount gate lives on auction_bids below,
--- not here - this only governs the listing row itself (status, and the
--- current_highest_bid/bidder cache written right after a bid is accepted).
+-- be touched again. This governs status/order_id only - current_highest_bid
+-- and current_highest_bidder are locked down further below, once place_bid()
+-- exists to be the only way those two actually get written.
 create policy "signed-in update auction" on auction_listings for update to authenticated
   using (status in ('active','ended'))
   with check (true);
@@ -529,12 +529,12 @@ create table auction_bids (
 );
 alter table auction_bids enable row level security;
 create policy "public read bids" on auction_bids for select using (true);
--- The actual bid-validity enforcement - not just client-side, since a client
--- can call the API directly. A bid is only accepted if: it's the bidder's
--- own (can't place a bid as someone else), the auction is still active and
--- not yet past its end time, the amount clears the current highest bid plus
--- the increment (or the starting price if there's no bid yet), and the
--- bidder isn't the listing's own seller.
+-- Kept as a defense-in-depth backstop against a raw insert bypassing
+-- place_bid() below (e.g. a hand-crafted API call) - place_bid() itself runs
+-- as SECURITY DEFINER and doesn't go through this policy at all, so it isn't
+-- what closes the race (the atomic UPDATE inside place_bid() does that); this
+-- just stops a bypass attempt from writing a bid the way the old
+-- insert-then-update flow used to.
 create policy "customer valid bid" on auction_bids for insert
   with check (
     bidder_id = auth.uid()
@@ -547,6 +547,57 @@ create policy "customer valid bid" on auction_bids for insert
         and not exists (select 1 from businesses b where b.id = al.business_id and b.owner_id = auth.uid())
     )
   );
+
+-- Places a bid atomically. The UPDATE below is a single SQL statement whose
+-- WHERE clause re-checks the increment rule against the row's CURRENT values
+-- at write time, so Postgres serializes concurrent calls to this function
+-- against the same row - two bids landing within milliseconds of each other
+-- can no longer both pass validation against the same stale highest-bid
+-- value the way the old separate insert-then-update from the client could.
+-- No SELECT ... FOR UPDATE or other explicit locking needed; the atomicity
+-- of one UPDATE statement is what does it. The auction_bids insert only
+-- happens (via the `ins` CTE selecting `from updated`) once the UPDATE has
+-- actually matched a row, so a rejected bid never gets recorded as history.
+-- SECURITY DEFINER so it can write current_highest_bid/current_highest_bidder
+-- despite the revoke just below locking those two columns down for everyone
+-- else - this function is now the only way a bid actually moves the price.
+create or replace function place_bid(p_auction_id text, p_bid_amount numeric)
+returns setof auction_listings
+language sql
+security definer
+set search_path = public
+as $$
+  with updated as (
+    update auction_listings
+    set current_highest_bid = p_bid_amount, current_highest_bidder = auth.uid()
+    where id = p_auction_id
+      and status = 'active'
+      and end_time > now()
+      and auth.uid() is not null
+      and not exists (select 1 from businesses b where b.id = auction_listings.business_id and b.owner_id = auth.uid())
+      and (
+        (current_highest_bid is null and p_bid_amount >= starting_price)
+        or (current_highest_bid is not null and p_bid_amount >= current_highest_bid + bid_increment)
+      )
+    returning *
+  ),
+  ins as (
+    insert into auction_bids (id, auction_id, bidder_id, bid_amount)
+    select 'bid_' || replace(gen_random_uuid()::text, '-', ''), p_auction_id, auth.uid(), p_bid_amount
+    from updated
+    returning 1
+  )
+  select * from updated;
+$$;
+grant execute on function place_bid(text, numeric) to authenticated;
+
+-- Bidding now only happens through place_bid() above - lock the two
+-- price-affecting columns down so no authenticated client can set them
+-- directly via a raw REST update, which would otherwise bypass the atomic
+-- check entirely and reopen the exact race place_bid() exists to close.
+-- status/order_id (used by the lazy close/settle flow) are untouched by
+-- this and remain updatable per the "signed-in update auction" policy above.
+revoke update (current_highest_bid, current_highest_bidder) on auction_listings from authenticated;
 
 -- Pro-tier upgrade requests: bank transfer (needs manual admin
 -- approval) or Swipe (auto-approved by the payment webhook, no admin
@@ -728,20 +779,27 @@ async function checkAndSettleAuction(auctionId){
 // to the cheapest delivery zone and bank transfer rather than re-running the
 // full checkout sheet - the winner can still see and manage it from My Orders
 // like any other order.
+// Creates the won-auction order with its delivery zone and payment method
+// left unset (deliveryFee 0, total = the winning bid alone) rather than
+// defaulting them, since there's no precedent checkout flow for a win to
+// re-run and picking a zone/payment method on the winner's behalf would be
+// guessing. paymentStatus 'awaiting_completion' is what every other order
+// card/detail view checks for to show a "Complete your order" prompt instead
+// of the normal payment UI until the winner picks both via
+// sheetCompleteAuctionOrder()/submitCompleteAuctionOrder().
 async function settleAuctionWin(auction){
   if(auction.orderId || auction.status==='settled') return;
   const item = DB.items.find(i=>i.id===auction.itemId);
   const biz = DB.businesses.find(b=>b.id===auction.businessId);
   if(!item || !biz) return;
-  const fee = zoneFee('male');
   const order = {
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: state.customerName, customerPhone: '',
     items: [{itemId:item.id, name:item.name, price:auction.currentHighestBid, qty:1}],
-    itemsTotal: auction.currentHighestBid, deliveryFee: fee, total: auction.currentHighestBid+fee,
-    zone: 'male', deliveryPersonId:null, deliveryPersonName:null,
-    paymentMethod:'transfer', paymentStatus:'pending_transfer', status:'placed',
+    itemsTotal: auction.currentHighestBid, deliveryFee: 0, total: auction.currentHighestBid,
+    zone: null, deliveryPersonId:null, deliveryPersonName:null,
+    paymentMethod:null, paymentStatus:'awaiting_completion', status:'placed',
     createdAt: Date.now(), slipDataUrl:null
   };
   if(sb){
@@ -752,7 +810,64 @@ async function settleAuctionWin(auction){
   }
   DB.orders.unshift(order);
   auction.status = 'settled'; auction.orderId = order.id;
-  toast(`🎉 You won the auction for ${money(auction.currentHighestBid)}! Check My Orders to arrange payment.`);
+  toast(`🎉 You won the auction for ${money(auction.currentHighestBid)}! Complete your order to finish.`);
+  openSheet('completeAuctionOrder', order.id);
+}
+function sheetCompleteAuctionOrder(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<h2>Order not found</h2>`;
+  if(!_selectedZone) _selectedZone = 'male';
+  const fee = zoneFee(_selectedZone);
+  return `
+  <h2>Complete your order</h2>
+  <p class="muted" style="margin-bottom:14px;">You won this auction for ${money(o.itemsTotal)} — choose your delivery zone and how you'll pay to finish placing the order.</p>
+  <div class="field">
+    <label>Delivery zone</label>
+    <select id="cao_zone" onchange="_selectedZone=this.value; refreshCompleteOrderTotals()">
+      ${Object.entries(ZONES).map(([k,z])=>`<option value="${k}" ${k===_selectedZone?'selected':''}>${z.label} — MVR ${z.fee}</option>`).join('')}
+    </select>
+  </div>
+  <div class="glass card tight" style="margin-bottom:14px;">
+    <div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>
+    <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="cao_fee">${money(fee)}</span></div>
+    <div class="divider"></div>
+    <div class="row between"><strong>Total</strong><strong class="price" id="cao_total">${money(o.itemsTotal+fee)}</strong></div>
+  </div>
+  <div class="field">
+    <label>How will you pay?</label>
+    <div class="stack">
+      <button class="glass role-card" style="padding:14px;" onclick="selectPay('transfer')" id="pay_transfer">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
+        <div class="txt"><h3 style="font-size:1em;">Bank transfer to store</h3><small>Upload your slip after paying</small></div>
+      </button>
+      <button class="glass role-card" style="padding:14px;" onclick="selectPay('cash_to_delivery')" id="pay_cash">
+        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💵</div>
+        <div class="txt"><h3 style="font-size:1em;">Cash to delivery person</h3><small>Pay when your order arrives</small></div>
+      </button>
+    </div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitCompleteAuctionOrder('${o.id}')">Confirm order</button>`;
+}
+function refreshCompleteOrderTotals(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return;
+  const fee = zoneFee(_selectedZone);
+  document.getElementById('cao_fee').textContent = money(fee);
+  document.getElementById('cao_total').textContent = money(o.itemsTotal+fee);
+}
+async function submitCompleteAuctionOrder(orderId){
+  const o = DB.orders.find(x=>x.id===orderId);
+  if(!o) return;
+  const fee = zoneFee(_selectedZone);
+  o.zone = _selectedZone;
+  o.deliveryFee = fee;
+  o.total = o.itemsTotal + fee;
+  o.paymentMethod = _selectedPay;
+  o.paymentStatus = _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash';
+  saveDB('orders');
+  closeSheet();
+  toast('Order confirmed!');
+  render();
 }
 async function placeBid(auctionId){
   if(sb && !state.authed){ openSheet('signIn'); return; }
@@ -763,9 +878,11 @@ async function placeBid(auctionId){
   const inputEl = document.getElementById(`bidInput_${auctionId}`);
   const amount = Number(inputEl ? inputEl.value : NaN);
   if(sb){
-    // Refresh from the server first so validation runs against the live state,
-    // not a possibly-stale in-memory copy - and so an auction that just expired
-    // gets closed instead of accepting one more bid on a technically-dead listing.
+    // Refresh from the server first purely so the client-side checks below (and
+    // their error messages) are accurate - e.g. telling the user the auction
+    // already ended rather than a generic rejection. This read is NOT the
+    // correctness gate; place_bid()'s single atomic UPDATE is, so a stale read
+    // here can't actually let an invalid bid through.
     const { data: fresh, error: fetchErr } = await sb.from('auction_listings').select('*').eq('id', auctionId).single();
     if(fetchErr || !fresh){ toast('Could not load the latest auction state — try again','bad'); return; }
     Object.assign(auction, fromDbRow('auctions', fresh));
@@ -778,19 +895,22 @@ async function placeBid(auctionId){
   const minBid = auctionMinNextBid(auction);
   if(!amount || amount < minBid){ toast(`Bid must be at least ${money(minBid)}`,'bad'); return; }
   if(sb){
-    const { error: insertErr } = await sb.from('auction_bids').insert({ id: uid('bid'), auction_id: auctionId, bidder_id: state.customerId, bid_amount: amount });
-    if(insertErr){
-      // The RLS policy on auction_bids is the real gate (see the SQL comment near
-      // the top of this file) - a rejection here almost always means someone else's
-      // bid landed in the moment between our refresh above and this insert.
-      console.error('Bid insert failed:', insertErr);
-      toast('Your bid was rejected — someone may have just outbid you. Refresh and try again.','bad');
+    // place_bid() does the real, atomic check-and-write (see the SQL comment
+    // near the top of this file) - Postgres serializes concurrent calls to it
+    // against the same row, so an empty result here means someone else's bid
+    // genuinely landed first, not a bug.
+    const { data, error } = await sb.rpc('place_bid', { p_auction_id: auctionId, p_bid_amount: amount });
+    if(error){ console.error('place_bid failed:', error); toast('Could not place your bid — try again','bad'); return; }
+    const updatedRow = Array.isArray(data) ? data[0] : data;
+    if(!updatedRow){
+      toast('Someone else just placed a higher bid — check the current price and try again','bad');
+      await checkAndSettleAuction(auctionId); // in case it was really the auction ending, not a race
       return;
     }
-    const { error: updateErr } = await sb.from('auction_listings').update({ current_highest_bid: amount, current_highest_bidder: state.customerId }).eq('id', auctionId).eq('status','active');
-    if(updateErr) console.error('Failed to update auction highest bid:', updateErr);
+    Object.assign(auction, fromDbRow('auctions', updatedRow));
+  } else {
+    auction.currentHighestBid = amount; auction.currentHighestBidder = state.customerId;
   }
-  auction.currentHighestBid = amount; auction.currentHighestBidder = state.customerId;
   toast('Bid placed!');
   render();
 }
@@ -1186,7 +1306,7 @@ function switchRole(){ state = {...state, role:'customer', screen:'custHome', ac
 
 /* =================== SHEETS (bottom popups) =================== */
 function openSheet(name, data=null){ state.sheet = name; state.sheetData = data; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
-function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
+function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
   if(!state.sheet) return '';
@@ -1203,13 +1323,14 @@ function sheetHTML(){
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='checkout') body = sheetCheckout();
+  else if(state.sheet==='completeAuctionOrder') body = sheetCompleteAuctionOrder();
   else if(state.sheet==='signIn') body = sheetSignIn();
   else if(state.sheet==='signUp') body = sheetSignUp();
   else if(state.sheet==='verifyEmail') body = sheetVerifyEmail();
   else if(state.sheet==='setupMobile') body = sheetSetupMobile();
   const dismissable = state.sheet!=='verifyEmail' && state.sheet!=='setupMobile';
   return `
-  <div class="sheet-wrap show" id="sheetWrap">
+  <div class="sheet-wrap${state.sheetClosing?'':' show'}" id="sheetWrap">
     <div class="backdrop" ${dismissable?`onclick="closeSheet()"`:''}></div>
     <div class="glass sheet">
       <div class="handle"></div>
@@ -1427,7 +1548,7 @@ async function submitProBankSlip(){
 }
 
 function orderCardBiz(o){
-  const pm = o.paymentMethod==='transfer' ? 'Bank transfer' : 'Cash to delivery';
+  const pm = o.paymentMethod==null ? 'Awaiting customer' : o.paymentMethod==='transfer' ? 'Bank transfer' : 'Cash to delivery';
   let pillHtml = paymentStatusPill(o);
   return `
   <div class="glass card" onclick="openOrderDetailBiz('${o.id}')">
@@ -1437,6 +1558,7 @@ function orderCardBiz(o){
   </div>`;
 }
 function paymentStatusPill(o){
+  if(o.paymentStatus==='awaiting_completion') return `<span class="status-pill wait">Needs completion</span>`;
   if(o.paymentStatus==='paid'||o.paymentStatus==='settled') return `<span class="status-pill ok">Paid ✓</span>`;
   if(o.paymentStatus==='slip_uploaded') return `<span class="status-pill mid">Slip uploaded</span>`;
   if(o.paymentStatus==='cash_collected') return `<span class="status-pill mid">Cash with rider</span>`;
@@ -1652,7 +1774,7 @@ sheetHTML = function(){
 };
 function wrapSheetOnly(body){
   return `
-  <div class="sheet-wrap show" id="sheetWrap">
+  <div class="sheet-wrap${state.sheetClosing?'':' show'}" id="sheetWrap">
     <div class="backdrop" onclick="closeSheet()"></div>
     <div class="glass sheet"><div class="handle"></div><button class="sheet-close" onclick="closeSheet()">✕</button>${body}</div>
   </div>`;
@@ -1661,7 +1783,9 @@ function orderDetailBizBody(o){
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
   const cutAmt = Math.round(o.deliveryFee);
   let actionArea = '';
-  if(o.paymentMethod==='transfer'){
+  if(o.paymentStatus==='awaiting_completion'){
+    actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">This order was won at auction and is waiting for the customer to choose a delivery zone and payment method.</p></div>`;
+  } else if(o.paymentMethod==='transfer'){
     if(o.paymentStatus==='pending_transfer'){
       actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for customer to transfer & upload slip.</p></div>`;
     } else if(o.paymentStatus==='slip_uploaded'){
@@ -1785,7 +1909,7 @@ function renderDelHome(d){
       ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
       <div class="section" style="margin-top:22px;">
         <div class="section-head"><h2>Unassigned orders nearby</h2></div>
-        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered').map(o=>`
+        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion').map(o=>`
           <div class="glass card">
             <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(o.deliveryFee)}</span></div>
             <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
@@ -2223,6 +2347,14 @@ function renderCustOrders(){
 }
 function custOrderCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
+  if(o.paymentStatus==='awaiting_completion'){
+    return `
+    <div class="glass card">
+      <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
+      <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · Won at auction for ${money(o.itemsTotal)}</p>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>
+    </div>`;
+  }
   const showAcct = o.paymentMethod==='transfer' && o.paymentStatus!=='paid';
   return `
   <div class="glass card">

@@ -76,7 +76,6 @@
   /* Landing */
   .landing{min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:28px 22px;}
   .landing-mark{text-align:center; margin-bottom:36px;}
-  .landing-mark .glyph{font-size:2.6em; display:block; margin-bottom:6px;}
   .landing-mark h1{font-size:2.1em;}
   .landing-mark p{color:var(--ink-dim); margin-top:6px;}
   .role-card{
@@ -89,9 +88,10 @@
     font-size:1.5em; background:linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,.06));
     border:1px solid var(--glass-brd); flex-shrink:0;
   }
-  .role-card .txt{flex:1;}
+  .role-card .txt{flex:1; min-width:0;}
+  .role-card .txt h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .role-card .txt small{color:var(--ink-dim); font-size:.85em;}
-  .role-card .arrow{color:var(--coral); font-size:1.3em;}
+  .role-card .arrow{color:var(--coral); font-size:1.3em; flex-shrink:0;}
 
   /* Header */
   .topbar{
@@ -142,6 +142,7 @@
     width:30px; height:30px; border-radius:10px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;
     display:flex; align-items:center; justify-content:center;
   }
+  .qty-ctrl button:active{transform:scale(.9);}
 
   /* Buttons */
   .btn{
@@ -179,6 +180,7 @@
   }
   .navbtn .ic{font-size:1.35em;}
   .navbtn.active{color:var(--sand); background:rgba(255,255,255,.12);}
+  .navbtn:active{background:rgba(255,255,255,.12);}
 
   /* Drawer / menu */
   .overlay{
@@ -216,6 +218,7 @@
   .sheet-wrap.show .sheet{transform:scale(1); opacity:1;}
   .sheet .handle{display:none;}
   .sheet-close{position:absolute; right:16px; top:16px; width:34px; height:34px; border-radius:50%; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;}
+  .sheet-close:active, .topbar .iconbtn:active{transform:scale(.92);}
 
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:.82em; color:var(--ink-dim); margin-bottom:6px; font-weight:600;}
@@ -228,8 +231,11 @@
   .field.file{position:relative;}
   .field .filebtn{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px; border:1.5px dashed var(--glass-brd); border-radius:16px; color:var(--ink-dim); font-weight:600;}
 
-  /* bottom:92px clears the .bottomnav (bottom:14px + ~64px bar height) with a small gap above it */
-  .toast-wrap{position:fixed; bottom:92px; left:0; right:0; z-index:90; display:flex; justify-content:center; pointer-events:none;}
+  /* bottom:178px clears not just the .bottomnav (bottom:14px + ~64px bar) but also the
+     taller floating controls that can be showing at the same time — .fab (bottom:110px,
+     58px tall, top edge 168px) and .cart-fab (bottom:96px, ~48px tall) — so a toast never
+     visually sits on top of either while it's up. */
+  .toast-wrap{position:fixed; bottom:178px; left:0; right:0; z-index:90; display:flex; justify-content:center; pointer-events:none;}
   .toast{padding:12px 20px; border-radius:16px; font-weight:700; font-size:.9em; display:flex; align-items:center; gap:8px; transform:translateY(80px); transition:transform .3s ease; max-width:90%;}
   .toast.show{transform:translateY(0);}
   .toast.good{background:rgba(61,220,151,.25); border:1px solid rgba(61,220,151,.5); color:#c6ffe5;}
@@ -245,7 +251,7 @@
     padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.07); border:1px dashed var(--glass-brd); margin-top:10px;
   }
   .acct-box .lbl{font-size:.72em; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px;}
-  .acct-box .val{font-weight:700; font-size:1.05em; margin-top:2px;}
+  .acct-box .val{font-weight:700; font-size:1.05em; margin-top:2px; word-break:break-all;}
 
   .empty{text-align:center; padding:50px 16px; color:var(--ink-dim);}
   .empty .ic{font-size:2.4em; margin-bottom:10px; display:block;}
@@ -253,6 +259,7 @@
   .tabs{display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px;}
   .tab{padding:9px 16px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink-dim); font-weight:700; font-size:.85em; white-space:nowrap;}
   .tab.active{background:linear-gradient(135deg, rgba(255,138,92,.9), rgba(232,102,58,.9)); color:#241005; border-color:transparent;}
+  .tab:active{transform:scale(.95);}
 
   .cart-fab{
     position:fixed; left:16px; right:16px; bottom:96px; z-index:24; max-width:488px; margin:0 auto;
@@ -514,6 +521,17 @@ async function loadDB(){
       sb.from('delivery_persons').select('*'),
       sb.from('pro_upgrade_requests').select('*')
     ]);
+    // Promise.all only rejects on a thrown/network-level failure - a query that
+    // completes but fails server-side (e.g. an RLS policy error) resolves normally
+    // with a populated .error field instead, which was previously never checked,
+    // so a broken policy on just one table silently looked like "this store has no
+    // items" rather than surfacing anything was wrong.
+    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr]]
+      .filter(([,res])=>res.error);
+    if(failed.length){
+      failed.forEach(([label,res])=>console.error(`loadDB: ${label} query failed:`, res.error));
+      toast(`Could not load ${failed.map(([label])=>label).join(', ')} — some data may be missing`, 'bad');
+    }
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
@@ -591,8 +609,45 @@ let state = {
   adminMode: typeof location!=='undefined' && /[?&]admin\b/.test(location.search),
   isAdmin: false,
   adminSearch: '',
-  adminTab: 'businesses'    // 'businesses' | 'bankRequests' | 'swipeRequests'
+  adminTab: 'businesses',   // 'businesses' | 'bankRequests' | 'swipeRequests'
+  pendingIntent: null       // 'business' | 'delivery' — signup intent to resume once auth (and any forced setupLogin) finishes
 };
+
+// Reads and strips a ?intent=business|delivery param left in the URL by
+// sendMagicLink()'s emailRedirectTo — see there for why it's carried this way
+// instead of in memory. Stripped immediately so a later reload/bookmark of this
+// URL doesn't re-trigger routing.
+function consumeIntentParam(){
+  const params = new URLSearchParams(location.search);
+  const intent = params.get('intent');
+  if(intent!=null){
+    params.delete('intent');
+    const q = params.toString();
+    history.replaceState(null, '', location.pathname + (q?'?'+q:'') + location.hash);
+  }
+  return intent;
+}
+// Supabase reports an expired/already-used magic link as #error=...&error_code=...
+// in the URL hash rather than a session - which the app previously never looked
+// at, so the user was just silently dropped back into the signed-out app with no
+// explanation. Only touches the URL when an error is actually present, so a
+// successful link's #access_token=... hash is left untouched for supabase-js's
+// own parsing.
+function consumeAuthHashError(){
+  if(!location.hash) return null;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const err = params.get('error_description') || params.get('error');
+  if(err) history.replaceState(null, '', location.pathname + location.search);
+  return err;
+}
+// Resumes a business/delivery signup intent once auth (and any forced
+// setupLogin step) has finished — see enterRole() for the actual routing.
+function resolvePendingIntent(){
+  const intent = state.pendingIntent;
+  state.pendingIntent = null;
+  if(intent==='business' || intent==='delivery') enterRole(intent);
+  else render();
+}
 
 function applySession(session){
   if(session && session.user){
@@ -610,7 +665,14 @@ function applySession(session){
 
 async function checkLoginProfile(){
   if(!sb || !state.authed) return;
-  const { data } = await sb.from('user_profiles').select('user_id').eq('user_id', state.customerId).maybeSingle();
+  const { data, error } = await sb.from('user_profiles').select('user_id').eq('user_id', state.customerId).maybeSingle();
+  if(error){
+    // A transient failure here must NOT be treated the same as "no profile row
+    // exists" - that would force the (non-dismissable) setupLogin sheet on an
+    // already-set-up returning user just because of a flaky connection.
+    console.error('checkLoginProfile failed:', error);
+    return;
+  }
   if(!data && state.sheet!=='setupLogin'){ openSheet('setupLogin'); }
 }
 
@@ -647,7 +709,6 @@ function render(){
   const app = document.getElementById('app');
   if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
   if(state.adminMode) return renderAdmin();
-  if(state.screen==='landing') return renderLanding();
   if(state.role==='business') return renderBusiness();
   if(state.role==='delivery') return renderDelivery();
   if(state.role==='customer') return renderCustomer();
@@ -778,32 +839,9 @@ async function adminResolveRequest(reqId, approve){
 }
 
 /* =================== LANDING =================== */
-function renderLanding(){
-  document.getElementById('app').innerHTML = `
-  <div class="landing">
-    <div class="landing-mark">
-      <span class="glyph">🌊</span>
-      <h1>Maldexpress</h1>
-      <p>One app for the store, the delivery, and the customer</p>
-    </div>
-    <button class="glass role-card" onclick="enterRole('business')">
-      <div class="ic">🏝️</div>
-      <div class="txt"><h3>I run a business</h3><small>List items, manage orders, get paid</small></div>
-      <div class="arrow">→</div>
-    </button>
-    <button class="glass role-card" onclick="enterRole('delivery')">
-      <div class="ic">🛵</div>
-      <div class="txt"><h3>I deliver</h3><small>Pick up jobs, collect cash, settle up</small></div>
-      <div class="arrow">→</div>
-    </button>
-    <button class="glass role-card" onclick="enterRole('customer')">
-      <div class="ic">🛍️</div>
-      <div class="txt"><h3>I'm shopping</h3><small>Browse local stores near you</small></div>
-      <div class="arrow">→</div>
-    </button>
-  </div>`;
-}
-
+// Enters business/delivery role setup, gating on sign-in first. This is the sole
+// entry point for both roles (from the customer drawer's "List your business" /
+// "Deliver with us" items) - there's no separate role-picker landing screen.
 function enterRole(role){
   if(role==='business'){
     if(sb && !state.authed){ openSheet('signIn', {intent:'business'}); return; }
@@ -817,8 +855,6 @@ function enterRole(role){
     const mine = sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery;
     if(mine.length){ go('delPicker'); }
     else openSheet('delSignup');
-  } else {
-    state.role='customer'; go('custHome');
   }
 }
 
@@ -869,19 +905,19 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('bizItems')"><span class="ic">📦</span> My items</button>
       <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
       <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">🛵</span> Delivery payouts</button>
-      <button class="drawer-item" onclick="openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
     `;
   } else if(role==='delivery'){
     items = `
       <button class="drawer-item" onclick="go('delHome')"><span class="ic">🏠</span> My jobs</button>
       <button class="drawer-item" onclick="go('delHistory')"><span class="ic">🧾</span> History</button>
-      <button class="drawer-item" onclick="openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
     `;
   } else {
     items = `
       <button class="drawer-item" onclick="go('custHome')"><span class="ic">🏠</span> Browse stores</button>
       <button class="drawer-item" onclick="go('custOrders')"><span class="ic">🧾</span> My orders</button>
-      <button class="drawer-item" onclick="openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
       <div class="divider"></div>
       ${state.authed
         ? `<button class="drawer-item" onclick="signOutCustomer()"><span class="ic">🚪</span> Sign out</button>`
@@ -950,9 +986,7 @@ function sheetHTML(){
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
-  else if(state.sheet==='approvePayment') body = sheetApprovePayment();
   else if(state.sheet==='markCash') body = sheetMarkCash();
-  else if(state.sheet==='payoutAction') body = sheetPayoutAction();
   else if(state.sheet==='checkout') body = sheetCheckout();
   else if(state.sheet==='signIn') body = sheetSignIn();
   else if(state.sheet==='setupLogin') body = sheetSetupLogin();
@@ -1080,9 +1114,9 @@ function renderBizHome(biz,t){
       <div class="section">
         <div class="section-head"><h2>Store account</h2></div>
         <div class="glass card">
-          <div class="row between"><span class="muted">Account name</span><strong>${biz.accountName}</strong></div>
+          <div class="row between"><span class="muted">Account name</span><strong style="word-break:break-all; text-align:right;">${biz.accountName}</strong></div>
           <div class="divider"></div>
-          <div class="row between"><span class="muted">Account number</span><strong>${biz.accountNumber}</strong></div>
+          <div class="row between"><span class="muted">Account number</span><strong style="word-break:break-all; text-align:right;">${biz.accountNumber}</strong></div>
           <p class="muted" style="font-size:.78em; margin-top:10px;">Shown to customers and delivery partners so they can pay you directly.</p>
         </div>
       </div>
@@ -1095,8 +1129,6 @@ function renderBizHome(biz,t){
     </div>
   `);
 }
-
-function daysLabel(t){ return t.trialActive? `${t.trialDaysLeft} days left` : 'Trial ended'; }
 
 function sheetUpgrade(){
   const biz = currentBiz();
@@ -1163,7 +1195,7 @@ function sheetUpgradeBankSlip(){
     <label for="proSlipFile" class="filebtn">📎 Tap to choose an image</label>
     <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
   </div>
-  <button class="btn btn-primary" onclick="submitProBankSlip()">Submit for approval</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitProBankSlip()">Submit for approval</button>`;
 }
 async function submitProBankSlip(){
   if(!_slipData){ toast('Choose a slip image first','bad'); return; }
@@ -1220,7 +1252,7 @@ function sheetAddItem(){
   <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
   <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
   <div class="field"><label>Category</label><input id="i_cat" placeholder="e.g. Grocery"></div>
-  <button class="btn btn-primary" onclick="submitAddItem()">Add to store</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
 function submitAddItem(){
   const biz = currentBiz(); const t = tierInfo(biz);
@@ -1430,7 +1462,7 @@ function sheetMarkCash(){
   <div class="card tight" style="margin:14px 0; background:rgba(61,220,151,.1);">
     <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. Your cut (${money(Math.round(o.deliveryFee))}) stays with you — you'll owe the store <strong>${money(o.total-Math.round(o.deliveryFee))}</strong>.</p>
   </div>
-  <button class="btn btn-good" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
+  <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
 }
 function confirmCashReceived(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='cash_collected'; saveDB('orders'); closeSheet(); toast('Marked as cash received'); render(); }
 function markDelivered(id){ const o=DB.orders.find(x=>x.id===id); o.status='delivered'; saveDB('orders'); toast('Marked delivered'); render(); }
@@ -1479,6 +1511,7 @@ function renderCustHome(){
 function openStore(id){ go('custStore', {browseBizId:id}); }
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
+  if(!biz){ go('custHome'); return; }
   const items = DB.items.filter(i=>i.businessId===biz.id);
   const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
@@ -1499,7 +1532,29 @@ function renderCustStore(){
     </div>
   `, cartCount>0 ? `<div class="cart-fab" onclick="go('custCart')"><span>🛒 ${cartCount} item${cartCount>1?'s':''}</span><span>View cart →</span></div>`:'');
 }
-function addToCart(itemId){ state.cart[itemId] = (state.cart[itemId]||0)+1; render(); }
+// The cart isn't scoped per business, but checkout/placeOrder assume a single
+// business per order (one delivery, one store account) - so mixing items from two
+// stores into one cart would silently misattribute the order. Block the mix
+// instead: confirm with the customer that adding this item clears what's there.
+function cartBusinessId(){
+  const firstId = Object.keys(state.cart)[0];
+  if(!firstId) return null;
+  const it = DB.items.find(i=>i.id===firstId);
+  return it ? it.businessId : null;
+}
+function addToCart(itemId){
+  const item = DB.items.find(i=>i.id===itemId);
+  if(!item) return;
+  const existingBizId = cartBusinessId();
+  if(existingBizId && existingBizId!==item.businessId){
+    const otherBiz = DB.businesses.find(b=>b.id===existingBizId);
+    const ok = confirm(`Your cart has items from ${otherBiz?otherBiz.name:'another store'} — clear it to add items from this store instead?`);
+    if(!ok) return;
+    state.cart = {};
+  }
+  state.cart[itemId] = (state.cart[itemId]||0)+1;
+  render();
+}
 function changeQty(itemId, d){ state.cart[itemId] = Math.max(0,(state.cart[itemId]||0)+d); if(state.cart[itemId]===0) delete state.cart[itemId]; render(); }
 
 function renderCustCart(){
@@ -1560,7 +1615,7 @@ function sheetCheckout(){
       </button>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="placeOrder('${biz?biz.id:''}')">Place order</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="placeOrder('${biz?biz.id:''}')">Place order</button>`;
 }
 function refreshCheckoutTotals(){
   const entries = Object.entries(state.cart);
@@ -1587,14 +1642,14 @@ function sheetSignIn(){
     <p class="muted">${copy}</p>
     <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="auth_phone" placeholder="7XXXXXX"></div>
     <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
-    <button class="btn btn-primary" onclick="signInWithPhonePassword()">Sign in</button>
+    <button class="btn btn-primary" style="margin-top:14px;" onclick="signInWithPhonePassword()">Sign in</button>
     <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='magiclink'; render();">Use email link instead</button>`;
   }
   return `
   <h2>Sign in</h2>
   <p class="muted">We'll email you a secure sign-in link — no password needed. ${copy}</p>
   <div class="field" style="margin-top:14px;"><label>Email address</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
-  <button class="btn btn-primary" onclick="sendMagicLink()">Send sign-in link</button>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="sendMagicLink()">Send sign-in link</button>
   <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>
   <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='password'; render();">Sign in with mobile & password</button>`;
 }
@@ -1602,7 +1657,15 @@ async function sendMagicLink(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
   const email = val('auth_email');
   if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.href } });
+  // Business/delivery signup intent lives only in state.sheetData, which a magic-link
+  // redirect (a full page reload) wipes out - so it's encoded into the redirect URL
+  // itself instead, and read back by consumeIntentParam() once the new page loads.
+  const intent = state.sheetData && state.sheetData.intent;
+  const redirectUrl = new URL(window.location.href);
+  redirectUrl.hash = '';
+  if(intent==='business' || intent==='delivery') redirectUrl.searchParams.set('intent', intent);
+  else redirectUrl.searchParams.delete('intent');
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirectUrl.toString() } });
   if(error){ toast(error.message,'bad'); return; }
   closeSheet();
   toast('Check your email for the sign-in link!');
@@ -1613,6 +1676,10 @@ async function signInWithPhonePassword(){
   if(!phone || !pass){ toast('Enter your mobile number and password','bad'); return; }
   const { data: email, error: lookupErr } = await sb.rpc('resolve_login_email', { p_phone: phone });
   if(lookupErr || !email){ toast('No account found for that mobile number','bad'); return; }
+  // This path completes on the same page load (no redirect), so the intent can be
+  // carried forward directly in memory rather than through a URL param.
+  const intent = state.sheetData && state.sheetData.intent;
+  if(intent==='business' || intent==='delivery') state.pendingIntent = intent;
   const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   if(error){ toast('Incorrect mobile number or password','bad'); return; }
   closeSheet();
@@ -1625,7 +1692,8 @@ function sheetSetupLogin(){
   <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="su_phone" placeholder="7XXXXXX"></div>
   <div class="field"><label>Password</label><input id="su_pass" type="password" placeholder="At least 6 characters"></div>
   <div class="field"><label>Confirm password</label><input id="su_pass2" type="password" placeholder="Re-enter password"></div>
-  <button class="btn btn-primary" onclick="submitLoginSetup()">Save & continue</button>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitLoginSetup()">Save & continue</button>
+  <button class="link-btn" style="margin-top:12px; display:block; width:100%; text-align:center;" onclick="skipLoginSetup()">Skip for now</button>
   <p class="muted" style="font-size:.78em; margin-top:12px;">You're signed in as ${state.customerEmail}. This just adds a faster way back in next time.</p>`;
 }
 async function submitLoginSetup(){
@@ -1641,8 +1709,18 @@ async function submitLoginSetup(){
     else toast('Could not save: '+profErr.message,'bad');
     return;
   }
-  state.sheet = null; state.sheetData = null; render();
+  state.sheet = null; state.sheetData = null;
   toast('You can now sign in with your mobile number and password!');
+  resolvePendingIntent();
+}
+// This sheet otherwise can't be dismissed (closeSheet() no-ops for it, and it renders
+// with no close button and no backdrop-dismiss) - without this, a user who doesn't want
+// to set up a phone/password right now, or who hits a rejected phone number, has no way
+// out of it at all.
+function skipLoginSetup(){
+  state.sheet = null; state.sheetData = null;
+  toast("Skipped — we'll ask again next time you sign in");
+  resolvePendingIntent();
 }
 async function signOutCustomer(){
   if(sb) await sb.auth.signOut();
@@ -1727,7 +1805,7 @@ function sheetUploadSlip(){
     <label for="slipFile" class="filebtn">📎 Tap to choose an image</label>
     <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
   </div>
-  <button class="btn btn-primary" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
 }
 let _slipData = null;
 function previewSlip(e){
@@ -1743,20 +1821,34 @@ function submitSlip(id){
 }
 
 /* =================== INIT =================== */
+// Runs checkAdminStatus/checkLoginProfile after any sign-in (initial load or a
+// later auth state change alike), then resumes a pending business/delivery
+// signup intent - but only once any forced setupLogin step it triggered has
+// been dealt with (submitLoginSetup()/skipLoginSetup() call resolvePendingIntent()
+// themselves once that happens).
+async function handlePostAuth(){
+  if(state.adminMode){ await checkAdminStatus(); return; }
+  await checkLoginProfile();
+  if(state.sheet!=='setupLogin') resolvePendingIntent();
+}
 (async function init(){
+  const authError = consumeAuthHashError();
   await loadDB();
   seedIfEmpty();
   if(sb){
     const { data:{ session } } = await sb.auth.getSession();
     applySession(session);
-    if(state.authed){ if(state.adminMode) await checkAdminStatus(); else await checkLoginProfile(); }
-    sb.auth.onAuthStateChange((_event, session)=>{
+    const urlIntent = consumeIntentParam();
+    if(urlIntent) state.pendingIntent = urlIntent;
+    if(state.authed) await handlePostAuth();
+    sb.auth.onAuthStateChange(async (_event, session)=>{
       applySession(session);
-      if(state.authed){ if(state.adminMode) checkAdminStatus(); else checkLoginProfile(); }
+      if(state.authed) await handlePostAuth();
       render();
     });
   }
   render();
+  if(authError) toast("Your sign-in link expired or was already used — request a new one", 'bad');
 })();
 </script>
 </body>

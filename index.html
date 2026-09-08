@@ -685,10 +685,15 @@ async function loadDB(){
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
 }
-async function saveDB(part){
+async function saveDB(part, only){
   if(!sb) return;
   try{
-    const rows = DB[part].map(o=>toDbRow(part,o));
+    // `only`, when given, limits the upsert to specific rows rather than the
+    // whole DB[part] array. Needed for 'items': DB.items holds every
+    // business's items (loaded via the public-read policy for customer
+    // browsing), but the owner-only RLS check on writes rejects the entire
+    // upsert if the batch includes even one row this session doesn't own.
+    const rows = (only || DB[part]).map(o=>toDbRow(part,o));
     const { error } = await sb.from(TABLES[part]).upsert(rows);
     if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); }
   }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); }
@@ -1698,7 +1703,7 @@ async function submitAddItem(){
   const imageUrl = await uploadItemPhoto();
   const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, imageUrl, listingType};
   DB.items.push(item);
-  saveDB('items');
+  saveDB('items', [item]);
   if(listingType==='auction'){
     const now = Date.now();
     const auction = { id: uid('auc'), itemId:item.id, businessId:biz.id, startingPrice, bidIncrement, startTime:now, endTime: now + days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null };
@@ -1748,7 +1753,7 @@ async function submitEditItem(itemId){
     const url = await uploadItemPhoto();
     if(url) item.imageUrl = url;
   }
-  saveDB('items');
+  saveDB('items', [item]);
   _itemPhotoFile = null;
   closeSheet(); toast('Item updated'); render();
 }

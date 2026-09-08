@@ -132,8 +132,9 @@
     width:56px; height:56px; border-radius:14px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; font-size:1.5em;
     background:linear-gradient(145deg, rgba(255,138,92,.35), rgba(34,184,200,.25));
-    border:1px solid var(--glass-brd);
+    border:1px solid var(--glass-brd); overflow:hidden;
   }
+  .item-thumb img{width:100%; height:100%; object-fit:cover;}
   .item-info{flex:1; min-width:0;}
   .item-info h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
@@ -458,6 +459,95 @@ create policy "admin update any business" on businesses for update using (is_adm
 -- sign-in, useful for cross-checking a business owner's identity.
 create policy "admin read all profiles" on user_profiles for select using (is_admin());
 
+-- Product photos: stored in Supabase Storage (bucket 'product-images', public),
+-- not as base64 in the row - this column just holds the resulting public URL.
+alter table items add column if not exists image_url text;
+alter table items add column if not exists listing_type text not null default 'buy_now' check (listing_type in ('buy_now','auction'));
+
+-- Storage bucket for product photos. Create via Dashboard -> Storage -> New
+-- bucket named "product-images" with Public bucket ON, or run:
+insert into storage.buckets (id, name, public) values ('product-images','product-images', true)
+  on conflict (id) do nothing;
+-- Anyone can view (public bucket + public read policy); only the authenticated
+-- uploader can add/replace/delete their own files. Objects are uploaded under
+-- a path prefixed with the uploader's own auth.uid() (see uploadItemPhoto() in
+-- the app), which is what these policies check against - no join to
+-- businesses needed.
+create policy "public read product images" on storage.objects for select
+  using (bucket_id = 'product-images');
+create policy "owner upload product images" on storage.objects for insert to authenticated
+  with check (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "owner update product images" on storage.objects for update to authenticated
+  using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "owner delete product images" on storage.objects for delete to authenticated
+  using (bucket_id = 'product-images' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Auction listings: a business chooses "Auction" instead of "Buy Now" when
+-- listing an item (see items.listing_type above). There's no background job
+-- runner in this app, so closing an ended auction and settling its winner
+-- both happen lazily from the client whenever anyone views/interacts with the
+-- listing (see checkAndSettleAuction()/settleAuctionWin()) rather than on a
+-- timer - the "signed-in update auction" policy below is what makes that
+-- safe to do from any authenticated visitor's browser.
+create table auction_listings (
+  id text primary key,
+  item_id text references items(id) on delete cascade not null,
+  business_id text references businesses(id) not null,
+  starting_price numeric not null check (starting_price > 0),
+  bid_increment numeric not null check (bid_increment > 0),
+  start_time timestamptz not null default now(),
+  end_time timestamptz not null,
+  current_highest_bid numeric,
+  current_highest_bidder uuid references auth.users(id),
+  status text not null default 'active' check (status in ('active','ended','settled')),
+  order_id text references orders(id),
+  created_at timestamptz default now()
+);
+alter table auction_listings enable row level security;
+create policy "public read auctions" on auction_listings for select using (true);
+create policy "owner insert own auction" on auction_listings for insert
+  with check (exists (select 1 from businesses b where b.id = business_id and b.owner_id = auth.uid()));
+-- Deliberately permissive (any authenticated visitor, not just the seller or
+-- winning bidder) since the lazy active->ended transition needs to happen
+-- from whoever's browser next views an expired listing. Blocked once
+-- 'settled' - a won auction's order has already been created and shouldn't
+-- be touched again. The real bid-amount gate lives on auction_bids below,
+-- not here - this only governs the listing row itself (status, and the
+-- current_highest_bid/bidder cache written right after a bid is accepted).
+create policy "signed-in update auction" on auction_listings for update to authenticated
+  using (status in ('active','ended'))
+  with check (true);
+
+-- Full bid history - kept even after the winning bid is cached on
+-- auction_listings above, for an auditable record of every bid placed.
+create table auction_bids (
+  id text primary key,
+  auction_id text references auction_listings(id) on delete cascade not null,
+  bidder_id uuid references auth.users(id) not null,
+  bid_amount numeric not null check (bid_amount > 0),
+  created_at timestamptz default now()
+);
+alter table auction_bids enable row level security;
+create policy "public read bids" on auction_bids for select using (true);
+-- The actual bid-validity enforcement - not just client-side, since a client
+-- can call the API directly. A bid is only accepted if: it's the bidder's
+-- own (can't place a bid as someone else), the auction is still active and
+-- not yet past its end time, the amount clears the current highest bid plus
+-- the increment (or the starting price if there's no bid yet), and the
+-- bidder isn't the listing's own seller.
+create policy "customer valid bid" on auction_bids for insert
+  with check (
+    bidder_id = auth.uid()
+    and exists (
+      select 1 from auction_listings al
+      where al.id = auction_id
+        and al.status = 'active'
+        and al.end_time > now()
+        and bid_amount >= coalesce(al.current_highest_bid + al.bid_increment, al.starting_price)
+        and not exists (select 1 from businesses b where b.id = al.business_id and b.owner_id = auth.uid())
+    )
+  );
+
 -- Pro-tier upgrade requests: bank transfer (needs manual admin
 -- approval) or Swipe (auto-approved by the payment webhook, no admin
 -- action needed — logged here for visibility).
@@ -488,23 +578,25 @@ create policy "admin update upgrade requests" on pro_upgrade_requests for update
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
-const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons', proRequests:'pro_upgrade_requests' };
-let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[] };
+const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons', proRequests:'pro_upgrade_requests', auctions:'auction_listings' };
+let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[], auctions:[] };
 let storageReady = false;
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now' };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString() };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
+  if(part==='auctions') return { id:o.id, item_id:o.itemId, business_id:o.businessId, starting_price:o.startingPrice, bid_increment:o.bidIncrement, start_time:new Date(o.startTime).toISOString(), end_time:new Date(o.endTime).toISOString(), current_highest_bid:o.currentHighestBid, current_highest_bidder:o.currentHighestBidder, status:o.status, order_id:o.orderId||null };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime() };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
+  if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, status:r.status, orderId:r.order_id };
 }
 
 async function loadDB(){
@@ -514,19 +606,20 @@ async function loadDB(){
     return;
   }
   try{
-    const [b,i,o,d,pr] = await Promise.all([
+    const [b,i,o,d,pr,au] = await Promise.all([
       sb.from('businesses').select('*'),
       sb.from('items').select('*'),
       sb.from('orders').select('*'),
       sb.from('delivery_persons').select('*'),
-      sb.from('pro_upgrade_requests').select('*')
+      sb.from('pro_upgrade_requests').select('*'),
+      sb.from('auction_listings').select('*')
     ]);
     // Promise.all only rejects on a thrown/network-level failure - a query that
     // completes but fails server-side (e.g. an RLS policy error) resolves normally
     // with a populated .error field instead, which was previously never checked,
     // so a broken policy on just one table silently looked like "this store has no
     // items" rather than surfacing anything was wrong.
-    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr]]
+    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr],['auctions',au]]
       .filter(([,res])=>res.error);
     if(failed.length){
       failed.forEach(([label,res])=>console.error(`loadDB: ${label} query failed:`, res.error));
@@ -537,6 +630,7 @@ async function loadDB(){
     DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
     DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
 }
@@ -557,6 +651,149 @@ const ZONES = {
 function zoneFee(zoneKey){ return (ZONES[zoneKey]||ZONES.male).fee; }
 function money(n){ return 'MVR ' + Number(n).toFixed(2); }
 function daysBetween(a,b){ return Math.floor((b-a)/(1000*60*60*24)); }
+
+/* =================== AUCTIONS =================== */
+function auctionForItem(itemId){ return DB.auctions.find(a=>a.itemId===itemId); }
+// Called from every screen that renders a list of auction items, so an auction
+// that's already past its end_time gets closed/settled the moment anyone views
+// it - not only one that was seen actively counting down (an auction opened for
+// the first time after it already ended would otherwise render as "ended" purely
+// from the client-side time comparison, with no data-auction-end element for
+// ensureCountdownTimer() to ever notice and act on).
+function settleExpiredAuctions(itemList){
+  itemList.filter(i=>i.listingType==='auction').forEach(i=>{
+    const a = auctionForItem(i.id);
+    if(a && a.status==='active' && Date.now()>=a.endTime) checkAndSettleAuction(a.id);
+  });
+}
+function auctionMinNextBid(auction){
+  return auction.currentHighestBid!=null ? auction.currentHighestBid + auction.bidIncrement : auction.startingPrice;
+}
+function fmtCountdown(ms){
+  if(ms<=0) return 'Ended';
+  const s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400), h = Math.floor((s%86400)/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if(d>0) return `${d}d ${h}h left`;
+  if(h>0) return `${h}h ${m}m left`;
+  if(m>0) return `${m}m ${sec}s left`;
+  return `${sec}s left`;
+}
+// One shared interval, (re)started after any render that includes an auction
+// countdown, and self-clearing once none remain in the DOM (e.g. after
+// navigating away) - render() fully replaces #app on every screen change, so
+// there's nothing else to explicitly tear this down when it's no longer needed.
+let _countdownTimer = null;
+function ensureCountdownTimer(){
+  if(_countdownTimer) return;
+  _countdownTimer = setInterval(()=>{
+    const els = document.querySelectorAll('[data-auction-end]');
+    if(!els.length){ clearInterval(_countdownTimer); _countdownTimer=null; return; }
+    els.forEach(el=>{
+      const end = Number(el.getAttribute('data-auction-end'));
+      const ms = end - Date.now();
+      el.textContent = fmtCountdown(ms);
+      if(ms<=0 && !el.dataset.settling){
+        el.dataset.settling = '1';
+        checkAndSettleAuction(el.getAttribute('data-auction-id'));
+      }
+    });
+  }, 1000);
+}
+// Lazy close-on-view: there's no background job runner in this app, so an
+// auction past its end_time is only actually transitioned out of 'active'
+// when someone's browser happens to check it here - whenever the listing is
+// rendered or interacted with (see ensureCountdownTimer() and placeBid()).
+// The DB update is guarded by .eq('status','active') so concurrent viewers
+// racing this don't matter - only the first to land actually changes anything.
+async function checkAndSettleAuction(auctionId){
+  const a = DB.auctions.find(x=>x.id===auctionId);
+  if(!a) return;
+  if(a.status==='active' && Date.now()>=a.endTime){
+    if(sb){
+      const { error } = await sb.from('auction_listings').update({ status:'ended' }).eq('id', a.id).eq('status','active');
+      if(error){ console.error('Failed to close auction:', error); }
+    }
+    a.status = 'ended';
+  }
+  // Only the winning bidder's own session can create their winning order (orders
+  // RLS requires customer_id = auth.uid()), so this only fires anything when the
+  // person currently viewing is the auction's winner.
+  if(a.status==='ended' && a.currentHighestBidder && state.authed && state.customerId===a.currentHighestBidder){
+    await settleAuctionWin(a);
+  }
+  render();
+}
+// Converts a won auction into a real order so it flows into the existing
+// order/payment process instead of being a dead end. Simplification: defaults
+// to the cheapest delivery zone and bank transfer rather than re-running the
+// full checkout sheet - the winner can still see and manage it from My Orders
+// like any other order.
+async function settleAuctionWin(auction){
+  if(auction.orderId || auction.status==='settled') return;
+  const item = DB.items.find(i=>i.id===auction.itemId);
+  const biz = DB.businesses.find(b=>b.id===auction.businessId);
+  if(!item || !biz) return;
+  const fee = zoneFee('male');
+  const order = {
+    id: uid('ord'), businessId: biz.id, businessName: biz.name,
+    customerId: state.customerId, customerEmail: state.customerEmail,
+    customerName: state.customerName, customerPhone: '',
+    items: [{itemId:item.id, name:item.name, price:auction.currentHighestBid, qty:1}],
+    itemsTotal: auction.currentHighestBid, deliveryFee: fee, total: auction.currentHighestBid+fee,
+    zone: 'male', deliveryPersonId:null, deliveryPersonName:null,
+    paymentMethod:'transfer', paymentStatus:'pending_transfer', status:'placed',
+    createdAt: Date.now(), slipDataUrl:null
+  };
+  if(sb){
+    const { error } = await sb.from('orders').insert(toDbRow('orders', order));
+    if(error){ console.error('Failed to create winning order:', error); toast("You won the auction, but creating your order failed — contact the seller.",'bad'); return; }
+    const { error: settleErr } = await sb.from('auction_listings').update({ status:'settled', order_id: order.id }).eq('id', auction.id).eq('status','ended');
+    if(settleErr) console.error('Failed to mark auction settled:', settleErr);
+  }
+  DB.orders.unshift(order);
+  auction.status = 'settled'; auction.orderId = order.id;
+  toast(`🎉 You won the auction for ${money(auction.currentHighestBid)}! Check My Orders to arrange payment.`);
+}
+async function placeBid(auctionId){
+  if(sb && !state.authed){ openSheet('signIn'); return; }
+  const auction = DB.auctions.find(a=>a.id===auctionId);
+  if(!auction) return;
+  const biz = DB.businesses.find(b=>b.id===auction.businessId);
+  if(biz && biz.ownerId===state.customerId){ toast("You can't bid on your own store's auction",'bad'); return; }
+  const inputEl = document.getElementById(`bidInput_${auctionId}`);
+  const amount = Number(inputEl ? inputEl.value : NaN);
+  if(sb){
+    // Refresh from the server first so validation runs against the live state,
+    // not a possibly-stale in-memory copy - and so an auction that just expired
+    // gets closed instead of accepting one more bid on a technically-dead listing.
+    const { data: fresh, error: fetchErr } = await sb.from('auction_listings').select('*').eq('id', auctionId).single();
+    if(fetchErr || !fresh){ toast('Could not load the latest auction state — try again','bad'); return; }
+    Object.assign(auction, fromDbRow('auctions', fresh));
+  }
+  if(Date.now()>=auction.endTime || auction.status!=='active'){
+    toast('This auction has already ended','bad');
+    await checkAndSettleAuction(auctionId);
+    return;
+  }
+  const minBid = auctionMinNextBid(auction);
+  if(!amount || amount < minBid){ toast(`Bid must be at least ${money(minBid)}`,'bad'); return; }
+  if(sb){
+    const { error: insertErr } = await sb.from('auction_bids').insert({ id: uid('bid'), auction_id: auctionId, bidder_id: state.customerId, bid_amount: amount });
+    if(insertErr){
+      // The RLS policy on auction_bids is the real gate (see the SQL comment near
+      // the top of this file) - a rejection here almost always means someone else's
+      // bid landed in the moment between our refresh above and this insert.
+      console.error('Bid insert failed:', insertErr);
+      toast('Your bid was rejected — someone may have just outbid you. Refresh and try again.','bad');
+      return;
+    }
+    const { error: updateErr } = await sb.from('auction_listings').update({ current_highest_bid: amount, current_highest_bidder: state.customerId }).eq('id', auctionId).eq('status','active');
+    if(updateErr) console.error('Failed to update auction highest bid:', updateErr);
+  }
+  auction.currentHighestBid = amount; auction.currentHighestBidder = state.customerId;
+  toast('Bid placed!');
+  render();
+}
 
 /* Seed demo businesses only when running with no backend configured yet, so the UI isn't empty */
 function seedIfEmpty(){
@@ -610,7 +847,8 @@ let state = {
   isAdmin: false,
   adminSearch: '',
   adminTab: 'businesses',   // 'businesses' | 'bankRequests' | 'swipeRequests'
-  pendingIntent: null       // 'business' | 'delivery' — signup intent to resume once auth (and any forced setupMobile step) finishes
+  pendingIntent: null,      // 'business' | 'delivery' — signup intent to resume once auth (and any forced setupMobile step) finishes
+  storeTab: 'buyNow'        // 'buyNow' | 'auction' — which tab is showing on the customer store-browse screen
 };
 
 function applySession(session){
@@ -959,6 +1197,7 @@ function sheetHTML(){
   else if(state.sheet==='delSettings') body = sheetGenericSettings('delivery');
   else if(state.sheet==='custSettings') body = sheetGenericSettings('customer');
   else if(state.sheet==='addItem') body = sheetAddItem();
+  else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
@@ -1206,6 +1445,7 @@ function paymentStatusPill(o){
 
 function renderBizItems(biz,t){
   const myItems = DB.items.filter(i=>i.businessId===biz.id);
+  settleExpiredAuctions(myItems);
   const cats = ['All', ...new Set(myItems.map(i=>i.category||'General'))];
   const canAdd = myItems.length < t.limit;
   document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
@@ -1213,33 +1453,182 @@ function renderBizItems(biz,t){
     <div style="padding:4px 16px 0;">
       ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
       <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
-      ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>`
-        <div class="glass item-card">
-          <div class="item-thumb">📦</div>
-          <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock</p></div>
-          <div class="price">${money(i.price)}</div>
-        </div>`).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
+      ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
     </div>
-  `, canAdd? `<button class="fab" onclick="openSheet('addItem')">+</button>` : '');
+  `, canAdd? `<button class="fab" onclick="_itemPhotoFile=null; openSheet('addItem')">+</button>` : '');
+  ensureCountdownTimer();
+}
+function bizItemCard(i){
+  const thumb = i.imageUrl ? `<img src="${i.imageUrl}" alt="">` : '📦';
+  if(i.listingType==='auction'){
+    const auction = auctionForItem(i.id);
+    if(!auction) return '';
+    const ended = auction.status!=='active' || Date.now()>=auction.endTime;
+    const highBid = auction.currentHighestBid!=null ? auction.currentHighestBid : auction.startingPrice;
+    return `
+    <div class="glass item-card" style="align-items:flex-start;" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+      <div class="item-thumb">${thumb}</div>
+      <div class="item-info">
+        <div class="row between"><h3>${i.name}</h3><span class="badge free" style="white-space:nowrap;">AUCTION</span></div>
+        <p class="muted" style="font-size:.82em; margin-top:2px;">${auction.currentHighestBid!=null?'Current bid':'Starting price'}: <strong style="color:var(--ink);">${money(highBid)}</strong></p>
+        <p class="muted" style="font-size:.78em; margin-top:2px;" ${ended?'':`data-auction-end="${auction.endTime}" data-auction-id="${auction.id}"`}>${ended?'Ended':fmtCountdown(auction.endTime-Date.now())}</p>
+      </div>
+    </div>`;
+  }
+  return `
+  <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+    <div class="item-thumb">${thumb}</div>
+    <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock</p></div>
+    <div class="price">${money(i.price)}</div>
+  </div>`;
+}
+
+/* ---- Product photos (Supabase Storage) ---- */
+const IMAGE_ALLOWED_TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
+const IMAGE_MAX_BYTES = 5*1024*1024;
+let _itemPhotoFile = null;
+function previewItemPhoto(e, previewId='itemPhotoPreview'){
+  const f = e.target.files[0]; if(!f) return;
+  if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose a JPEG, PNG, WEBP, or GIF image','bad'); e.target.value=''; return; }
+  if(f.size > IMAGE_MAX_BYTES){ toast('Image must be under 5MB','bad'); e.target.value=''; return; }
+  _itemPhotoFile = f;
+  const reader = new FileReader();
+  reader.onload = ()=>{ const img=document.getElementById(previewId); if(img){ img.src=reader.result; img.style.display='block'; } };
+  reader.readAsDataURL(f);
+}
+// Uploaded under a path prefixed with the uploader's own auth.uid() - the
+// storage RLS policies check against that same prefix, so no join to
+// businesses is needed there. Returns null (photo skipped) rather than
+// throwing when there's no backend or no file was chosen.
+async function uploadItemPhoto(){
+  if(!_itemPhotoFile || !sb) return null;
+  const file = _itemPhotoFile;
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${state.customerId}/${uid('img')}.${ext}`;
+  const { error } = await sb.storage.from('product-images').upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type });
+  if(error){ toast('Photo upload failed: '+error.message, 'bad'); return null; }
+  const { data } = sb.storage.from('product-images').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 function sheetAddItem(){
   return `
   <h2>Add item</h2>
+  <div class="tabs" style="margin-bottom:16px;">
+    <button class="tab active" id="addItemTabBuyNow" onclick="setAddItemListingType('buy_now')">Buy Now</button>
+    <button class="tab" id="addItemTabAuction" onclick="setAddItemListingType('auction')">Auction</button>
+  </div>
+  <input type="hidden" id="i_listing_type" value="buy_now">
   <div class="field"><label>Item name</label><input id="i_name" placeholder="e.g. Fresh Rice 5kg"></div>
-  <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
-  <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
+  <div id="buyNowFields">
+    <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
+    <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
+  </div>
+  <div id="auctionFields" class="hidden">
+    <div class="field"><label>Starting price (MVR)</label><input id="i_start_price" type="number" placeholder="0.00"></div>
+    <div class="field"><label>Bid increment (MVR)</label><input id="i_bid_increment" type="number" placeholder="5.00"></div>
+    <div class="field"><label>Duration</label>
+      <select id="i_duration">
+        <option value="1">1 day</option>
+        <option value="2">2 days</option>
+        <option value="3">3 days</option>
+        <option value="5" selected>5 days (max)</option>
+      </select>
+    </div>
+  </div>
   <div class="field"><label>Category</label><input id="i_cat" placeholder="e.g. Grocery"></div>
+  <div class="field file">
+    <label>Photo (optional)</label>
+    <input type="file" accept="image/*" id="itemPhotoFile" style="display:none;" onchange="previewItemPhoto(event)">
+    <label for="itemPhotoFile" class="filebtn">📎 Tap to choose an image</label>
+    <img id="itemPhotoPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
+  </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
-function submitAddItem(){
+function setAddItemListingType(type){
+  document.getElementById('i_listing_type').value = type;
+  document.getElementById('addItemTabBuyNow').classList.toggle('active', type==='buy_now');
+  document.getElementById('addItemTabAuction').classList.toggle('active', type==='auction');
+  document.getElementById('buyNowFields').classList.toggle('hidden', type==='auction');
+  document.getElementById('auctionFields').classList.toggle('hidden', type!=='auction');
+}
+async function submitAddItem(){
   const biz = currentBiz(); const t = tierInfo(biz);
   const myCount = DB.items.filter(i=>i.businessId===biz.id).length;
   if(myCount>=t.limit){ toast(`Item limit reached (${t.limit})`,'bad'); return; }
-  const name=val('i_name'), price=Number(val('i_price')), stock=Number(val('i_stock')||0), cat=val('i_cat')||'General';
-  if(!name||!price){ toast('Enter item name and price','bad'); return; }
-  DB.items.push({id:uid('it'), businessId:biz.id, name, price, stock, category:cat});
-  saveDB('items'); closeSheet(); toast('Item added'); render();
+  const name=val('i_name'), cat=val('i_cat')||'General';
+  if(!name){ toast('Enter an item name','bad'); return; }
+  const listingType = val('i_listing_type') || 'buy_now';
+  let price, stock, startingPrice, bidIncrement, days;
+  if(listingType==='auction'){
+    startingPrice = Number(val('i_start_price'));
+    bidIncrement = Number(val('i_bid_increment'));
+    days = Number(val('i_duration'));
+    if(!startingPrice || startingPrice<=0){ toast('Enter a starting price','bad'); return; }
+    if(!bidIncrement || bidIncrement<=0){ toast('Enter a bid increment','bad'); return; }
+    if(!days || days<1 || days>5){ toast('Choose a duration up to 5 days','bad'); return; }
+    price = startingPrice; stock = 1;
+  } else {
+    price = Number(val('i_price')); stock = Number(val('i_stock')||0);
+    if(!price){ toast('Enter item name and price','bad'); return; }
+  }
+  toast('Saving item…');
+  const imageUrl = await uploadItemPhoto();
+  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, imageUrl, listingType};
+  DB.items.push(item);
+  saveDB('items');
+  if(listingType==='auction'){
+    const now = Date.now();
+    const auction = { id: uid('auc'), itemId:item.id, businessId:biz.id, startingPrice, bidIncrement, startTime:now, endTime: now + days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null };
+    DB.auctions.push(auction);
+    if(sb){
+      const { error } = await sb.from('auction_listings').insert(toDbRow('auctions', auction));
+      if(error){ toast('Item saved but auction setup failed: '+error.message,'bad'); }
+    }
+  }
+  _itemPhotoFile = null;
+  closeSheet(); toast(listingType==='auction' ? 'Auction listed!' : 'Item added'); render();
+}
+function sheetEditItem(){
+  const item = DB.items.find(i=>i.id===state.sheetData);
+  if(!item) return `<h2>Item not found</h2>`;
+  const isAuction = item.listingType==='auction';
+  return `
+  <h2>Edit item</h2>
+  ${isAuction? `<p class="muted" style="margin-bottom:10px; font-size:.85em;">This is an auction listing — price, bid increment, and duration can't be changed after it's created.</p>`:''}
+  <div class="field"><label>Item name</label><input id="e_name" value="${item.name}"></div>
+  ${!isAuction? `
+  <div class="field"><label>Price (MVR)</label><input id="e_price" type="number" value="${item.price}"></div>
+  <div class="field"><label>Stock quantity</label><input id="e_stock" type="number" value="${item.stock}"></div>` : ''}
+  <div class="field"><label>Category</label><input id="e_cat" value="${item.category||''}"></div>
+  <div class="field file">
+    <label>Photo</label>
+    <input type="file" accept="image/*" id="editItemPhoto" style="display:none;" onchange="previewItemPhoto(event,'editItemPreview')">
+    <label for="editItemPhoto" class="filebtn">📎 ${item.imageUrl?'Change photo':'Add a photo'}</label>
+    <img id="editItemPreview" src="${item.imageUrl||''}" style="width:100%; border-radius:14px; margin-top:10px; ${item.imageUrl?'':'display:none;'} max-height:200px; object-fit:cover;">
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>`;
+}
+async function submitEditItem(itemId){
+  const item = DB.items.find(i=>i.id===itemId);
+  if(!item) return;
+  const name = val('e_name');
+  if(!name){ toast('Enter an item name','bad'); return; }
+  item.name = name;
+  item.category = val('e_cat') || 'General';
+  if(item.listingType!=='auction'){
+    const price = Number(val('e_price')), stock = Number(val('e_stock')||0);
+    if(!price){ toast('Enter a price','bad'); return; }
+    item.price = price; item.stock = stock;
+  }
+  if(_itemPhotoFile){
+    toast('Saving…');
+    const url = await uploadItemPhoto();
+    if(url) item.imageUrl = url;
+  }
+  saveDB('items');
+  _itemPhotoFile = null;
+  closeSheet(); toast('Item updated'); render();
 }
 
 function renderBizOrders(biz){
@@ -1486,29 +1875,75 @@ function renderCustHome(){
     </div>
   `);
 }
-function openStore(id){ go('custStore', {browseBizId:id}); }
+function openStore(id){ go('custStore', {browseBizId:id, storeTab:'buyNow'}); }
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
   if(!biz){ go('custHome'); return; }
   const items = DB.items.filter(i=>i.businessId===biz.id);
+  settleExpiredAuctions(items);
+  const buyNowItems = items.filter(i=>i.listingType!=='auction');
+  const auctionItems = items.filter(i=>i.listingType==='auction');
+  if(!state.storeTab) state.storeTab = 'buyNow';
   const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
+  const buyNowHTML = buyNowItems.map(i=>{
+    const qty = state.cart[i.id]||0;
+    return `
+    <div class="glass item-card">
+      <div class="item-thumb">${i.imageUrl?`<img src="${i.imageUrl}" alt="">`:'🛍️'}</div>
+      <div class="item-info"><h3>${i.name}</h3><p class="price">${money(i.price)}</p></div>
+      ${qty===0 ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${i.id}')">Add</button>` : `
+        <div class="qty-ctrl">
+          <button onclick="changeQty('${i.id}',-1)">−</button><strong>${qty}</strong><button onclick="changeQty('${i.id}',1)">+</button>
+        </div>`}
+    </div>`;
+  }).join('') || `<div class="empty"><span class="ic">📭</span>No items listed yet</div>`;
+  const auctionHTML = auctionItems.map(i=>{
+    const auction = auctionForItem(i.id);
+    return auction ? auctionCard(i, auction) : '';
+  }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions right now</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar(biz.name, biz.category)}
     <div style="padding:4px 16px 0;">
-      ${items.map(i=>{
-        const qty = state.cart[i.id]||0;
-        return `
-        <div class="glass item-card">
-          <div class="item-thumb">🛍️</div>
-          <div class="item-info"><h3>${i.name}</h3><p class="price">${money(i.price)}</p></div>
-          ${qty===0 ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${i.id}')">Add</button>` : `
-            <div class="qty-ctrl">
-              <button onclick="changeQty('${i.id}',-1)">−</button><strong>${qty}</strong><button onclick="changeQty('${i.id}',1)">+</button>
-            </div>`}
-        </div>`;
-      }).join('') || `<div class="empty"><span class="ic">📭</span>No items listed yet</div>`}
+      <div class="tabs">
+        <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="state.storeTab='buyNow'; render();">Buy Now</button>
+        <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="state.storeTab='auction'; render();">Auction</button>
+      </div>
+      ${state.storeTab==='buyNow' ? buyNowHTML : auctionHTML}
     </div>
-  `, cartCount>0 ? `<div class="cart-fab" onclick="go('custCart')"><span>🛒 ${cartCount} item${cartCount>1?'s':''}</span><span>View cart →</span></div>`:'');
+  `, (cartCount>0 && state.storeTab==='buyNow') ? `<div class="cart-fab" onclick="go('custCart')"><span>🛒 ${cartCount} item${cartCount>1?'s':''}</span><span>View cart →</span></div>`:'');
+  ensureCountdownTimer();
+}
+function auctionCard(item, auction){
+  const now = Date.now();
+  const ended = auction.status!=='active' || now>=auction.endTime;
+  const highBid = auction.currentHighestBid!=null ? auction.currentHighestBid : auction.startingPrice;
+  const highLabel = auction.currentHighestBid!=null ? 'Current bid' : 'Starting price';
+  const minBid = auctionMinNextBid(auction);
+  const wonByMe = ended && auction.currentHighestBidder && state.customerId===auction.currentHighestBidder;
+  return `
+  <div class="glass item-card" style="align-items:flex-start; flex-wrap:wrap;">
+    <div class="item-thumb">${item.imageUrl?`<img src="${item.imageUrl}" alt="">`:'🛍️'}</div>
+    <div class="item-info">
+      <h3>${item.name}</h3>
+      <p class="muted" style="font-size:.8em; margin-top:2px;">${highLabel}</p>
+      <p class="price" style="font-size:1.1em;">${money(highBid)}</p>
+      <p class="muted" style="font-size:.78em; margin-top:2px;">+${money(auction.bidIncrement)} minimum increment</p>
+    </div>
+    <div style="width:100%; margin-top:10px;">
+      <div class="row between" style="margin-bottom:8px;">
+        <span class="status-pill ${ended?'bad':'mid'}" ${ended?'':`data-auction-end="${auction.endTime}" data-auction-id="${auction.id}"`}>${ended ? (wonByMe?'You won!':'Ended') : fmtCountdown(auction.endTime-now)}</span>
+      </div>
+      ${ended ? (
+        wonByMe ? `<p class="muted" style="font-size:.85em;">🎉 You won this auction for ${money(auction.currentHighestBid)}. Check My Orders.</p>`
+        : auction.currentHighestBidder ? `<p class="muted" style="font-size:.85em;">Auction ended — sold for ${money(auction.currentHighestBid)}.</p>`
+        : `<p class="muted" style="font-size:.85em;">Auction ended with no bids.</p>`
+      ) : `
+      <div class="row" style="gap:8px; align-items:center;">
+        <div class="field" style="margin:0; flex:1;"><input type="number" id="bidInput_${auction.id}" placeholder="Min ${money(minBid)}"></div>
+        <button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="placeBid('${auction.id}')">Bid</button>
+      </div>`}
+    </div>
+  </div>`;
 }
 // The cart isn't scoped per business, but checkout/placeOrder assume a single
 // business per order (one delivery, one store account) - so mixing items from two

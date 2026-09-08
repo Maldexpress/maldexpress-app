@@ -18,49 +18,18 @@
 // returns a reference, this function (1) inserts the local
 // pro_upgrade_requests row and (2) registers the reference with SeaFare's
 // internal endpoint - BOTH must succeed before the payment link is ever
-// handed back to the client. That ordering matters: it's what guarantees
-// neither side's "do I recognize this reference" check can race a webhook
-// that fires before the corresponding record exists, since the earliest
-// the user could possibly complete payment is after they receive the link,
-// which is after both records already exist. SeaFare's webhook then
-// forwards only registered references here (server-to-server, original
-// headers + body unmodified); everything unregistered stays SeaFare's own,
-// exactly as before this shared-wallet arrangement existed.
+// handed back to the client.
 //
 // Requires these secrets (Supabase Dashboard -> Edge Functions -> Secrets):
 //   SWIPE_TOKEN_URL        - OAuth2 client-credentials token endpoint (shared with SeaFare)
 //   SWIPE_API_BASE_URL     - Swipe API base (payments endpoint is {base}/api/v1/payments)
-//   SWIPE_CLIENT_ID        - 28279e0d-e093-4211-a2e8-295082406a9b (shared with SeaFare)
+//   SWIPE_CLIENT_ID        - shared with SeaFare
 //   SWIPE_CLIENT_SECRET    - shared with SeaFare
 //   SEAFARE_REGISTER_URL   - https://seafare.onrender.com/api/internal/register-swipe-reference
-//   SEAFARE_INTERNAL_SECRET - shared secret, must be the EXACT same value SeaFare has as
-//                             SEAFARE_INTERNAL_SECRET on its side (coordinated, not generated twice)
+//   SEAFARE_INTERNAL_SECRET - shared secret, must match SeaFare's side exactly
 // SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are auto-provided by the Edge Functions runtime.
-//
-// TODO once the Swipe OpenAPI spec is confirmed:
-//   - token response field names (assumed: access_token, expires_in - standard OAuth2 names)
-//   - payment amount units (assumed: MVR major units, not cents/laari)
-//   - response field name for the payment link (checks payment_link, link, url)
-//   - response field name for Swipe's generated reference (checks reference, id - matches SeaFare's confirmed request shape, but the response field name is still a guess)
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-
-// Called directly from the browser via sb.functions.invoke(), so the
-// preflight OPTIONS request and every actual response (success or error)
-// need these headers, or the browser blocks the response before our code
-// ever sees it.
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
 
 const SWIPE_TOKEN_URL = Deno.env.get("SWIPE_TOKEN_URL")!;
 const SWIPE_API_BASE_URL = Deno.env.get("SWIPE_API_BASE_URL")!;
@@ -69,12 +38,19 @@ const SWIPE_CLIENT_SECRET = Deno.env.get("SWIPE_CLIENT_SECRET")!;
 const SEAFARE_REGISTER_URL = Deno.env.get("SEAFARE_REGISTER_URL")!;
 const SEAFARE_INTERNAL_SECRET = Deno.env.get("SEAFARE_INTERNAL_SECRET")!;
 
-// Deno.env.get returns undefined (not a throw) for an unset secret - the "!"
-// above is a TS-only assertion, stripped at runtime. Without this check, a
-// missing secret fails deep inside a fetch() call with a confusing
-// "Invalid URL" TypeError that looks like a Swipe/SeaFare outage instead of
-// a config problem. Check once per cold start and fail every request
-// clearly until it's fixed.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+function jsonResponse(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  });
+}
+
 const REQUIRED_SECRETS: Record<string, string> = {
   SWIPE_TOKEN_URL,
   SWIPE_API_BASE_URL,
@@ -113,11 +89,6 @@ async function getSwipeAccessToken(): Promise<string> {
   return cachedToken.value;
 }
 
-// Registers a Swipe-assigned reference with SeaFare's internal endpoint so
-// its shared-wallet webhook handler forwards that payment's confirmation
-// here. One retry after a short pause; the caller treats a final failure as
-// fatal (link withheld, local row rolled back) so the user retries cleanly
-// rather than paying for an upgrade neither side can confirm.
 async function registerReferenceWithSeaFare(reference: string): Promise<boolean> {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
@@ -155,8 +126,7 @@ Deno.serve(async (req) => {
   }
 
   if (missingSecrets.length > 0) {
-    console.error(`create-swipe-payment misconfigured - missing secret(s): ${missingSecrets.join(", ")}`);
-    return jsonResponse({ error: `Swipe payment is misconfigured: missing secret(s) ${missingSecrets.join(", ")}` }, 500);
+    return jsonResponse({ error: `Missing required secret(s): ${missingSecrets.join(", ")}` }, 500);
   }
 
   try {
@@ -177,8 +147,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "businessId and amount are required" }, 400);
     }
 
-    // RLS-scoped client (not service role) - this query only succeeds if the
-    // caller actually owns the business, so it doubles as an ownership check.
     const { data: biz, error: bizErr } = await supabase
       .from("businesses")
       .select("id, owner_id, name")
@@ -190,8 +158,6 @@ Deno.serve(async (req) => {
 
     const accessToken = await getSwipeAccessToken();
 
-    // No reference field here - Swipe generates its own and returns it
-    // below. Matches SeaFare's confirmed real request shape exactly.
     const paymentRes = await fetch(`${SWIPE_API_BASE_URL}/api/v1/payments`, {
       method: "POST",
       headers: {
@@ -212,27 +178,13 @@ Deno.serve(async (req) => {
     }
 
     const payment = await paymentRes.json();
-    const paymentLink = payment.payment_link ?? payment.link ?? payment.url;
+    const paymentLink = payment.payment_url ?? payment.payment_link ?? payment.link ?? payment.url;
     const reference = payment.reference ?? payment.id;
     if (!paymentLink || !reference) {
       console.error("Swipe response missing payment link and/or reference:", JSON.stringify(payment));
       return jsonResponse({ error: "Swipe response missing payment link or reference" }, 502);
     }
 
-    // Record the pending upgrade and register its reference with SeaFare
-    // before handing back the link - see the file header for why this
-    // ordering closes the webhook race. Ownership was already checked above,
-    // so both writes use the service role: it keeps the insert and the
-    // rollback delete consistent and doesn't depend on the owner-delete RLS
-    // policy (added to the schema alongside this change) actually being
-    // applied to the database yet - an RLS delete with no matching policy
-    // silently matches zero rows and leaves an orphan.
-    //
-    // The Swipe payment itself already exists at this point regardless of
-    // what happens next. If a step below fails we withhold the link but do
-    // NOT cancel the Swipe payment - it just goes unpaid/expires unseen.
-    // Acceptable for now; revisit if Swipe offers a cancel/void call and
-    // this proves to happen often enough to matter.
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -259,7 +211,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Failed to set up payment routing" }, 502);
     }
 
-    return jsonResponse({ paymentLink, reference });
+    return jsonResponse({ paymentLink, reference }, 200);
   } catch (e) {
     console.error(e);
     return jsonResponse({ error: "Internal error" }, 500);

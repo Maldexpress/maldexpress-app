@@ -935,7 +935,7 @@ function switchRole(){ state = {...state, role:'customer', screen:'custHome', ac
 
 /* =================== SHEETS (bottom popups) =================== */
 function openSheet(name, data=null){ state.sheet = name; state.sheetData = data; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
-function closeSheet(){ if(state.sheet==='setupLogin') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
+function closeSheet(){ if(state.sheet==='setupLogin' || state.sheet==='verifyEmail') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
   if(!state.sheet) return '';
@@ -955,7 +955,9 @@ function sheetHTML(){
   else if(state.sheet==='checkout') body = sheetCheckout();
   else if(state.sheet==='signIn') body = sheetSignIn();
   else if(state.sheet==='setupLogin') body = sheetSetupLogin();
-  const dismissable = state.sheet!=='setupLogin';
+  else if(state.sheet==='signUp') body = sheetSignUp();
+  else if(state.sheet==='verifyEmail') body = sheetVerifyEmail();
+  const dismissable = state.sheet!=='setupLogin' && state.sheet!=='verifyEmail';
   return `
   <div class="sheet-wrap show" id="sheetWrap">
     <div class="backdrop" ${dismissable?`onclick="closeSheet()"`:''}></div>
@@ -1573,29 +1575,53 @@ function goCheckout(){
   if(sb && !state.authed){ openSheet('signIn'); return; }
   openSheet('checkout');
 }
-let _signInMode = 'magiclink';
+let _signInMode = 'emailpass';
+let _pendingVerifyEmail = null;
 function sheetSignIn(){
   const intent = state.sheetData && state.sheetData.intent;
   const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
     : intent==='delivery' ? "You'll need to sign in to pick up delivery jobs — this keeps your earnings and history tied to your account."
     : intent==='admin' ? "Sign in with the account that has Super Admin access."
     : "Browsing stays open to everyone, but placing an order needs a quick email check.";
-  if(_signInMode==='password'){
+  if(_signInMode==='phone'){
     return `
     <h2>Sign in</h2>
     <p class="muted">${copy}</p>
     <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="auth_phone" placeholder="7XXXXXX"></div>
     <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
     <button class="btn btn-primary" onclick="signInWithPhonePassword()">Sign in</button>
-    <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='magiclink'; render();">Use email link instead</button>`;
+    <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='emailpass'; render();">Use email & password instead</button>
+    <button class="link-btn" style="margin-top:4px;" onclick="_signInMode='magiclink'; render();">Use email link instead</button>`;
+  }
+  if(_signInMode==='magiclink'){
+    return `
+    <h2>Sign in</h2>
+    <p class="muted">We'll email you a secure sign-in link — no password needed. ${copy}</p>
+    <div class="field" style="margin-top:14px;"><label>Email address</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
+    <button class="btn btn-primary" onclick="sendMagicLink()">Send sign-in link</button>
+    <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>
+    <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='emailpass'; render();">Use email & password instead</button>
+    <button class="link-btn" style="margin-top:4px;" onclick="_signInMode='phone'; render();">Sign in with mobile & password instead</button>`;
   }
   return `
   <h2>Sign in</h2>
-  <p class="muted">We'll email you a secure sign-in link — no password needed. ${copy}</p>
+  <p class="muted">${copy}</p>
   <div class="field" style="margin-top:14px;"><label>Email address</label><input id="auth_email" type="email" placeholder="you@example.com"></div>
-  <button class="btn btn-primary" onclick="sendMagicLink()">Send sign-in link</button>
-  <p class="muted" style="font-size:.78em; margin-top:12px;">Open the link on this device to finish signing in.</p>
-  <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='password'; render();">Sign in with mobile & password</button>`;
+  <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
+  <button class="btn btn-primary" onclick="signInWithEmailPassword()">Sign in</button>
+  <button class="link-btn" style="margin-top:12px;" onclick="_signInMode='phone'; render();">Sign in with mobile & password instead</button>
+  <button class="link-btn" style="margin-top:4px;" onclick="_signInMode='magiclink'; render();">Use email link instead</button>
+  <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSheet('signUp', state.sheetData)">Sign up</button></p>`;
+}
+async function signInWithEmailPassword(){
+  if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
+  const email = val('auth_email'), pass = val('auth_pass');
+  if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
+  if(!pass){ toast('Enter your password','bad'); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error){ toast('Incorrect email or password — new here? Sign up below.','bad'); return; }
+  closeSheet();
+  toast('Signed in!');
 }
 async function sendMagicLink(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
@@ -1616,6 +1642,49 @@ async function signInWithPhonePassword(){
   if(error){ toast('Incorrect mobile number or password','bad'); return; }
   closeSheet();
   toast('Signed in!');
+}
+function sheetSignUp(){
+  const intent = state.sheetData && state.sheetData.intent;
+  return `
+  <h2>Sign up</h2>
+  <p class="muted">Create an account with your email and a password.</p>
+  <div class="field" style="margin-top:14px;"><label>Email address</label><input id="su_email" type="email" placeholder="you@example.com"></div>
+  <div class="field"><label>Password</label><input id="su_email_pass" type="password" placeholder="At least 6 characters"></div>
+  <div class="field"><label>Confirm password</label><input id="su_email_pass2" type="password" placeholder="Re-enter password"></div>
+  <button class="btn btn-primary" onclick="submitSignUp()">Sign up</button>
+  <p class="muted" style="margin-top:14px;">Already have an account? <button class="link-btn" onclick="openSheet('signIn', {intent:'${intent||''}'})">Sign in</button></p>`;
+}
+async function submitSignUp(){
+  if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
+  const email = val('su_email'), pass = val('su_email_pass'), pass2 = val('su_email_pass2');
+  if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
+  if(!pass || pass.length<6){ toast('Password must be at least 6 characters','bad'); return; }
+  if(pass!==pass2){ toast('Passwords do not match','bad'); return; }
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  if(error){ toast(error.message,'bad'); return; }
+  _pendingVerifyEmail = email;
+  openSheet('verifyEmail');
+}
+function sheetVerifyEmail(){
+  return `
+  <h2>Verify your email</h2>
+  <p class="muted">We sent a 6-digit code to <strong>${_pendingVerifyEmail}</strong>. Enter it below to finish creating your account.</p>
+  <div class="field" style="margin-top:14px;"><label>Verification code</label><input id="ve_code" placeholder="123456"></div>
+  <button class="btn btn-primary" onclick="submitVerifyCode()">Verify</button>
+  <button class="link-btn" style="margin-top:12px;" onclick="resendVerifyCode()">Resend code</button>`;
+}
+async function submitVerifyCode(){
+  const code = val('ve_code');
+  if(!code){ toast('Enter the verification code','bad'); return; }
+  const { error } = await sb.auth.verifyOtp({ email: _pendingVerifyEmail, token: code, type: 'signup' });
+  if(error){ toast(error.message,'bad'); return; }
+  state.sheet = null; state.sheetData = null; render();
+  toast("Account verified — you're signed in!");
+}
+async function resendVerifyCode(){
+  const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
+  if(error){ toast(error.message,'bad'); return; }
+  toast('Code resent — check your email!');
 }
 function sheetSetupLogin(){
   return `

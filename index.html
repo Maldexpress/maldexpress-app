@@ -88,9 +88,10 @@
     font-size:1.5em; background:linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,255,255,.06));
     border:1px solid var(--glass-brd); flex-shrink:0;
   }
-  .role-card .txt{flex:1;}
+  .role-card .txt{flex:1; min-width:0;}
+  .role-card .txt h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .role-card .txt small{color:var(--ink-dim); font-size:.85em;}
-  .role-card .arrow{color:var(--coral); font-size:1.3em;}
+  .role-card .arrow{color:var(--coral); font-size:1.3em; flex-shrink:0;}
 
   /* Header */
   .topbar{
@@ -141,6 +142,7 @@
     width:30px; height:30px; border-radius:10px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;
     display:flex; align-items:center; justify-content:center;
   }
+  .qty-ctrl button:active{transform:scale(.9);}
 
   /* Buttons */
   .btn{
@@ -178,6 +180,7 @@
   }
   .navbtn .ic{font-size:1.35em;}
   .navbtn.active{color:var(--sand); background:rgba(255,255,255,.12);}
+  .navbtn:active{background:rgba(255,255,255,.12);}
 
   /* Drawer / menu */
   .overlay{
@@ -215,6 +218,7 @@
   .sheet-wrap.show .sheet{transform:scale(1); opacity:1;}
   .sheet .handle{display:none;}
   .sheet-close{position:absolute; right:16px; top:16px; width:34px; height:34px; border-radius:50%; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink); font-size:1.1em;}
+  .sheet-close:active, .topbar .iconbtn:active{transform:scale(.92);}
 
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:.82em; color:var(--ink-dim); margin-bottom:6px; font-weight:600;}
@@ -227,7 +231,11 @@
   .field.file{position:relative;}
   .field .filebtn{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px; border:1.5px dashed var(--glass-brd); border-radius:16px; color:var(--ink-dim); font-weight:600;}
 
-  .toast-wrap{position:fixed; bottom:94px; left:0; right:0; z-index:25; display:flex; justify-content:center; pointer-events:none;}
+  /* bottom:180px clears not just the .bottomnav but also the taller floating controls
+     that can be showing at the same time - .fab (bottom:110px, 58px tall, top edge
+     168px) and .cart-fab (bottom:96px, ~48px tall) - so a toast never visually sits on
+     top of either while it's up. */
+  .toast-wrap{position:fixed; bottom:180px; left:0; right:0; z-index:25; display:flex; justify-content:center; pointer-events:none;}
   .toast{padding:12px 20px; border-radius:16px; font-weight:700; font-size:.9em; display:flex; align-items:center; gap:8px; opacity:0; transform:translateY(80px); transition:transform .3s ease, opacity .3s ease; max-width:90%;}
   .toast.show{opacity:1; transform:translateY(0);}
   .toast.good{background:rgba(61,220,151,.25); border:1px solid rgba(61,220,151,.5); color:#c6ffe5;}
@@ -243,7 +251,7 @@
     padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.07); border:1px dashed var(--glass-brd); margin-top:10px;
   }
   .acct-box .lbl{font-size:.72em; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px;}
-  .acct-box .val{font-weight:700; font-size:1.05em; margin-top:2px;}
+  .acct-box .val{font-weight:700; font-size:1.05em; margin-top:2px; word-break:break-all;}
 
   .empty{text-align:center; padding:50px 16px; color:var(--ink-dim);}
   .empty .ic{font-size:2.4em; margin-bottom:10px; display:block;}
@@ -251,6 +259,7 @@
   .tabs{display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px;}
   .tab{padding:9px 16px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass); color:var(--ink-dim); font-weight:700; font-size:.85em; white-space:nowrap;}
   .tab.active{background:linear-gradient(135deg, rgba(255,138,92,.9), rgba(232,102,58,.9)); color:#241005; border-color:transparent;}
+  .tab:active{transform:scale(.95);}
 
   .cart-fab{
     position:fixed; left:16px; right:16px; bottom:96px; z-index:24; max-width:488px; margin:0 auto;
@@ -512,6 +521,17 @@ async function loadDB(){
       sb.from('delivery_persons').select('*'),
       sb.from('pro_upgrade_requests').select('*')
     ]);
+    // Promise.all only rejects on a thrown/network-level failure - a query that
+    // completes but fails server-side (e.g. an RLS policy error) resolves normally
+    // with a populated .error field instead, which was previously never checked,
+    // so a broken policy on just one table silently looked like "this store has no
+    // items" rather than surfacing anything was wrong.
+    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr]]
+      .filter(([,res])=>res.error);
+    if(failed.length){
+      failed.forEach(([label,res])=>console.error(`loadDB: ${label} query failed:`, res.error));
+      toast(`Could not load ${failed.map(([label])=>label).join(', ')} — some data may be missing`, 'bad');
+    }
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
@@ -589,7 +609,8 @@ let state = {
   adminMode: typeof location!=='undefined' && /[?&]admin\b/.test(location.search),
   isAdmin: false,
   adminSearch: '',
-  adminTab: 'businesses'    // 'businesses' | 'bankRequests' | 'swipeRequests'
+  adminTab: 'businesses',   // 'businesses' | 'bankRequests' | 'swipeRequests'
+  pendingIntent: null       // 'business' | 'delivery' — signup intent to resume once auth (and any forced setupMobile step) finishes
 };
 
 function applySession(session){
@@ -611,6 +632,32 @@ async function checkAdminStatus(){
   const { data } = await sb.rpc('is_admin');
   state.isAdmin = !!data;
   render();
+}
+
+// Catches a user who verified/signed in but never finished (or skipped, or had their
+// browser closed during) the mobile-number step - without this there was no way to
+// ever be re-prompted, since submitVerifyCode() only opens setupMobile once, inline,
+// during the signup flow itself.
+async function checkMobileProfile(){
+  if(!sb || !state.authed) return;
+  const { data, error } = await sb.from('user_profiles').select('user_id').eq('user_id', state.customerId).maybeSingle();
+  if(error){
+    // A transient failure here must NOT be treated the same as "no profile row
+    // exists" - that would force setupMobile open on an already-set-up user just
+    // because of a flaky connection.
+    console.error('checkMobileProfile failed:', error);
+    return;
+  }
+  if(!data && state.sheet!=='verifyEmail' && state.sheet!=='setupMobile'){ openSheet('setupMobile'); }
+}
+
+// Resumes a business/delivery signup intent once auth (and any forced setupMobile
+// step) has finished — see enterRole() for the actual routing.
+function resolvePendingIntent(){
+  const intent = state.pendingIntent;
+  state.pendingIntent = null;
+  if(intent==='business' || intent==='delivery') enterRole(intent);
+  else render();
 }
 
 function setFont(px){
@@ -834,19 +881,19 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('bizItems')"><span class="ic">📦</span> My items</button>
       <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
       <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">🛵</span> Delivery payouts</button>
-      <button class="drawer-item" onclick="openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
     `;
   } else if(role==='delivery'){
     items = `
       <button class="drawer-item" onclick="go('delHome')"><span class="ic">🏠</span> My jobs</button>
       <button class="drawer-item" onclick="go('delHistory')"><span class="ic">🧾</span> History</button>
-      <button class="drawer-item" onclick="openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
     `;
   } else {
     items = `
       <button class="drawer-item" onclick="go('custHome')"><span class="ic">🏠</span> Browse stores</button>
       <button class="drawer-item" onclick="go('custOrders')"><span class="ic">🧾</span> My orders</button>
-      <button class="drawer-item" onclick="openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
       <div class="divider"></div>
       ${state.authed
         ? `<button class="drawer-item" onclick="signOutCustomer()"><span class="ic">🚪</span> Sign out</button>`
@@ -901,7 +948,7 @@ function switchRole(){ state = {...state, role:'customer', screen:'custHome', ac
 
 /* =================== SHEETS (bottom popups) =================== */
 function openSheet(name, data=null){ state.sheet = name; state.sheetData = data; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
-function closeSheet(){ if(state.sheet==='setupLogin' || state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
+function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); setTimeout(()=>{ state.sheet=null; state.sheetData=null; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
   if(!state.sheet) return '';
@@ -918,11 +965,10 @@ function sheetHTML(){
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='checkout') body = sheetCheckout();
   else if(state.sheet==='signIn') body = sheetSignIn();
-  else if(state.sheet==='setupLogin') body = sheetSetupLogin();
   else if(state.sheet==='signUp') body = sheetSignUp();
   else if(state.sheet==='verifyEmail') body = sheetVerifyEmail();
   else if(state.sheet==='setupMobile') body = sheetSetupMobile();
-  const dismissable = state.sheet!=='setupLogin' && state.sheet!=='verifyEmail' && state.sheet!=='setupMobile';
+  const dismissable = state.sheet!=='verifyEmail' && state.sheet!=='setupMobile';
   return `
   <div class="sheet-wrap show" id="sheetWrap">
     <div class="backdrop" ${dismissable?`onclick="closeSheet()"`:''}></div>
@@ -1046,9 +1092,9 @@ function renderBizHome(biz,t){
       <div class="section">
         <div class="section-head"><h2>Store account</h2></div>
         <div class="glass card">
-          <div class="row between"><span class="muted">Account name</span><strong>${biz.accountName}</strong></div>
+          <div class="row between"><span class="muted">Account name</span><strong style="word-break:break-all; text-align:right;">${biz.accountName}</strong></div>
           <div class="divider"></div>
-          <div class="row between"><span class="muted">Account number</span><strong>${biz.accountNumber}</strong></div>
+          <div class="row between"><span class="muted">Account number</span><strong style="word-break:break-all; text-align:right;">${biz.accountNumber}</strong></div>
           <p class="muted" style="font-size:.78em; margin-top:10px;">Shown to customers and delivery partners so they can pay you directly.</p>
         </div>
       </div>
@@ -1127,7 +1173,7 @@ function sheetUpgradeBankSlip(){
     <label for="proSlipFile" class="filebtn">📎 Tap to choose an image</label>
     <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
   </div>
-  <button class="btn btn-primary" onclick="submitProBankSlip()">Submit for approval</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitProBankSlip()">Submit for approval</button>`;
 }
 async function submitProBankSlip(){
   if(!_slipData){ toast('Choose a slip image first','bad'); return; }
@@ -1184,7 +1230,7 @@ function sheetAddItem(){
   <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
   <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
   <div class="field"><label>Category</label><input id="i_cat" placeholder="e.g. Grocery"></div>
-  <button class="btn btn-primary" onclick="submitAddItem()">Add to store</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
 function submitAddItem(){
   const biz = currentBiz(); const t = tierInfo(biz);
@@ -1394,7 +1440,7 @@ function sheetMarkCash(){
   <div class="card tight" style="margin:14px 0; background:rgba(61,220,151,.1);">
     <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. Your cut (${money(Math.round(o.deliveryFee))}) stays with you — you'll owe the store <strong>${money(o.total-Math.round(o.deliveryFee))}</strong>.</p>
   </div>
-  <button class="btn btn-good" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
+  <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
 }
 function confirmCashReceived(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='cash_collected'; saveDB('orders'); closeSheet(); toast('Marked as cash received'); render(); }
 function markDelivered(id){ const o=DB.orders.find(x=>x.id===id); o.status='delivered'; saveDB('orders'); toast('Marked delivered'); render(); }
@@ -1547,7 +1593,7 @@ function sheetCheckout(){
       </button>
     </div>
   </div>
-  <button class="btn btn-primary" onclick="placeOrder('${biz?biz.id:''}')">Place order</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="placeOrder('${biz?biz.id:''}')">Place order</button>`;
 }
 function refreshCheckoutTotals(){
   const entries = Object.entries(state.cart);
@@ -1574,13 +1620,17 @@ function sheetSignIn(){
   <p class="muted">${copy}</p>
   <div class="field" style="margin-top:14px;"><label>Mobile or Email</label><input id="auth_identifier" placeholder="you@example.com or 7XXXXXX"></div>
   <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
-  <button class="btn btn-primary" onclick="signInWithIdentifierPassword()">Sign in</button>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="signInWithIdentifierPassword()">Sign in</button>
   <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSheet('signUp', state.sheetData)">Sign up</button></p>`;
 }
 async function signInWithIdentifierPassword(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
   const identifier = val('auth_identifier'), pass = val('auth_pass');
   if(!identifier || !pass){ toast('Enter your mobile number or email, and your password','bad'); return; }
+  // Captured now, before closeSheet() wipes state.sheetData - onAuthStateChange's
+  // handlePostAuth() resumes this once sign-in (and any forced setupMobile step) finishes.
+  const intent = state.sheetData && state.sheetData.intent;
+  if(intent==='business' || intent==='delivery') state.pendingIntent = intent;
   let email;
   if(identifier.includes('@')){
     email = identifier;
@@ -1611,6 +1661,12 @@ async function submitSignUp(){
   if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
   if(!pass || pass.length<6){ toast('Password must be at least 6 characters','bad'); return; }
   if(pass!==pass2){ toast('Passwords do not match','bad'); return; }
+  // Captured now, before openSheet('verifyEmail') below wipes state.sheetData (it opens
+  // with no data) - without this, a business/delivery signup intent silently vanished
+  // partway through signup -> verify-code -> mobile-number, leaving the user stranded
+  // on customer home once it finished with no indication to continue into setup.
+  const intent = state.sheetData && state.sheetData.intent;
+  if(intent==='business' || intent==='delivery') state.pendingIntent = intent;
   const { error } = await sb.auth.signUp({ email, password: pass });
   if(error){ toast(error.message,'bad'); return; }
   _pendingVerifyEmail = email;
@@ -1641,9 +1697,10 @@ async function resendVerifyCode(){
 function sheetSetupMobile(){
   return `
   <h2>Add your mobile number</h2>
-  <p class="muted">Signed up as: <strong>${_pendingVerifyEmail}</strong></p>
+  <p class="muted">Signed up as: <strong>${_pendingVerifyEmail || state.customerEmail}</strong></p>
   <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="sm_phone" placeholder="7XXXXXX"></div>
-  <button class="btn btn-primary" onclick="submitMobileNumber()">Save</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitMobileNumber()">Save</button>
+  <button class="link-btn" style="margin-top:12px; display:block; width:100%; text-align:center;" onclick="skipMobileSetup()">Skip for now</button>`;
 }
 async function submitMobileNumber(){
   const phone = val('sm_phone');
@@ -1657,34 +1714,19 @@ async function submitMobileNumber(){
     return;
   }
   _pendingVerifyEmail = null; _pendingSignupUserId = null;
-  state.sheet = null; state.sheetData = null; render();
+  state.sheet = null; state.sheetData = null;
   toast('Mobile number saved!');
+  resolvePendingIntent();
 }
-function sheetSetupLogin(){
-  return `
-  <h2>Set up faster sign-in</h2>
-  <p class="muted">Add a mobile number and password so you don't have to wait for a new email link every time you sign in.</p>
-  <div class="field" style="margin-top:14px;"><label>Mobile number</label><input id="su_phone" placeholder="7XXXXXX"></div>
-  <div class="field"><label>Password</label><input id="su_pass" type="password" placeholder="At least 6 characters"></div>
-  <div class="field"><label>Confirm password</label><input id="su_pass2" type="password" placeholder="Re-enter password"></div>
-  <button class="btn btn-primary" onclick="submitLoginSetup()">Save & continue</button>
-  <p class="muted" style="font-size:.78em; margin-top:12px;">You're signed in as ${state.customerEmail}. This just adds a faster way back in next time.</p>`;
-}
-async function submitLoginSetup(){
-  const phone = val('su_phone'), pass = val('su_pass'), pass2 = val('su_pass2');
-  if(!phone){ toast('Enter your mobile number','bad'); return; }
-  if(!pass || pass.length<6){ toast('Password must be at least 6 characters','bad'); return; }
-  if(pass!==pass2){ toast('Passwords do not match','bad'); return; }
-  const { error: passErr } = await sb.auth.updateUser({ password: pass });
-  if(passErr){ toast(passErr.message,'bad'); return; }
-  const { error: profErr } = await sb.from('user_profiles').insert({ user_id: state.customerId, phone, email: state.customerEmail });
-  if(profErr){
-    if(profErr.code==='23505' || /duplicate/i.test(profErr.message)) toast('That mobile number is already registered to another account','bad');
-    else toast('Could not save: '+profErr.message,'bad');
-    return;
-  }
-  state.sheet = null; state.sheetData = null; render();
-  toast('You can now sign in with your mobile number and password!');
+// Mobile number is only used as an alternate sign-in identifier (resolve_login_email) -
+// email+password already works without it - so this sheet otherwise having no close
+// button and no backdrop-dismiss would trap a user who doesn't have one handy, or who
+// hits a phone number already claimed by another account, with no way out at all.
+function skipMobileSetup(){
+  _pendingVerifyEmail = null; _pendingSignupUserId = null;
+  state.sheet = null; state.sheetData = null;
+  toast("Skipped — we'll ask again next time you sign in");
+  resolvePendingIntent();
 }
 async function signOutCustomer(){
   if(sb) await sb.auth.signOut();
@@ -1769,7 +1811,7 @@ function sheetUploadSlip(){
     <label for="slipFile" class="filebtn">📎 Tap to choose an image</label>
     <img id="slipPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
   </div>
-  <button class="btn btn-primary" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
 }
 let _slipData = null;
 function previewSlip(e){
@@ -1785,16 +1827,29 @@ function submitSlip(id){
 }
 
 /* =================== INIT =================== */
+// Runs after any sign-in (initial load or a later auth state change alike), then
+// resumes a pending business/delivery signup intent - but only once any forced
+// setupMobile step it triggered has been dealt with (submitMobileNumber()/
+// skipMobileSetup() call resolvePendingIntent() themselves once that happens).
+async function handlePostAuth(){
+  if(state.adminMode){ await checkAdminStatus(); return; }
+  await checkMobileProfile();
+  // Excludes 'verifyEmail' too, not just 'setupMobile' - onAuthStateChange can fire
+  // before submitVerifyCode()'s own openSheet('setupMobile') call runs (event ordering
+  // relative to the awaited verifyOtp() call isn't guaranteed), which would otherwise
+  // resolve the pending intent while the user is still mid-verification.
+  if(state.sheet!=='setupMobile' && state.sheet!=='verifyEmail') resolvePendingIntent();
+}
 (async function init(){
   await loadDB();
   seedIfEmpty();
   if(sb){
     const { data:{ session } } = await sb.auth.getSession();
     applySession(session);
-    if(state.authed && state.adminMode) await checkAdminStatus();
-    sb.auth.onAuthStateChange((_event, session)=>{
+    if(state.authed) await handlePostAuth();
+    sb.auth.onAuthStateChange(async (_event, session)=>{
       applySession(session);
-      if(state.authed && state.adminMode) checkAdminStatus();
+      if(state.authed) await handlePostAuth();
       render();
     });
   }

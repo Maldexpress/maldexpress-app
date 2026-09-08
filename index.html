@@ -627,35 +627,48 @@ create policy "owner delete own upgrade request" on pro_upgrade_requests for del
 create policy "admin read all upgrade requests" on pro_upgrade_requests for select using (is_admin());
 create policy "admin update upgrade requests" on pro_upgrade_requests for update using (is_admin());
 
--- Per-listing delivery type: a business chooses Zone delivery (existing flat
--- per-zone fee, paid by the buyer) or Free delivery (no buyer-facing fee -
--- instead the seller sets a flat amount they'll pay a delivery partner to
--- handle it, same pattern as an auction's starting_price/bid_increment above).
-alter table items add column if not exists delivery_type text not null default 'zone' check (delivery_type in ('zone','free'));
-alter table items add column if not exists delivery_payout numeric check (delivery_payout is null or delivery_payout > 0);
+-- Per-listing delivery: a business now just checks/unchecks "Free delivery for
+-- buyer" on each item (checked by default). It no longer changes HOW delivery
+-- works - the buyer always picks a zone at checkout, same as always, and the
+-- zone's flat fee is always what the delivery partner is paid. The checkbox
+-- only controls whether that fee is ALSO charged to the buyer.
+alter table items add column if not exists free_delivery boolean not null default true;
+-- Superseded by free_delivery above - drop if the short-lived previous version
+-- of this feature was ever run against this database.
+alter table items drop column if exists delivery_type;
+alter table items drop column if exists delivery_payout;
 
--- Orders: delivery_partner_payout is the single source of truth for what the
--- delivery partner is owed on this order - the zone fee for a zone-delivery
--- order, or the summed delivery_payout of a free-delivery cart's items
--- (a cart is one business, and per checkout's rule, a free-delivery checkout
--- only happens when every line is free-delivery). Cash orders keep using the
--- existing pattern (rider collects `total`, owes the business `total -
--- delivery_partner_payout`, business confirms via payment_status). Bank
--- transfer orders now ALSO create an obligation in the other direction (the
--- business owes the delivery partner delivery_partner_payout once delivered)
--- - payout_status tracks that separately from payment_status, since payment_status
--- already means "has the store received the buyer's money", a different
--- question from "has the store paid out the rider".
+-- Orders: delivery_partner_payout is always the zone's flat fee (the delivery
+-- partner is paid the same amount regardless of who's charged for it) -
+-- delivery_type on the order records whether the buyer's total included that
+-- fee ('zone') or not ('free'), decided by whether every item in the cart had
+-- free_delivery checked (a cart is one business; if even one item requires
+-- the buyer to pay, the fee is charged for the whole order).
+-- Cash orders: 'zone' orders are unchanged (rider collects the fee inside
+-- `total`, keeps it as their cut, remits `total - delivery_partner_payout`).
+-- 'free' orders collect no fee at all, so the rider remits the FULL `total`
+-- to the business and is paid their delivery_partner_payout separately.
+-- Transfer orders: 'zone' orders are unchanged (buyer's transfer already
+-- covers the fee - no payout tracking needed, same as the original app).
+-- 'free' orders only collect the item price, so payout_status tracks the
+-- business's separate obligation to pay the rider the fee once delivered -
+-- for BOTH payment methods now, since a 'free' cash order also leaves that
+-- fee uncollected from the buyer.
 alter table orders add column if not exists delivery_type text not null default 'zone' check (delivery_type in ('zone','free'));
-alter table orders add column if not exists delivery_address text;
-alter table orders add column if not exists boat_type text check (boat_type is null or boat_type in ('speedboat','ferry'));
-alter table orders add column if not exists boat_name text;
-alter table orders add column if not exists boat_detail text;
 alter table orders add column if not exists delivery_partner_payout numeric;
 alter table orders add column if not exists payout_status text check (payout_status is null or payout_status in ('pending','settled'));
 
--- Backfill: every order placed before this feature is a zone-delivery order,
--- so its delivery_partner_payout is exactly the fee already on the row.
+-- Superseded columns from the short-lived previous version of this feature -
+-- the custom per-item payout amount and the manual address/boat-info fields
+-- are gone now that delivery always goes through the normal zone flow.
+alter table orders drop column if exists delivery_address;
+alter table orders drop column if exists boat_type;
+alter table orders drop column if exists boat_name;
+alter table orders drop column if exists boat_detail;
+
+-- Backfill: every order placed before this feature (or its previous version)
+-- is a zone-delivery order, so its delivery_partner_payout is exactly the fee
+-- already on the row.
 update orders set delivery_partner_payout = delivery_fee where delivery_partner_payout is null;
 --------------------------------------------------- */
 
@@ -666,17 +679,17 @@ let storageReady = false;
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', delivery_type:o.deliveryType||'zone', delivery_payout:o.deliveryPayout!=null?o.deliveryPayout:null };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
-  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_address:o.deliveryAddress||null, boat_type:o.boatType||null, boat_name:o.boatName||null, boat_detail:o.boatDetail||null, delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null };
+  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
   if(part==='auctions') return { id:o.id, item_id:o.itemId, business_id:o.businessId, starting_price:o.startingPrice, bid_increment:o.bidIncrement, start_time:new Date(o.startTime).toISOString(), end_time:new Date(o.endTime).toISOString(), current_highest_bid:o.currentHighestBid, current_highest_bidder:o.currentHighestBidder, status:o.status, order_id:o.orderId||null };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', deliveryType:r.delivery_type||'zone', deliveryPayout:r.delivery_payout!=null?Number(r.delivery_payout):null };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryAddress:r.delivery_address||null, boatType:r.boat_type||null, boatName:r.boat_name||null, boatDetail:r.boat_detail||null, deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, status:r.status, orderId:r.order_id };
 }
@@ -811,35 +824,29 @@ async function checkAndSettleAuction(auctionId){
   render();
 }
 // Converts a won auction into a real order so it flows into the existing
-// order/payment process instead of being a dead end. Simplification: defaults
-// to the cheapest delivery zone and bank transfer rather than re-running the
-// full checkout sheet - the winner can still see and manage it from My Orders
-// like any other order.
-// Creates the won-auction order with its delivery zone and payment method
-// left unset (deliveryFee 0, total = the winning bid alone) rather than
-// defaulting them, since there's no precedent checkout flow for a win to
-// re-run and picking a zone/payment method on the winner's behalf would be
-// guessing. paymentStatus 'awaiting_completion' is what every other order
-// card/detail view checks for to show a "Complete your order" prompt instead
-// of the normal payment UI until the winner picks both via
-// sheetCompleteAuctionOrder()/submitCompleteAuctionOrder().
+// order/payment process instead of being a dead end. paymentStatus
+// 'awaiting_completion' is what every other order card/detail view checks
+// for to show a "Complete your order" prompt instead of the normal payment
+// UI until the winner picks a zone and payment method via
+// sheetCompleteAuctionOrder()/submitCompleteAuctionOrder() - same zone
+// selection every other order goes through, just deferred since there's no
+// checkout sheet to run for a win.
 async function settleAuctionWin(auction){
   if(auction.orderId || auction.status==='settled') return;
   const item = DB.items.find(i=>i.id===auction.itemId);
   const biz = DB.businesses.find(b=>b.id===auction.businessId);
   if(!item || !biz) return;
-  const deliveryType = item.deliveryType||'zone';
   const order = {
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: state.customerName, customerPhone: '',
     items: [{itemId:item.id, name:item.name, price:auction.currentHighestBid, qty:1}],
     itemsTotal: auction.currentHighestBid, deliveryFee: 0, total: auction.currentHighestBid,
-    zone: null, deliveryType, deliveryAddress:null, boatType:null, boatName:null, boatDetail:null,
-    // Zone-delivery winners still pick their zone in sheetCompleteAuctionOrder(), which
-    // sets the real payout then - a free-delivery winner's payout is already fixed by
-    // the item's own listing-time amount, so it's set here instead of left for later.
-    deliveryPartnerPayout: deliveryType==='free' ? Number(item.deliveryPayout||0) : null, payoutStatus:null,
+    // Whether the buyer pays the zone fee is fixed by the item's own listing-time
+    // checkbox; the zone itself (and so the fee amount and delivery_partner_payout)
+    // isn't known until the winner picks one in sheetCompleteAuctionOrder().
+    zone: null, deliveryType: item.freeDelivery ? 'free' : 'zone',
+    deliveryPartnerPayout: null, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
     paymentMethod:null, paymentStatus:'awaiting_completion', status:'placed',
     createdAt: Date.now(), slipDataUrl:null
@@ -858,40 +865,25 @@ async function settleAuctionWin(auction){
 function sheetCompleteAuctionOrder(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
   if(!o) return `<h2>Order not found</h2>`;
-  const isFree = o.deliveryType==='free';
-  let deliveryFieldsHtml, totalsHtml;
-  if(isFree){
-    deliveryFieldsHtml = freeDeliveryFieldsHTML('cao_');
-    totalsHtml = `
-    <div class="glass card tight" style="margin-bottom:14px;">
-      <div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>
-      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>Free</span></div>
-      <div class="divider"></div>
-      <div class="row between"><strong>Total</strong><strong class="price">${money(o.itemsTotal)}</strong></div>
-    </div>`;
-  } else {
-    if(!_selectedZone) _selectedZone = 'male';
-    const fee = zoneFee(_selectedZone);
-    deliveryFieldsHtml = `
-    <div class="field">
-      <label>Delivery zone</label>
-      <select id="cao_zone" onchange="_selectedZone=this.value; refreshCompleteOrderTotals()">
-        ${Object.entries(ZONES).map(([k,z])=>`<option value="${k}" ${k===_selectedZone?'selected':''}>${z.label} — MVR ${z.fee}</option>`).join('')}
-      </select>
-    </div>`;
-    totalsHtml = `
-    <div class="glass card tight" style="margin-bottom:14px;">
-      <div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>
-      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="cao_fee">${money(fee)}</span></div>
-      <div class="divider"></div>
-      <div class="row between"><strong>Total</strong><strong class="price" id="cao_total">${money(o.itemsTotal+fee)}</strong></div>
-    </div>`;
-  }
+  const buyerPaysFee = o.deliveryType!=='free';
+  if(!_selectedZone) _selectedZone = 'male';
+  const fee = zoneFee(_selectedZone);
+  const shownFee = buyerPaysFee ? fee : 0;
   return `
   <h2>Complete your order</h2>
-  <p class="muted" style="margin-bottom:14px;">You won this auction for ${money(o.itemsTotal)} — ${isFree?'this item ships free — just tell us where to bring it':'choose your delivery zone'} and how you'll pay to finish placing the order.</p>
-  ${deliveryFieldsHtml}
-  ${totalsHtml}
+  <p class="muted" style="margin-bottom:14px;">You won this auction for ${money(o.itemsTotal)} — choose your delivery zone and how you'll pay to finish placing the order.</p>
+  <div class="field">
+    <label>Delivery zone</label>
+    <select id="cao_zone" onchange="_selectedZone=this.value; refreshCompleteOrderTotals()">
+      ${Object.entries(ZONES).map(([k,z])=>`<option value="${k}" ${k===_selectedZone?'selected':''}>${z.label} — MVR ${z.fee}</option>`).join('')}
+    </select>
+  </div>
+  <div class="glass card tight" style="margin-bottom:14px;">
+    <div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>
+    <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="cao_fee">${buyerPaysFee?money(shownFee):'Free'}</span></div>
+    <div class="divider"></div>
+    <div class="row between"><strong>Total</strong><strong class="price" id="cao_total">${money(o.itemsTotal+shownFee)}</strong></div>
+  </div>
   <div class="field">
     <label>How will you pay?</label>
     <div class="stack">
@@ -909,28 +901,23 @@ function sheetCompleteAuctionOrder(){
 }
 function refreshCompleteOrderTotals(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
-  if(!o || o.deliveryType==='free') return;
-  const fee = zoneFee(_selectedZone);
-  document.getElementById('cao_fee').textContent = money(fee);
-  document.getElementById('cao_total').textContent = money(o.itemsTotal+fee);
+  if(!o) return;
+  const buyerPaysFee = o.deliveryType!=='free';
+  const shownFee = buyerPaysFee ? zoneFee(_selectedZone) : 0;
+  document.getElementById('cao_fee').textContent = buyerPaysFee ? money(shownFee) : 'Free';
+  document.getElementById('cao_total').textContent = money(o.itemsTotal+shownFee);
 }
 async function submitCompleteAuctionOrder(orderId){
   const o = DB.orders.find(x=>x.id===orderId);
   if(!o) return;
-  if(o.deliveryType==='free'){
-    const address = val('cao_address'), boatName = val('cao_boat_name');
-    if(!address){ toast('Enter a delivery address','bad'); return; }
-    if(!boatName){ toast('Enter the boat name','bad'); return; }
-    o.deliveryAddress = address; o.boatType = _selectedBoatType; o.boatName = boatName; o.boatDetail = val('cao_boat_detail');
-    // deliveryFee/total/deliveryPartnerPayout were already set from the item's own
-    // payout amount back in settleAuctionWin() - nothing left to compute here.
-  } else {
-    const fee = zoneFee(_selectedZone);
-    o.zone = _selectedZone;
-    o.deliveryFee = fee;
-    o.total = o.itemsTotal + fee;
-    o.deliveryPartnerPayout = fee;
-  }
+  const buyerPaysFee = o.deliveryType!=='free';
+  const fee = zoneFee(_selectedZone);
+  o.zone = _selectedZone;
+  o.deliveryFee = buyerPaysFee ? fee : 0;
+  o.total = o.itemsTotal + o.deliveryFee;
+  // The delivery partner is always paid the zone's flat fee, regardless of
+  // whether the buyer was charged for it.
+  o.deliveryPartnerPayout = fee;
   o.paymentMethod = _selectedPay;
   o.paymentStatus = _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash';
   saveDB('orders');
@@ -1661,7 +1648,7 @@ function bizItemCard(i){
       <div class="item-thumb">${thumb}</div>
       <div class="item-info">
         <div class="row between"><h3>${i.name}</h3><span class="badge free" style="white-space:nowrap;">AUCTION</span></div>
-        <p class="muted" style="font-size:.82em; margin-top:2px;">${auction.currentHighestBid!=null?'Current bid':'Starting price'}: <strong style="color:var(--ink);">${money(highBid)}</strong>${i.deliveryType==='free'?` · 🚚 Free delivery (payout ${money(i.deliveryPayout||0)})`:''}</p>
+        <p class="muted" style="font-size:.82em; margin-top:2px;">${auction.currentHighestBid!=null?'Current bid':'Starting price'}: <strong style="color:var(--ink);">${money(highBid)}</strong>${i.freeDelivery!==false?` · 🚚 Free delivery`:''}</p>
         <p class="muted" style="font-size:.78em; margin-top:2px;" ${ended?'':`data-auction-end="${auction.endTime}" data-auction-id="${auction.id}"`}>${ended?'Ended':fmtCountdown(auction.endTime-Date.now())}</p>
       </div>
     </div>`;
@@ -1669,7 +1656,7 @@ function bizItemCard(i){
   return `
   <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
     <div class="item-thumb">${thumb}</div>
-    <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock${i.deliveryType==='free'?` · 🚚 Free delivery (payout ${money(i.deliveryPayout||0)})`:''}</p></div>
+    <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock${i.freeDelivery!==false?` · 🚚 Free delivery`:''}</p></div>
     <div class="price">${money(i.price)}</div>
   </div>`;
 }
@@ -1729,16 +1716,11 @@ function sheetAddItem(){
   </div>
   <div class="field"><label>Category</label><input id="i_cat" placeholder="e.g. Grocery"></div>
   <div class="field">
-    <label>Delivery</label>
-    <div class="tabs" style="margin-bottom:0;">
-      <button type="button" class="tab active" id="addItemDelZone" onclick="setAddItemDeliveryType('zone')">Zone delivery</button>
-      <button type="button" class="tab" id="addItemDelFree" onclick="setAddItemDeliveryType('free')">Free delivery</button>
-    </div>
-  </div>
-  <input type="hidden" id="i_delivery_type" value="zone">
-  <div id="addItemPayoutField" class="hidden">
-    <div class="field"><label>Delivery partner payout (MVR)</label><input id="i_delivery_payout" type="number" placeholder="e.g. 20.00"></div>
-    <p class="muted" style="font-size:.78em; margin:-8px 0 14px;">The flat amount you'll pay a delivery partner to handle this item — the buyer pays no delivery fee.</p>
+    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input type="checkbox" id="i_free_delivery" checked style="width:auto;">
+      <span>Free delivery for buyer</span>
+    </label>
+    <p class="muted" style="font-size:.78em; margin-top:6px;">The buyer still picks a delivery zone at checkout — this just decides whether that zone's flat fee is added to what they pay, or covered by you.</p>
   </div>
   <div class="field file">
     <label>Photo (optional)</label>
@@ -1754,12 +1736,6 @@ function setAddItemListingType(type){
   document.getElementById('addItemTabAuction').classList.toggle('active', type==='auction');
   document.getElementById('buyNowFields').classList.toggle('hidden', type==='auction');
   document.getElementById('auctionFields').classList.toggle('hidden', type!=='auction');
-}
-function setAddItemDeliveryType(type){
-  document.getElementById('i_delivery_type').value = type;
-  document.getElementById('addItemDelZone').classList.toggle('active', type==='zone');
-  document.getElementById('addItemDelFree').classList.toggle('active', type==='free');
-  document.getElementById('addItemPayoutField').classList.toggle('hidden', type!=='free');
 }
 async function submitAddItem(){
   const biz = currentBiz(); const t = tierInfo(biz);
@@ -1781,15 +1757,10 @@ async function submitAddItem(){
     price = Number(val('i_price')); stock = Number(val('i_stock')||0);
     if(!price){ toast('Enter item name and price','bad'); return; }
   }
-  const deliveryType = val('i_delivery_type') || 'zone';
-  let deliveryPayout = null;
-  if(deliveryType==='free'){
-    deliveryPayout = Number(val('i_delivery_payout'));
-    if(!deliveryPayout || deliveryPayout<=0){ toast('Enter a delivery partner payout amount','bad'); return; }
-  }
+  const freeDelivery = document.getElementById('i_free_delivery').checked;
   toast('Saving item…');
   const imageUrl = await uploadItemPhoto();
-  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, imageUrl, listingType, deliveryType, deliveryPayout};
+  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, imageUrl, listingType, freeDelivery};
   DB.items.push(item);
   saveDB('items', [item]);
   if(listingType==='auction'){
@@ -1817,15 +1788,10 @@ function sheetEditItem(){
   <div class="field"><label>Stock quantity</label><input id="e_stock" type="number" value="${item.stock}"></div>` : ''}
   <div class="field"><label>Category</label><input id="e_cat" value="${item.category||''}"></div>
   <div class="field">
-    <label>Delivery</label>
-    <div class="tabs" style="margin-bottom:0;">
-      <button type="button" class="tab ${item.deliveryType!=='free'?'active':''}" id="editDelZone" onclick="setEditItemDeliveryType('zone')">Zone delivery</button>
-      <button type="button" class="tab ${item.deliveryType==='free'?'active':''}" id="editDelFree" onclick="setEditItemDeliveryType('free')">Free delivery</button>
-    </div>
-  </div>
-  <input type="hidden" id="e_delivery_type" value="${item.deliveryType||'zone'}">
-  <div id="editItemPayoutField" class="${item.deliveryType==='free'?'':'hidden'}">
-    <div class="field"><label>Delivery partner payout (MVR)</label><input id="e_delivery_payout" type="number" value="${item.deliveryPayout||''}"></div>
+    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+      <input type="checkbox" id="e_free_delivery" ${item.freeDelivery!==false?'checked':''} style="width:auto;">
+      <span>Free delivery for buyer</span>
+    </label>
   </div>
   <div class="field file">
     <label>Photo</label>
@@ -1834,12 +1800,6 @@ function sheetEditItem(){
     <img id="editItemPreview" src="${item.imageUrl||''}" style="width:100%; border-radius:14px; margin-top:10px; ${item.imageUrl?'':'display:none;'} max-height:200px; object-fit:cover;">
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>`;
-}
-function setEditItemDeliveryType(type){
-  document.getElementById('e_delivery_type').value = type;
-  document.getElementById('editDelZone').classList.toggle('active', type==='zone');
-  document.getElementById('editDelFree').classList.toggle('active', type==='free');
-  document.getElementById('editItemPayoutField').classList.toggle('hidden', type!=='free');
 }
 async function submitEditItem(itemId){
   const item = DB.items.find(i=>i.id===itemId);
@@ -1853,15 +1813,7 @@ async function submitEditItem(itemId){
     if(!price){ toast('Enter a price','bad'); return; }
     item.price = price; item.stock = stock;
   }
-  const deliveryType = val('e_delivery_type') || 'zone';
-  if(deliveryType==='free'){
-    const payout = Number(val('e_delivery_payout'));
-    if(!payout || payout<=0){ toast('Enter a delivery partner payout amount','bad'); return; }
-    item.deliveryPayout = payout;
-  } else {
-    item.deliveryPayout = null;
-  }
-  item.deliveryType = deliveryType;
+  item.freeDelivery = document.getElementById('e_free_delivery').checked;
   if(_itemPhotoFile){
     toast('Saving…');
     const url = await uploadItemPhoto();
@@ -1901,7 +1853,8 @@ function wrapSheetOnly(body){
 function orderDetailBizBody(o){
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
   const payoutAmt = Math.round(o.deliveryPartnerPayout!=null ? o.deliveryPartnerPayout : o.deliveryFee);
-  const isFreeDelivery = o.deliveryType==='free';
+  const buyerPaidFee = o.deliveryType!=='free';
+  const cashCut = cashCutAmount(o);
   let actionArea = '';
   if(o.paymentStatus==='awaiting_completion'){
     actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">This order was won at auction and is waiting for the customer to choose delivery and payment details.</p></div>`;
@@ -1918,43 +1871,35 @@ function orderDetailBizBody(o){
     } else {
       actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>`;
     }
-    // The rider's payout is tracked independently of the buyer's payment status
-    // (payout_status only starts once markDelivered() sets it, which can happen
-    // before or after the business confirms the buyer's transfer) - shown as its
-    // own note rather than nested under "payment received" so it's never hidden
-    // just because the slip hasn't been approved yet.
-    if(o.payoutStatus==='pending'){
-      actionArea += `<div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">You owe ${o.deliveryPersonName||'the delivery partner'} ${money(payoutAmt)} for this delivery. See Payouts tab to mark it paid.</p></div>`;
-    } else if(o.payoutStatus==='settled'){
-      actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Rider paid ✓</div>`;
-    }
   } else {
     if(o.paymentStatus==='pending_cash'){
       actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Delivery partner will collect ${money(o.total)} cash from the customer.</p></div>`;
     } else if(o.paymentStatus==='cash_collected'){
-      actionArea = `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash. They owe you ${money(o.total-payoutAmt)} (after their ${money(payoutAmt)} cut). See Payouts tab once they settle.</p></div>`;
+      actionArea = cashCut>0
+        ? `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash. They owe you ${money(o.total-cashCut)} (after their ${money(cashCut)} cut). See Payouts tab once they settle.</p></div>`
+        : `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash and owes you the full ${money(o.total)} — the delivery fee wasn't charged to the customer, so you pay the rider's ${money(payoutAmt)} separately. See Payouts tab once they settle.</p></div>`;
     } else {
       actionArea = `<div class="status-pill ok" style="display:inline-block;">Settled with rider</div>`;
     }
   }
-  const deliveryLine = isFreeDelivery
-    ? `<div class="row between" style="margin-top:6px;"><span class="muted">Free delivery → ${o.deliveryPersonName||'—'} (payout ${money(payoutAmt)})</span><span>${money(0)}</span></div>`
-    : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}</span><span>${money(payoutAmt)}</span></div>`;
-  const deliveryDetailsBox = isFreeDelivery ? `
-    <div class="card tight" style="background:rgba(255,255,255,.06); margin-top:10px;">
-      <div class="lbl" style="font-size:.72em; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.5px;">Delivery details</div>
-      <p style="font-size:.85em; margin-top:4px;">${o.deliveryAddress||'—'}</p>
-      <p style="font-size:.85em; margin-top:4px;">${o.boatType==='ferry'?'Ferry':'Speedboat'} — ${o.boatName||'—'}${o.boatDetail?' · '+o.boatDetail:''}</p>
-    </div>` : '';
+  // The rider's payout is tracked independently of the buyer's own payment status
+  // (payout_status only starts once markDelivered() sets it) - shown as its own
+  // note regardless of payment method, so it's never hidden just because a slip
+  // hasn't been approved yet, or because this happens to be a cash order.
+  if(o.payoutStatus==='pending'){
+    actionArea += `<div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">You owe ${o.deliveryPersonName||'the delivery partner'} ${money(payoutAmt)} for this delivery. See Payouts tab to mark it paid.</p></div>`;
+  } else if(o.payoutStatus==='settled'){
+    actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Rider paid ✓</div>`;
+  }
+  const deliveryLine = `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
   return `
     <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
     <p class="muted" style="margin-bottom:12px;">${o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
     <div class="glass card tight">${itemsList}<div class="divider"></div>
-      <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-(isFreeDelivery?0:payoutAmt))}</span></div>
+      <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-(buyerPaidFee?payoutAmt:0))}</span></div>
       ${deliveryLine}
       <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>
     </div>
-    ${deliveryDetailsBox}
     <div style="margin-top:14px;">${actionArea}</div>
   `;
 }
@@ -1970,7 +1915,10 @@ function approveOrderPayment(id){
 // up with the delivery partner" job, so both sections live on this one screen.
 function renderBizPayouts(biz){
   const cashOrders = DB.orders.filter(o=>o.businessId===biz.id && o.paymentMethod==='cash_to_delivery' && o.deliveryPersonId);
-  const transferPayouts = DB.orders.filter(o=>o.businessId===biz.id && o.paymentMethod==='transfer' && o.payoutStatus);
+  // payout_status is only ever set on free-delivery orders (buyer wasn't charged
+  // the zone fee), for either payment method - a zone-delivery/buyer-pays order
+  // never needs this, since the buyer's own payment already covers the fee.
+  const feePayouts = DB.orders.filter(o=>o.businessId===biz.id && o.payoutStatus);
   document.getElementById('app').innerHTML = wrapShell('business','bizPayouts', `
     ${topbar('Delivery payouts', 'Settle up with delivery partners')}
     <div style="padding:4px 16px 0;">
@@ -1980,13 +1928,13 @@ function renderBizPayouts(biz){
       </div>
       <div class="section" style="margin-top:22px;">
         <div class="section-head"><h2>You owe the rider</h2></div>
-        ${transferPayouts.length? transferPayouts.map(o=>transferPayoutCard(o)).join('') : `<div class="empty"><span class="ic">💸</span>Nothing owed to a rider right now</div>`}
+        ${feePayouts.length? feePayouts.map(o=>feePayoutCard(o)).join('') : `<div class="empty"><span class="ic">💸</span>Nothing owed to a rider right now</div>`}
       </div>
     </div>
   `);
 }
 function cashPayoutCard(o){
-  const cutAmt = Math.round(payoutAmountFor(o));
+  const cutAmt = Math.round(cashCutAmount(o));
   const owed = o.total - cutAmt;
   let pill = o.paymentStatus==='settled' ? `<span class="status-pill ok">Settled</span>` : o.paymentStatus==='cash_collected' ? `<span class="status-pill mid">Rider owes you ${money(owed)}</span>` : `<span class="status-pill wait">Not delivered yet</span>`;
   return `
@@ -1994,16 +1942,17 @@ function cashPayoutCard(o){
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${pill}</div>
     <p class="muted" style="font-size:.85em; margin-top:4px;">${o.deliveryPersonName} collected ${money(o.total)} cash</p>
     <div class="row between" style="margin-top:8px;"><span class="muted">Rider's cut</span><span>${money(cutAmt)}</span></div>
+    ${cutAmt===0 ? `<p class="muted" style="font-size:.78em; margin-top:6px;">No delivery fee was collected — you pay the rider's payout separately below.</p>` : ''}
     ${o.paymentStatus==='cash_collected' ? `<button class="btn btn-good btn-sm" style="margin-top:10px; width:100%;" onclick="settlePayout('${o.id}')">Confirm received from rider</button>` : ''}
   </div>`;
 }
-function transferPayoutCard(o){
+function feePayoutCard(o){
   const amt = Math.round(payoutAmountFor(o));
   const pill = o.payoutStatus==='settled' ? `<span class="status-pill ok">Settled</span>` : `<span class="status-pill mid">You owe ${money(amt)}</span>`;
   return `
   <div class="glass card">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${pill}</div>
-    <p class="muted" style="font-size:.85em; margin-top:4px;">${o.deliveryPersonName} delivered via ${o.deliveryType==='free'?'free delivery':'zone delivery'}</p>
+    <p class="muted" style="font-size:.85em; margin-top:4px;">${o.deliveryPersonName} · free delivery, ${o.paymentMethod==='transfer'?'bank transfer':'cash'} order</p>
     <div class="row between" style="margin-top:8px;"><span class="muted">Amount owed</span><span>${money(amt)}</span></div>
     ${o.payoutStatus==='pending' ? `<button class="btn btn-good btn-sm" style="margin-top:10px; width:100%;" onclick="markPayoutPaid('${o.id}')">Mark as paid to rider</button>` : ''}
   </div>`;
@@ -2064,13 +2013,20 @@ function renderDelivery(){
   if(state.screen==='delHistory') return renderDelHistory(d);
 }
 
-// Single source of truth for what a rider is owed on an order (falls back to
-// deliveryFee for pre-feature rows that predate delivery_partner_payout).
+// The delivery partner is always paid the zone's flat fee (deliveryPartnerPayout),
+// regardless of the item's free-delivery checkbox - falls back to deliveryFee for
+// pre-feature rows that predate delivery_partner_payout.
 function payoutAmountFor(o){ return o.deliveryPartnerPayout!=null ? o.deliveryPartnerPayout : o.deliveryFee; }
+// What a cash-collecting rider deducts from the cash in hand before remitting the
+// rest to the business. On a normal (buyer-pays) order the buyer's payment already
+// includes the fee, so the rider keeps it as their cut. On a free-delivery order
+// the buyer was never charged a fee, so there's nothing to deduct - the rider
+// remits everything they collected, and is paid separately via payout_status.
+function cashCutAmount(o){ return o.deliveryType==='free' ? 0 : payoutAmountFor(o); }
 function renderDelHome(d){
   const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status!=='delivered');
   document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
-    ${topbar(d.name, `MVR 15–25 per zone delivery, or a flat payout on free-delivery orders`)}
+    ${topbar(d.name, `MVR 15–25 per delivery, by zone`)}
     <div style="padding:4px 16px 0;">
       <div class="section-head"><h2>Active jobs</h2></div>
       ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
@@ -2079,7 +2035,7 @@ function renderDelHome(d){
         ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion').map(o=>`
           <div class="glass card">
             <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
-            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${o.deliveryType==='free' ? (o.deliveryAddress||'Free delivery') : (ZONES[o.zone]?ZONES[o.zone].label:'—')}</p>
+            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
             <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="claimJob('${o.id}')">Accept job</button>
           </div>`).join('') || `<div class="empty"><span class="ic">📭</span>No open jobs right now</div>`}
       </div>
@@ -2095,18 +2051,12 @@ function delJobCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
   const payoutAmt = payoutAmountFor(o);
-  const deliveryLine = o.deliveryType==='free'
-    ? `<div style="margin-bottom:8px;">
-        <p class="muted" style="font-size:.82em;">Deliver to: <strong style="color:var(--ink);">${o.deliveryAddress||'—'}</strong></p>
-        <p class="muted" style="font-size:.82em; margin-top:2px;">${o.boatType==='ferry'?'Ferry':'Speedboat'} — ${o.boatName||'—'}${o.boatDetail?' · '+o.boatDetail:''}</p>
-        <div class="row between" style="margin-top:6px;"><span class="muted" style="font-size:.82em;">Your payout</span><strong>${money(payoutAmt)}</strong></div>
-      </div>`
-    : `<div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} delivery fee</span><strong>${money(payoutAmt)}</strong></div>`;
+  const cashCut = cashCutAmount(o);
   return `
   <div class="glass card">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">${money(o.total)}</span></div>
     <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.customerName} · ${pm}</p>
-    ${deliveryLine}
+    <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
     ${o.paymentMethod==='transfer' && o.paymentStatus!=='paid' ? `
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${biz?biz.accountName:''} · ${biz?biz.accountNumber:''}</div></div>
       <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the business marks payment received.</p>
@@ -2115,45 +2065,52 @@ function delJobCard(o){
       <button class="btn btn-good btn-sm" style="width:100%;" onclick="openSheet('markCash', '${o.id}')">Mark cash received from customer</button>
     ` : ''}
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
-      <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">You owe the store ${money(o.total - Math.round(payoutAmt))} after your ${money(Math.round(payoutAmt))} cut.</p></div>
+      <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${cashCut>0 ? `You owe the store ${money(o.total-Math.round(cashCut))} after your ${money(Math.round(cashCut))} cut.` : `No delivery fee was collected, so you owe the store the full ${money(o.total)} — the store pays your ${money(Math.round(payoutAmt))} payout separately.`}</p></div>
     ` : ''}
     <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="markDelivered('${o.id}')">Mark delivered</button>
   </div>`;
 }
 function sheetMarkCash(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
-  const payoutAmt = Math.round(payoutAmountFor(o));
+  const cashCut = Math.round(cashCutAmount(o));
+  const owed = o.total - cashCut;
+  const cutNote = cashCut>0
+    ? `Your cut (${money(cashCut)}) stays with you — you'll owe the store <strong>${money(owed)}</strong>.`
+    : `No delivery fee was collected from the customer, so you'll owe the store the full <strong>${money(owed)}</strong> — the store pays your ${money(Math.round(payoutAmountFor(o)))} delivery payout separately.`;
   return `
   <h2>Confirm cash received</h2>
   <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · Total ${money(o.total)}</p>
   <div class="card tight" style="margin:14px 0; background:rgba(61,220,151,.1);">
-    <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. Your cut (${money(payoutAmt)}) stays with you — you'll owe the store <strong>${money(o.total-payoutAmt)}</strong>.</p>
+    <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. ${cutNote}</p>
   </div>
   <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
 }
 function confirmCashReceived(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='cash_collected'; saveDB('orders'); closeSheet(); toast('Marked as cash received'); render(); }
-// Bank-transfer orders create a NEW obligation once delivered - the store already
-// holds the buyer's full payment, and now owes the rider their cut. Cash orders
-// don't touch payout_status at all; that direction (rider owes store) is already
-// tracked via payment_status (see confirmCashReceived/settlePayout).
+// A free-delivery order (buyer wasn't charged the zone fee) always creates a
+// payout obligation once delivered, regardless of payment method - a
+// buyer-pays order never needs this, since the buyer's own payment already
+// covers the fee either way (kept as the rider's cash cut, or already in the
+// store's account from the transfer).
 function markDelivered(id){
   const o=DB.orders.find(x=>x.id===id);
   o.status='delivered';
-  if(o.paymentMethod==='transfer') o.payoutStatus='pending';
+  if(o.deliveryType==='free') o.payoutStatus='pending';
   saveDB('orders'); toast('Marked delivered'); render();
 }
-// Cash orders already show clear rider/store settlement state via paymentStatusPill
-// (cash_collected -> "Cash with rider", settled -> "Paid ✓"). Transfer orders need
-// their own indicator here since paymentStatusPill for those just says "Paid ✓" once
-// the STORE has the buyer's money - which says nothing about whether the rider has
-// since been paid their own cut out of it.
+// Cash orders show the cash-collected/settled state via paymentStatusPill AND,
+// when this was also a free-delivery order, the separate store-owes-payout state -
+// a free-delivery cash order has two independent settlements (rider remits the
+// cash they collected; store pays the rider's fee separately) so both matter.
+// Buyer-pays transfer orders show nothing extra here (no gap to track); a
+// free-delivery transfer order shows only the payout state, since there's no
+// cash leg for the rider at all.
 function riderPayoutPill(o){
-  if(o.paymentMethod==='transfer'){
-    if(o.payoutStatus==='settled') return `<span class="status-pill ok">Paid by store ✓</span>`;
-    if(o.payoutStatus==='pending') return `<span class="status-pill mid">Store owes you</span>`;
-    return '';
-  }
-  return paymentStatusPill(o);
+  const parts = [];
+  if(o.paymentMethod==='cash_to_delivery') parts.push(paymentStatusPill(o));
+  if(o.payoutStatus==='settled') parts.push(`<span class="status-pill ok">Paid by store ✓</span>`);
+  else if(o.payoutStatus==='pending') parts.push(`<span class="status-pill mid">Store owes you</span>`);
+  if(!parts.length) parts.push(paymentStatusPill(o));
+  return parts.join(' ');
 }
 function renderDelHistory(d){
   const done = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status==='delivered');
@@ -2211,7 +2168,7 @@ function renderCustStore(){
     return `
     <div class="glass item-card">
       <div class="item-thumb">${i.imageUrl?`<img src="${i.imageUrl}" alt="">`:'🛍️'}</div>
-      <div class="item-info"><h3>${i.name}</h3><p class="price">${money(i.price)}</p>${i.deliveryType==='free'?`<p class="muted" style="font-size:.75em;">🚚 Free delivery</p>`:''}</div>
+      <div class="item-info"><h3>${i.name}</h3><p class="price">${money(i.price)}</p>${i.freeDelivery!==false?`<p class="muted" style="font-size:.75em;">🚚 Free delivery</p>`:''}</div>
       ${qty===0 ? `<button class="btn btn-primary btn-sm" onclick="addToCart('${i.id}')">Add</button>` : `
         <div class="qty-ctrl">
           <button onclick="changeQty('${i.id}',-1)">−</button><strong>${qty}</strong><button onclick="changeQty('${i.id}',1)">+</button>
@@ -2249,7 +2206,7 @@ function auctionCard(item, auction){
       <p class="muted" style="font-size:.8em; margin-top:2px;">${highLabel}</p>
       <p class="price" style="font-size:1.1em;">${money(highBid)}</p>
       <p class="muted" style="font-size:.78em; margin-top:2px;">+${money(auction.bidIncrement)} minimum increment</p>
-      ${item.deliveryType==='free'?`<p class="muted" style="font-size:.75em; margin-top:2px;">🚚 Free delivery</p>`:''}
+      ${item.freeDelivery!==false?`<p class="muted" style="font-size:.75em; margin-top:2px;">🚚 Free delivery</p>`:''}
     </div>
     <div style="width:100%; margin-top:10px;">
       <div class="row between" style="margin-bottom:8px;">
@@ -2313,47 +2270,37 @@ function renderCustCart(){
     </div>
   `);
 }
-// A cart is already restricted to one business - if every line in it is a
-// free-delivery listing, checkout skips the zone fee entirely; if even one
-// line is zone-delivery, the whole order goes through the zone flow instead
-// (one delivery, one flat fee, as today) rather than trying to mix the two.
-function cartIsFreeDelivery(lines){
-  return lines.length>0 && lines.every(l=>l.it.deliveryType==='free');
+// A cart is already restricted to one business. The buyer always picks a zone
+// below regardless of this - it only decides whether that zone's flat fee is
+// ALSO added to their total. If even one line requires the buyer to pay for
+// delivery, the fee is charged for the whole order (one delivery, one flat
+// fee); only a cart where every line has free_delivery checked skips it.
+function cartBuyerPaysFee(lines){
+  return lines.some(l=>l.it.freeDelivery===false);
 }
 function sheetCheckout(){
   const entries = Object.entries(state.cart);
   const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   const itemsTotal = lines.reduce((s,l)=>s+l.it.price*l.qty,0);
   const biz = DB.businesses.find(b=>b.id===state.browseBizId) || DB.businesses.find(b=>b.id===lines[0]?.it.businessId);
-  const isFree = cartIsFreeDelivery(lines);
-  let deliveryFieldsHtml, totalsHtml;
-  if(isFree){
-    deliveryFieldsHtml = freeDeliveryFieldsHTML('c_');
-    totalsHtml = `
-    <div class="glass card tight" style="margin-bottom:14px;">
-      <div class="row between"><span class="muted">Items</span><span>${money(itemsTotal)}</span></div>
-      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>Free</span></div>
-      <div class="divider"></div>
-      <div class="row between"><strong>Total</strong><strong class="price">${money(itemsTotal)}</strong></div>
-    </div>`;
-  } else {
-    if(!_selectedZone) _selectedZone = 'male';
-    const fee = zoneFee(_selectedZone);
-    deliveryFieldsHtml = `
+  const buyerPaysFee = cartBuyerPaysFee(lines);
+  if(!_selectedZone) _selectedZone = 'male';
+  const fee = zoneFee(_selectedZone);
+  const shownFee = buyerPaysFee ? fee : 0;
+  const deliveryFieldsHtml = `
     <div class="field">
       <label>Delivery zone</label>
       <select id="c_zone" onchange="_selectedZone=this.value; refreshCheckoutTotals()">
         ${Object.entries(ZONES).map(([k,z])=>`<option value="${k}" ${k===_selectedZone?'selected':''}>${z.label} — MVR ${z.fee}</option>`).join('')}
       </select>
     </div>`;
-    totalsHtml = `
+  const totalsHtml = `
     <div class="glass card tight" style="margin-bottom:14px;">
       <div class="row between"><span class="muted">Items</span><span id="ck_items">${money(itemsTotal)}</span></div>
-      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="ck_fee">${money(fee)}</span></div>
+      <div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span id="ck_fee">${buyerPaysFee?money(shownFee):'Free'}</span></div>
       <div class="divider"></div>
-      <div class="row between"><strong>Total</strong><strong class="price" id="ck_total">${money(itemsTotal+fee)}</strong></div>
+      <div class="row between"><strong>Total</strong><strong class="price" id="ck_total">${money(itemsTotal+shownFee)}</strong></div>
     </div>`;
-  }
   return `
   <h2>Checkout</h2>
   <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${state.customerEmail}</strong>` : 'Demo mode — connect Supabase to require sign-in'}</p></div>
@@ -2378,11 +2325,13 @@ function sheetCheckout(){
 }
 function refreshCheckoutTotals(){
   const entries = Object.entries(state.cart);
-  const itemsTotal = entries.reduce((s,[id,qty])=>{ const it=DB.items.find(i=>i.id===id); return s+(it?it.price*qty:0); },0);
-  const fee = zoneFee(_selectedZone);
+  const lines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const itemsTotal = lines.reduce((s,l)=>s+l.it.price*l.qty,0);
+  const buyerPaysFee = cartBuyerPaysFee(lines);
+  const shownFee = buyerPaysFee ? zoneFee(_selectedZone) : 0;
   document.getElementById('ck_items').textContent = money(itemsTotal);
-  document.getElementById('ck_fee').textContent = money(fee);
-  document.getElementById('ck_total').textContent = money(itemsTotal+fee);
+  document.getElementById('ck_fee').textContent = buyerPaysFee ? money(shownFee) : 'Free';
+  document.getElementById('ck_total').textContent = money(itemsTotal+shownFee);
 }
 function goCheckout(){
   if(sb && !state.authed){ openSheet('signIn'); return; }
@@ -2518,30 +2467,7 @@ async function signOutCustomer(){
 }
 let _selectedPay = 'transfer';
 let _selectedZone = 'male';
-let _selectedBoatType = 'speedboat';
 function selectPay(m){ _selectedPay=m; document.getElementById('pay_transfer').style.outline = m==='transfer'?'2px solid var(--coral)':'none'; document.getElementById('pay_cash').style.outline = m==='cash_to_delivery'?'2px solid var(--coral)':'none'; }
-function selectBoatType(idPrefix, t){
-  _selectedBoatType = t;
-  document.getElementById(idPrefix+'boat_speedboat').classList.toggle('active', t==='speedboat');
-  document.getElementById(idPrefix+'boat_ferry').classList.toggle('active', t==='ferry');
-}
-// Shared between the normal checkout sheet and the auction-win completion sheet -
-// both need the same "where and how does the rider find you" fields when the
-// item(s) being ordered are free-delivery rather than zone-delivery. idPrefix keeps
-// each sheet's input ids distinct (c_ / cao_) so both can exist without colliding.
-function freeDeliveryFieldsHTML(idPrefix){
-  return `
-  <div class="field"><label>Delivery address</label><textarea id="${idPrefix}address" rows="2" placeholder="Home, jetty, harbour — describe exactly where to bring it"></textarea></div>
-  <div class="field">
-    <label>How will the rider reach you?</label>
-    <div class="row" style="gap:8px;">
-      <button type="button" class="tab ${_selectedBoatType==='speedboat'?'active':''}" id="${idPrefix}boat_speedboat" onclick="selectBoatType('${idPrefix}','speedboat')" style="flex:1; text-align:center;">Speedboat</button>
-      <button type="button" class="tab ${_selectedBoatType==='ferry'?'active':''}" id="${idPrefix}boat_ferry" onclick="selectBoatType('${idPrefix}','ferry')" style="flex:1; text-align:center;">Ferry</button>
-    </div>
-  </div>
-  <div class="field"><label>Boat name</label><input id="${idPrefix}boat_name" placeholder="e.g. Sea Pearl 2"></div>
-  <div class="field"><label>Other details for the rider (optional)</label><input id="${idPrefix}boat_detail" placeholder="e.g. blue hull, usual jetty, contact number"></div>`;
-}
 function placeOrder(bizId){
   const entries = Object.entries(state.cart);
   const cartLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
@@ -2550,43 +2476,23 @@ function placeOrder(bizId){
   const biz = DB.businesses.find(b=>b.id===bizId);
   const name = val('c_name')||state.customerName; const phone = val('c_phone');
   if(!lines.length){ toast('Your cart is empty','bad'); return; }
-  const isFree = cartIsFreeDelivery(cartLines);
   state.customerName = name;
-  let order;
-  if(isFree){
-    const address = val('c_address'), boatName = val('c_boat_name');
-    if(!address){ toast('Enter a delivery address','bad'); return; }
-    if(!boatName){ toast('Enter the boat name','bad'); return; }
-    // Flat per-listing payout, summed once per distinct item regardless of quantity
-    // bought - the rider makes one trip for the whole order, not one per unit.
-    const payoutAmt = cartLines.reduce((s,l)=>s+Number(l.it.deliveryPayout||0),0);
-    order = {
-      id: uid('ord'), businessId: biz.id, businessName: biz.name,
-      customerId: state.customerId, customerEmail: state.customerEmail,
-      customerName: name, customerPhone: phone, items: lines,
-      itemsTotal, deliveryFee: 0, total: itemsTotal, zone: null,
-      deliveryType:'free', deliveryAddress: address, boatType: _selectedBoatType, boatName: boatName, boatDetail: val('c_boat_detail'),
-      deliveryPartnerPayout: payoutAmt, payoutStatus: null,
-      deliveryPersonId:null, deliveryPersonName:null,
-      paymentMethod: _selectedPay,
-      paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
-      status:'placed', createdAt: Date.now(), slipDataUrl:null
-    };
-  } else {
-    const fee = zoneFee(_selectedZone);
-    order = {
-      id: uid('ord'), businessId: biz.id, businessName: biz.name,
-      customerId: state.customerId, customerEmail: state.customerEmail,
-      customerName: name, customerPhone: phone, items: lines,
-      itemsTotal, deliveryFee: fee, total: itemsTotal+fee, zone:_selectedZone,
-      deliveryType:'zone', deliveryAddress:null, boatType:null, boatName:null, boatDetail:null,
-      deliveryPartnerPayout: fee, payoutStatus: null,
-      deliveryPersonId:null, deliveryPersonName:null,
-      paymentMethod: _selectedPay,
-      paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
-      status:'placed', createdAt: Date.now(), slipDataUrl:null
-    };
-  }
+  const buyerPaysFee = cartBuyerPaysFee(cartLines);
+  const fee = zoneFee(_selectedZone);
+  const order = {
+    id: uid('ord'), businessId: biz.id, businessName: biz.name,
+    customerId: state.customerId, customerEmail: state.customerEmail,
+    customerName: name, customerPhone: phone, items: lines,
+    itemsTotal, deliveryFee: buyerPaysFee ? fee : 0, total: itemsTotal + (buyerPaysFee?fee:0), zone:_selectedZone,
+    deliveryType: buyerPaysFee ? 'zone' : 'free',
+    // The delivery partner is always paid the zone's flat fee, regardless of
+    // whether the buyer was charged for it.
+    deliveryPartnerPayout: fee, payoutStatus: null,
+    deliveryPersonId:null, deliveryPersonName:null,
+    paymentMethod: _selectedPay,
+    paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
+    status:'placed', createdAt: Date.now(), slipDataUrl:null
+  };
   DB.orders.push(order); saveDB('orders');
   state.cart = {};
   closeSheet();
@@ -2636,7 +2542,7 @@ function custOrderCard(o){
       ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
     ` : ''}
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready for your delivery partner.</p>` : ''}
-    ${o.deliveryType==='free' ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery to ${o.deliveryAddress||'—'} · ${o.boatType==='ferry'?'Ferry':'Speedboat'} ${o.boatName||''}</p>` : ''}
+    ${o.deliveryType==='free' ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
   </div>`;
 }
 function sheetUploadSlip(){

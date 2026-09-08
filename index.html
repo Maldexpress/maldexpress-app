@@ -229,8 +229,8 @@
   .field .filebtn{display:flex; align-items:center; justify-content:center; gap:8px; padding:22px; border:1.5px dashed var(--glass-brd); border-radius:16px; color:var(--ink-dim); font-weight:600;}
 
   .toast-wrap{position:fixed; bottom:90px; left:0; right:0; z-index:25; display:flex; justify-content:center; pointer-events:none;}
-  .toast{padding:12px 20px; border-radius:16px; font-weight:700; font-size:.9em; display:flex; align-items:center; gap:8px; transform:translateY(80px); transition:transform .3s ease; max-width:90%;}
-  .toast.show{transform:translateY(0);}
+  .toast{padding:12px 20px; border-radius:16px; font-weight:700; font-size:.9em; display:flex; align-items:center; gap:8px; opacity:0; transform:translateY(80px); transition:transform .3s ease, opacity .3s ease; max-width:90%;}
+  .toast.show{opacity:1; transform:translateY(0);}
   .toast.good{background:rgba(61,220,151,.25); border:1px solid rgba(61,220,151,.5); color:#c6ffe5;}
   .toast.bad{background:rgba(255,107,107,.25); border:1px solid rgba(255,107,107,.5); color:#ffd6d6;}
 

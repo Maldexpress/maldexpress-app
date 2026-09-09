@@ -481,14 +481,15 @@ create policy "customer insert own order" on orders for insert
   with check (auth.uid() = customer_id);
 -- Orders are only readable by the customer who placed them, the business
 -- that owns them, or a delivery partner (their own assigned jobs, plus
--- unassigned orders so riders can see jobs to pick up). Updates are
--- restricted the same way (customer on their own order, business owner, or
--- assigned/claiming rider) - no column-level restriction yet, so all three
--- roles can currently write any column on a row they own (submitSlip(),
--- submitCompleteAuctionOrder(), confirmCashReceived(), markDelivered(),
--- approveOrderPayment(), settlePayout(), markPayoutPaid() all rely on this).
--- Revisit alongside a payout-lockdown SECURITY DEFINER pass if total/
--- payment_status/payout_status/delivery_partner_payout need tightening.
+-- unassigned orders so riders can see jobs to pick up). The row-level "update
+-- own orders" policies below are still needed for SELECT-adjacent reasons and
+-- as a defense-in-depth backstop, but no client-side code relies on them for
+-- payment/payout columns anymore - see the SECURITY DEFINER functions and the
+-- column-level lockdown further down, which are what actually gate
+-- submitSlip(), submitCompleteAuctionOrder(), confirmCashReceived(),
+-- markDelivered(), approveOrderPayment(), settlePayout(), and
+-- markPayoutPaid() now. claimJob() is the sole remaining direct client write
+-- on this table, touching only delivery_person_id/delivery_person_name.
 create policy "customer read own orders" on orders for select
   using (auth.uid() = customer_id);
 create policy "business read own orders" on orders for select
@@ -511,6 +512,148 @@ create policy "rider update assigned or open orders" on orders for update
   with check (
     exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   );
+
+-- Payout lockdown: every write to total/payment_status/payout_status/
+-- delivery_partner_payout goes through exactly one of these seven functions
+-- instead of a direct client update, so each write's precondition (ownership,
+-- order status) is enforced atomically in the same statement that makes the
+-- change - a raw REST update can no longer skip it.
+create or replace function submit_transfer_slip(p_order_id text, p_slip_url text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set payment_status = 'slip_uploaded', slip_url = p_slip_url
+  where id = p_order_id and customer_id = auth.uid()
+  returning *;
+$$;
+
+create or replace function approve_order_payment(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set payment_status = 'paid'
+  where id = p_order_id
+    and exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid())
+  returning *;
+$$;
+
+-- Only the auction's own winning bidder, on an order still awaiting
+-- completion, can turn their win into a real order - the zone fee, total,
+-- and delivery_partner_payout are all computed here rather than trusted from
+-- the client.
+create or replace function complete_auction_order(p_order_id text, p_delivery_zone text, p_payment_method text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set
+    zone = p_delivery_zone,
+    delivery_fee = case when delivery_type <> 'free' then
+      case p_delivery_zone when 'hulhumale1' then 20 when 'hulhumale2' then 25 else 15 end
+    else 0 end,
+    total = items_total + (case when delivery_type <> 'free' then
+      case p_delivery_zone when 'hulhumale1' then 20 when 'hulhumale2' then 25 else 15 end
+    else 0 end),
+    delivery_partner_payout = case p_delivery_zone when 'hulhumale1' then 20 when 'hulhumale2' then 25 else 15 end,
+    payment_method = p_payment_method,
+    payment_status = case when p_payment_method = 'transfer' then 'pending_transfer' else 'pending_cash' end
+  where id = p_order_id
+    and customer_id = auth.uid()
+    and payment_status = 'awaiting_completion'
+    and exists (
+      select 1 from auction_listings al
+      where al.order_id = orders.id and al.current_highest_bidder = auth.uid()
+    )
+  returning *;
+$$;
+
+create or replace function settle_payout(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set payment_status = 'settled'
+  where id = p_order_id
+    and exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid())
+  returning *;
+$$;
+
+create or replace function mark_payout_paid(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set payout_status = 'settled'
+  where id = p_order_id
+    and exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid())
+  returning *;
+$$;
+
+create or replace function confirm_cash_received(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set payment_status = 'cash_collected'
+  where id = p_order_id
+    and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+  returning *;
+$$;
+
+-- "status is distinct from 'delivered'" is the idempotency guard - a repeat
+-- call (e.g. a retried request) can't re-open a payout that a first call
+-- already settled.
+create or replace function mark_delivered(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set
+    status = 'delivered',
+    payout_status = case when delivery_type = 'free' then 'pending' else payout_status end
+  where id = p_order_id
+    and status is distinct from 'delivered'
+    and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+  returning *;
+$$;
+
+grant execute on function submit_transfer_slip(text, text) to authenticated;
+grant execute on function approve_order_payment(text) to authenticated;
+grant execute on function complete_auction_order(text, text, text) to authenticated;
+grant execute on function settle_payout(text) to authenticated;
+grant execute on function mark_payout_paid(text) to authenticated;
+grant execute on function confirm_cash_received(text) to authenticated;
+grant execute on function mark_delivered(text) to authenticated;
+
+-- The seven functions above are now the only way total/payment_status/
+-- payout_status/delivery_partner_payout ever change - lock them down so no
+-- authenticated client can set them directly via a raw REST update/upsert,
+-- which would otherwise bypass every precondition those functions enforce.
+-- orders has a full table-level UPDATE grant by default (like every Supabase
+-- table), which overrides a column-specific revoke on its own (see the
+-- identical gotcha and fix for auction_listings above) - so the table-wide
+-- grant has to be revoked first, then re-granted only for the one column
+-- pair a client still legitimately writes directly: claimJob() setting
+-- delivery_person_id/delivery_person_name to claim an open job (gated by the
+-- "rider update assigned or open orders" policy above, not by column grants).
+revoke update on orders from anon, authenticated;
+grant update (delivery_person_id, delivery_person_name) on orders to anon, authenticated;
 
 -- Mobile number + password sign-in (set up after a user's first magic-link
 -- login). Password auth itself is Supabase's built-in email+password —
@@ -2926,7 +3069,7 @@ async function signOutCustomer(){
 let _selectedPay = 'transfer';
 let _selectedZone = 'male';
 function selectPay(m){ _selectedPay=m; document.getElementById('pay_transfer').style.outline = m==='transfer'?'2px solid var(--coral)':'none'; document.getElementById('pay_cash').style.outline = m==='cash_to_delivery'?'2px solid var(--coral)':'none'; }
-function placeOrder(bizId){
+async function placeOrder(bizId){
   const entries = Object.entries(state.cart);
   const cartLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   const lines = cartLines.map(l=>({itemId:l.it.id, name:l.it.name, price:l.it.price, qty:l.qty}));
@@ -2951,7 +3094,19 @@ function placeOrder(bizId){
     paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null
   };
-  DB.orders.push(order); saveDB('orders', [order]);
+  // A genuine insert, not saveDB('orders', [order])'s upsert - PostgREST's upsert
+  // always compiles to INSERT ... ON CONFLICT DO UPDATE, and Postgres checks UPDATE
+  // privilege on every column in that DO UPDATE SET clause up front, whether or not a
+  // conflict ever actually happens. Since this id is always freshly generated (never
+  // an existing row), that DO UPDATE branch never fires - but the now-locked-down
+  // total/payment_status/payout_status/delivery_partner_payout columns would still
+  // fail the privilege check and reject the whole insert. A plain insert only needs
+  // INSERT privilege, which every column keeps.
+  if(sb){
+    const { error } = await sb.from('orders').insert(toDbRow('orders', order));
+    if(error){ toast('Could not place order: '+error.message, 'bad'); return; }
+  }
+  DB.orders.push(order);
   state.cart = {};
   closeSheet();
   go('custOrders');

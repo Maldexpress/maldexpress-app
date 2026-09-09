@@ -2778,6 +2778,11 @@ function goCheckout(){
 let _pendingVerifyEmail = null;
 let _pendingSignupUserId = null;
 let _pendingSignupPhone = null;
+// True only while submitSignUp() is driving its own post-auth handling for the
+// Confirm-email-off case (see the TODO in submitSignUp) - the SIGNED_IN event that an
+// immediate session triggers otherwise races handlePostAuth()'s own auto checks
+// against submitSignUp()'s in-flight phone-auto-submit/pending-intent handling.
+let _signupInFlight = false;
 let _signupIntent = null;
 let _signupRole = 'buyer'; // 'buyer' | 'seller' | 'delivery' — which "I am a..." tile is selected
 let _signupShowPassword = false;
@@ -2904,10 +2909,49 @@ async function submitSignUp(){
   if(_signupRole==='seller') state.pendingIntent = 'business';
   else if(_signupRole==='delivery') state.pendingIntent = 'delivery';
   _pendingSignupPhone = phone || null;
-  const { error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
-  if(error){ toast(error.message,'bad'); return; }
+  _signupInFlight = true;
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
+  if(error){ _signupInFlight = false; toast(error.message,'bad'); return; }
   _pendingVerifyEmail = email;
+  // TODO(auth): "Confirm email" is temporarily OFF in Supabase Auth - we don't have a
+  // domain verified with Resend yet, so a new signup can't receive the verification
+  // code email at all right now. While it's off, signUp() returns an active session
+  // immediately (data.session is populated) instead of requiring the OTP step, so this
+  // branch skips straight past sheetVerifyEmail() to the same post-signup handling
+  // submitVerifyCode() normally does after a successful code. Once a domain is
+  // verified with Resend, re-enable "Confirm email" in the Supabase Auth dashboard and
+  // DELETE this `if(data.session)` block (and this comment) - data.session will go
+  // back to being null here, and the openSheet('verifyEmail') call below will take
+  // over on its own again, no other code changes needed.
+  if(data.session){
+    toast("You're signed in!");
+    await finishSignupPostAuth(data.session.user.id);
+    return;
+  }
+  _signupInFlight = false;
   openSheet('verifyEmail');
+}
+// Shared by submitSignUp()'s Confirm-email-off branch above and submitVerifyCode()
+// below (the normal OTP path): silently submits a phone number captured on the
+// sign-up form if valid, then resumes whatever the user was signing up to do
+// (business/delivery setup) - falling back to the mobile-number sheet only if no
+// phone was given up front, or it turns out to already be taken.
+async function finishSignupPostAuth(userId){
+  _pendingSignupUserId = userId;
+  if(_pendingSignupPhone && /^[79]\d{6}$/.test(_pendingSignupPhone)){
+    const email = _pendingVerifyEmail || state.customerEmail;
+    const { error: profileErr } = await sb.from('user_profiles').insert({ user_id: userId, phone: _pendingSignupPhone, email });
+    _pendingSignupPhone = null;
+    if(!profileErr){
+      _pendingVerifyEmail = null; _pendingSignupUserId = null;
+      state.sheet = null; state.sheetData = null;
+      _signupInFlight = false;
+      resolvePendingIntent();
+      return;
+    }
+  }
+  _signupInFlight = false;
+  openSheet('setupMobile');
 }
 // Draft policy copy grounded in how this app actually works (zones/fees, bank-transfer-
 // slip-vs-cash payment, free/Pro tiers, auctions). Not legal advice - flagged as a draft
@@ -3001,24 +3045,9 @@ async function submitVerifyCode(){
   if(!code){ toast('Enter the verification code','bad'); return; }
   const { data, error } = await sb.auth.verifyOtp({ email: _pendingVerifyEmail, token: code, type: 'signup' });
   if(error){ toast(error.message,'bad'); return; }
-  _pendingSignupUserId = data.user ? data.user.id : (data.session && data.session.user ? data.session.user.id : null);
+  const userId = data.user ? data.user.id : (data.session && data.session.user ? data.session.user.id : null);
   toast("Account verified — you're signed in!");
-  // If a valid mobile number was already captured on the sign-up form, submit it
-  // silently here and skip straight past setupMobile - it only needs to be shown
-  // as a fallback when no phone was given up front, or it turns out to be taken.
-  if(_pendingSignupPhone && /^[79]\d{6}$/.test(_pendingSignupPhone)){
-    const userId = _pendingSignupUserId || state.customerId;
-    const email = _pendingVerifyEmail || state.customerEmail;
-    const { error: profileErr } = await sb.from('user_profiles').insert({ user_id: userId, phone: _pendingSignupPhone, email });
-    _pendingSignupPhone = null;
-    if(!profileErr){
-      _pendingVerifyEmail = null; _pendingSignupUserId = null;
-      state.sheet = null; state.sheetData = null;
-      resolvePendingIntent();
-      return;
-    }
-  }
-  openSheet('setupMobile');
+  await finishSignupPostAuth(userId);
 }
 async function resendVerifyCode(){
   const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
@@ -3193,6 +3222,12 @@ async function submitSlip(id){
 // skipMobileSetup() call resolvePendingIntent() themselves once that happens).
 async function handlePostAuth(){
   if(state.adminMode){ await checkAdminStatus(); return; }
+  // submitSignUp() sets this while a Confirm-email-off signup skips straight from
+  // signUp() to an active session (see the TODO there) - that session's SIGNED_IN
+  // event can fire before submitSignUp() finishes its own post-signup handling
+  // (phone auto-submit, pending-intent routing), so bail out and let it finish
+  // instead of racing it with a duplicate/premature check here.
+  if(_signupInFlight) return;
   await checkMobileProfile();
   // Excludes 'verifyEmail' too, not just 'setupMobile' - onAuthStateChange can fire
   // before submitVerifyCode()'s own openSheet('setupMobile') call runs (event ordering

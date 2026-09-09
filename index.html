@@ -370,6 +370,13 @@
   .policy-box input[type=checkbox]{margin-top:2px; width:18px; height:18px; accent-color:var(--coral); flex-shrink:0;}
   .policy-box .txt{font-size:.8em; color:var(--ink-dim); line-height:1.55;}
   .policy-box .txt button.link-inline{color:var(--lagoon); text-decoration:underline; font-weight:700; background:none; border:none; padding:0; font-size:1em; cursor:pointer;}
+  .policy-content .draft-note{padding:10px 12px; border-radius:12px; background:rgba(255,207,92,.12); border:1px solid rgba(255,207,92,.3); font-size:.78em; color:var(--warn); margin-bottom:16px;}
+  .policy-content h3{margin-top:18px; margin-bottom:6px; font-size:1em;}
+  .policy-content h3:first-of-type{margin-top:0;}
+  .policy-content p{margin-bottom:10px; font-size:.9em; color:var(--ink-dim); line-height:1.55;}
+  .policy-content ul{margin:0 0 10px; padding-left:20px;}
+  .policy-content li{margin-bottom:7px; font-size:.9em; color:var(--ink-dim); line-height:1.5;}
+  .policy-content strong{color:var(--ink);}
 
   ::-webkit-scrollbar{width:0; height:0;}
 </style>
@@ -2264,6 +2271,13 @@ function homeFilteredItems(){
   const wantAuction = state.homeListingType==='auction';
   return DB.items.filter(i=>{
     if((i.listingType==='auction') !== wantAuction) return false;
+    // A settled/ended (or expired-but-not-yet-settled) auction has nothing left to bid
+    // on, so it drops out of the Auctions feed the moment it's no longer live - the
+    // per-store auction card is still reachable for anyone with a direct link/history.
+    if(i.listingType==='auction'){
+      const a = auctionForItem(i.id);
+      if(!a || a.status!=='active' || Date.now()>=a.endTime) return false;
+    }
     if(state.homeCategory!=='All' && (i.category||'General')!==state.homeCategory) return false;
     if(q){
       const biz = DB.businesses.find(b=>b.id===i.businessId);
@@ -2589,7 +2603,7 @@ let _pendingSignupPhone = null;
 let _signupIntent = null;
 let _signupRole = 'buyer'; // 'buyer' | 'seller' | 'delivery' — which "I am a..." tile is selected
 let _signupShowPassword = false;
-let _signupDraft = { name:'', phone:'', email:'', password:'' };
+let _signupDraft = { name:'', phone:'', email:'', password:'', policyAgreed:false };
 function escapeAttr(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -2597,13 +2611,14 @@ function openSignUp(data){
   _signupIntent = (data && data.intent) || null;
   _signupRole = _signupIntent==='business' ? 'seller' : _signupIntent==='delivery' ? 'delivery' : 'buyer';
   _signupShowPassword = false;
-  _signupDraft = { name:'', phone:'', email:'', password:'' };
+  _signupDraft = { name:'', phone:'', email:'', password:'', policyAgreed:false };
   openSheet('signUp', data);
 }
-// Role tiles / the password eye-toggle need a re-render to show their new active state,
-// which (like every render() call) rebuilds the sheet's innerHTML from scratch - so the
-// already-typed fields are captured into _signupDraft first and fed back in as `value=`
-// below, or they'd appear to vanish every time the user picks a role or reveals their password.
+// Role tiles / the password eye-toggle / policy links all need a re-render (or, for
+// policy links, a navigation away and back) that rebuilds the sheet's innerHTML from
+// scratch - so the already-typed fields (and the checkbox) are captured into
+// _signupDraft first and fed back in as `value=`/`checked` below, or they'd appear to
+// vanish every time the user picks a role, reveals their password, or reads a policy.
 function captureSignupDraft(){
   const g = id => { const el = document.getElementById(id); return el ? el.value : undefined; };
   const name = g('su_name'), phone = g('su_phone'), email = g('su_email'), password = g('su_password');
@@ -2611,9 +2626,15 @@ function captureSignupDraft(){
   if(phone!==undefined) _signupDraft.phone = phone;
   if(email!==undefined) _signupDraft.email = email;
   if(password!==undefined) _signupDraft.password = password;
+  const policyBox = document.getElementById('su_policy');
+  if(policyBox) _signupDraft.policyAgreed = policyBox.checked;
 }
 function setSignupRole(role){ captureSignupDraft(); _signupRole = role; render(); }
 function toggleSignupPasswordVisibility(){ captureSignupDraft(); _signupShowPassword = !_signupShowPassword; render(); }
+// Same reasoning as captureSignupDraft() above: navigating to a policy sheet and back
+// re-renders the sign-up form from scratch, so whatever was typed has to be captured
+// before leaving or "Back to sign up" would reopen it empty.
+function openPolicyFromSignup(type){ captureSignupDraft(); openSheet('policy', {type}); }
 function sheetSignIn(){
   const intent = state.sheetData && state.sheetData.intent;
   const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
@@ -2683,8 +2704,8 @@ function sheetSignUp(){
       </button>`).join('')}
   </div>
   <div class="policy-box">
-    <input type="checkbox" id="su_policy">
-    <div class="txt">I agree to the <button type="button" class="link-inline" onclick="openSheet('policy',{type:'privacy'})">Privacy Policy</button>, <button type="button" class="link-inline" onclick="openSheet('policy',{type:'payment'})">Payment Policy</button>, <button type="button" class="link-inline" onclick="openSheet('policy',{type:'delivery'})">Delivery Policy</button> and <button type="button" class="link-inline" onclick="openSheet('policy',{type:'refund'})">Return &amp; Refund Policy</button>.</div>
+    <input type="checkbox" id="su_policy" ${d.policyAgreed?'checked':''}>
+    <div class="txt">I agree to the <button type="button" class="link-inline" onclick="openPolicyFromSignup('privacy')">Privacy Policy</button>, <button type="button" class="link-inline" onclick="openPolicyFromSignup('payment')">Payment Policy</button>, <button type="button" class="link-inline" onclick="openPolicyFromSignup('delivery')">Delivery Policy</button> and <button type="button" class="link-inline" onclick="openPolicyFromSignup('refund')">Return &amp; Refund Policy</button>.</div>
   </div>
   <button class="btn btn-primary" onclick="submitSignUp()">Create account</button>
   <p class="muted" style="margin-top:14px;">Already have an account? <button class="link-btn" onclick="openSheet('signIn', {intent:'${_signupIntent||''}'})">Sign in</button></p>`;
@@ -2710,20 +2731,83 @@ async function submitSignUp(){
   _pendingVerifyEmail = email;
   openSheet('verifyEmail');
 }
-// Placeholder policy content - this app has no real legal copy yet, so each link
-// just explains what the policy will cover and sends the user back to sign-up
-// with everything they'd already typed still intact (see _signupDraft above).
+// Draft policy copy grounded in how this app actually works (zones/fees, bank-transfer-
+// slip-vs-cash payment, free/Pro tiers, auctions). Not legal advice - flagged as a draft
+// pending real legal review before launch, per the "Back to sign up" flow returning
+// everything the user already typed (see _signupDraft above).
+const POLICY_CONTENT = {
+  privacy: { title:'Privacy Policy', html:`
+    <h3>What we collect</h3>
+    <ul>
+      <li>Your full name, mobile number, email address, and account password (handled by our authentication provider - we never see or store it in plain text).</li>
+      <li>If you register a store: your store name, category, bank account number, and account holder name.</li>
+      <li>If you sign up to deliver: your name and phone number.</li>
+      <li>Order details: items ordered, delivery zone, chosen payment method, and (for bank transfers) a photo of your transfer slip.</li>
+    </ul>
+    <h3>How we use it</h3>
+    <p>To run your account across the customer, store, and delivery portals; to process and fulfill orders; to match orders with a delivery partner; to verify bank-transfer and cash payments; and to contact you about an order or your account.</p>
+    <h3>Who can see what</h3>
+    <p>The store you order from sees your name, phone, delivery zone, and order details for orders placed with them - never your activity with other stores. The delivery partner assigned to your order sees your name, phone, and delivery zone, but not your payment details. We do not sell your personal information to anyone.</p>
+    <h3>Where it's stored</h3>
+    <p>Your data is stored in a secured database with row-level access controls, so only your own account, the relevant store, and the assigned delivery partner can access what they each need to.</p>
+    <h3>How long we keep it</h3>
+    <p>For as long as your account is active, plus a reasonable period afterward for accounting and dispute-resolution purposes. You can ask us to delete your account and associated data at any time.</p>
+    <h3>Your choices</h3>
+    <p>You can update your name, phone, and other details from the app, and request account deletion through Settings or by contacting us.</p>
+  `},
+  payment: { title:'Payment Policy', html:`
+    <h3>Accepted payment methods</h3>
+    <ul>
+      <li><strong>Bank transfer</strong> - you'll see the store's account number and holder name after checkout; upload a photo of your transfer slip, and the store confirms receipt before your order is marked paid.</li>
+      <li><strong>Cash to the delivery partner</strong> - pay in cash when your order is handed over; the delivery partner marks the cash collected once received.</li>
+    </ul>
+    <h3>When payment counts as confirmed</h3>
+    <p>Bank-transfer orders stay pending until the store reviews your slip and approves it. Cash orders stay pending until the delivery partner marks the cash collected. A store's account details are shown to you only until your payment is confirmed, then hidden.</p>
+    <h3>Delivery fees</h3>
+    <p>A flat fee applies based on the delivery zone you choose at checkout - Malé MVR 15, Hulhumalé Phase 1 MVR 20, or Hulhumalé Phase 2 MVR 25 - unless the store has marked that item as free delivery, in which case the store (not you) covers that cost.</p>
+    <h3>Auctions</h3>
+    <p>When an auction ends, the highest bid becomes an order. You'll choose a delivery zone and payment method to finish placing it, the same as any other order.</p>
+    <h3>Pro seller upgrade</h3>
+    <p>A one-time MVR 500 fee, paid by bank transfer (with slip upload) or card, permanently raises a store's item limit. This fee covers platform access and is refundable only as described in our Return &amp; Refund Policy.</p>
+    <h3>Payment disputes</h3>
+    <p>If a payment looks wrong, contact the store first. If it isn't resolved, contact Maldexpress support (see Contact us below).</p>
+  `},
+  delivery: { title:'Delivery Policy', html:`
+    <h3>Zones &amp; fees</h3>
+    <p>Delivery is a flat fee by zone, not a percentage of your order: Malé MVR 15, Hulhumalé Phase 1 MVR 20, Hulhumalé Phase 2 MVR 25. You pick your zone at checkout. Some items are listed with free delivery by the store - you won't pay a delivery fee on those.</p>
+    <h3>Who delivers</h3>
+    <p>An independent delivery partner registered on Maldexpress accepts and carries out each job. Maldexpress connects buyers, stores, and delivery partners, but the delivery itself is carried out by the partner, not by Maldexpress directly.</p>
+    <h3>Delivery timing</h3>
+    <p>Most orders are delivered the same day to the following day, depending on the store's preparation time and delivery-partner availability. This is a typical timeframe, not a guaranteed delivery window.</p>
+    <h3>If something goes wrong</h3>
+    <p>If a delivery is delayed, missed, or arrives damaged, contact the store you ordered from first - they're best placed to arrange a replacement, refund, or re-delivery. See our Return &amp; Refund Policy for what qualifies. Issues with a specific delivery partner's conduct can also be reported to Maldexpress support.</p>
+  `},
+  refund: { title:'Return & Refund Policy', html:`
+    <h3>Eligibility</h3>
+    <p>You may request a return or refund within 24 hours of delivery if an item is damaged, significantly different from its listing, or wasn't delivered at all. Contact the store you ordered from directly to start a request.</p>
+    <h3>Non-returnable</h3>
+    <p>Perishable goods (food, baked items) and won-auction items are final sale once delivered as described, except where the item arrived damaged or was misdescribed.</p>
+    <h3>How to request</h3>
+    <p>Reach out to the store from your order in My Orders. If you paid by bank transfer, keep your transfer slip as proof of payment; if you paid cash, your order history in the app is your proof of purchase.</p>
+    <h3>Refund method</h3>
+    <p>Refunds are issued by the store using the same method you paid with (bank transfer back to your account, or cash). The delivery fee is refunded only if the order was never delivered.</p>
+    <h3>Escalation</h3>
+    <p>If a store doesn't respond or you can't reach a fair resolution, contact Maldexpress support and we'll review the order to help mediate.</p>
+    <h3>Pro upgrade refunds</h3>
+    <p>The one-time Pro seller fee is refundable within 7 days of payment if you haven't yet listed beyond the free tier's 10-item limit; otherwise it is non-refundable.</p>
+  `}
+};
 function sheetPolicy(){
   const type = state.sheetData && state.sheetData.type;
-  const copy = {
-    privacy: {title:'Privacy Policy', body:'How we collect, store, and use your account and order information.'},
-    payment: {title:'Payment Policy', body:'How bank-transfer and cash-on-delivery payments are handled and confirmed.'},
-    delivery: {title:'Delivery Policy', body:'Delivery zones, fees, and what happens if a delivery is delayed or missed.'},
-    refund: {title:'Return & Refund Policy', body:'When an order qualifies for a return or refund, and how to request one.'}
-  }[type] || {title:'Policy', body:'Details coming soon.'};
+  const copy = POLICY_CONTENT[type] || { title:'Policy', html:'<p>Details coming soon.</p>' };
   return `
   <h2>${copy.title}</h2>
-  <p class="muted" style="margin-top:10px;">${copy.body} Full policy text is coming soon before launch.</p>
+  <div class="policy-content">
+    <div class="draft-note">⚠ Draft policy, pending final legal review before launch.</div>
+    ${copy.html}
+    <h3>Contact us</h3>
+    <p>For order-specific issues, message the store you ordered from via My Orders. For account or platform-level issues, a dedicated Maldexpress support channel will be published here before launch.</p>
+  </div>
   <button class="btn btn-primary" style="margin-top:18px;" onclick="openSheet('signUp', {intent:'${_signupIntent||''}'})">Back to sign up</button>`;
 }
 function sheetVerifyEmail(){

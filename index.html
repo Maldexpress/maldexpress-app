@@ -276,6 +276,108 @@
   .hidden{display:none !important;}
   .divider{height:1px; background:var(--glass-brd); margin:14px 0;}
 
+  /* ---------- Home feed (redesign) ---------- */
+  .home-header{justify-content:space-between;}
+  .home-logo{flex:1; text-align:center; font-family:'Fraunces',serif; font-weight:700; font-size:1.2em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .notif-dot{position:absolute; top:7px; right:7px; width:9px; height:9px; border-radius:50%; background:var(--coral); border:2px solid var(--bg1);}
+
+  .home-search-wrap{
+    flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:0 14px;
+    border-radius:14px; background:rgba(255,255,255,.08); border:1px solid var(--glass-brd);
+  }
+  .home-search-wrap input{flex:1; min-width:0; border:none; background:transparent; padding:12px 0; color:var(--ink); outline:none;}
+  .home-search-wrap input::placeholder{color:rgba(234,253,255,.4);}
+  .field-icon{font-size:1em; opacity:.7; flex-shrink:0;}
+
+  .switcher-wrap{position:relative; flex-shrink:0;}
+  .switcher-pill{
+    display:flex; align-items:center; gap:6px; padding:11px 14px; border-radius:14px;
+    background:var(--glass); border:1px solid var(--glass-brd);
+    backdrop-filter:blur(22px) saturate(140%); -webkit-backdrop-filter:blur(22px) saturate(140%);
+    color:var(--ink); font-weight:700; font-size:.82em; white-space:nowrap;
+  }
+  .switcher-pill.accent{background:rgba(34,184,200,.28); border-color:rgba(34,184,200,.55);}
+  .switcher-pill:active{transform:scale(.96);}
+  .switcher-dropdown{position:absolute; top:calc(100% + 8px); right:0; z-index:20; box-shadow:0 8px 24px rgba(0,10,15,.35); width:100%;}
+
+  .cat-scroll{display:flex; gap:16px; overflow-x:auto; padding:2px 2px 8px; scrollbar-width:none;}
+  .cat-scroll::-webkit-scrollbar{display:none;}
+  .cat-pill{display:flex; flex-direction:column; align-items:center; gap:6px; background:none; border:none; flex-shrink:0; width:64px;}
+  .cat-circle{width:54px; height:54px; border-radius:50%; border:1.5px solid var(--glass-brd); display:flex; align-items:center; justify-content:center; font-size:1.5em; background:transparent; color:var(--ink);}
+  .cat-label{font-size:.72em; color:var(--ink-dim); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:64px;}
+  .cat-pill.active .cat-circle{border-color:var(--coral); color:var(--coral);}
+  .cat-pill.active .cat-label{color:var(--ink);}
+  .cat-pill:active{transform:scale(.95);}
+
+  .featured-scroll{display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:4px; scrollbar-width:none;}
+  .featured-scroll::-webkit-scrollbar{display:none;}
+  .featured-card{
+    flex:0 0 82%; scroll-snap-align:start; border-radius:22px; min-height:180px; padding:20px;
+    display:flex; align-items:flex-end; position:relative; overflow:hidden; color:#fff;
+    box-shadow:0 10px 26px rgba(0,10,15,.3);
+  }
+  .featured-scrim{position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6), transparent 65%);}
+  .featured-card > div{position:relative; z-index:1;}
+  .featured-card .biz{font-size:.72em; opacity:.85; font-weight:700; text-transform:uppercase; letter-spacing:.4px;}
+  .featured-card h3{font-size:1.3em; margin:.2em 0; color:#fff;}
+  .featured-card .price{color:#fff; font-weight:800;}
+  .dots{display:flex; justify-content:center; gap:6px; margin-top:10px;}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--glass-brd); transition:all .2s ease;}
+  .dot.active{width:18px; border-radius:4px; background:var(--coral);}
+
+  .top-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .top-card{border-radius:20px; overflow:hidden; background:rgba(255,255,255,.06);}
+  .top-card .img-wrap{
+    position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; font-size:2.2em;
+    background:linear-gradient(145deg, rgba(255,138,92,.28), rgba(34,184,200,.22));
+  }
+  .top-card .img-wrap img{width:100%; height:100%; object-fit:cover;}
+  .top-add-btn{
+    position:absolute; right:8px; bottom:8px; width:32px; height:32px; border-radius:50%; border:none;
+    background:linear-gradient(135deg, var(--coral), var(--coral-dk)); color:#241005; font-size:1.2em; font-weight:800;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(255,138,92,.4);
+  }
+  .top-add-btn:active{transform:scale(.9);}
+  .top-card .info{padding:10px 12px 14px;}
+  .biz-label{font-size:.7em; color:var(--ink-dim); font-weight:700; text-transform:uppercase; letter-spacing:.3px;}
+  .top-card h3{font-size:.92em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:.25em 0;}
+  .top-card .price{font-size:.88em;}
+
+  /* Compact floating bottom-nav pill (customer home redesign) */
+  .bottomnav.compact{left:50%; right:auto; transform:translateX(-50%); max-width:none; width:auto; padding:0;}
+  .bottomnav.compact .bar{padding:8px; gap:2px;}
+  .bottomnav.compact .navbtn{flex:none; flex-direction:row; padding:10px 18px; font-size:.8em; gap:7px;}
+  .bottomnav.compact .navbtn .ic{font-size:1.1em;}
+  .bottomnav.compact .navbtn.active{background:linear-gradient(135deg, var(--coral), var(--coral-dk)); color:#241005;}
+
+  /* ---------- Sign-up screen (redesign) ---------- */
+  .field-icon-input{position:relative;}
+  .field-icon-input input{padding-left:42px; padding-right:42px;}
+  .field-icon-input .fi-icon{position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:1em; opacity:.65; pointer-events:none;}
+  .field-icon-input .fi-eye{
+    position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none;
+    color:var(--ink-dim); font-size:1.05em; padding:6px; cursor:pointer;
+  }
+  .role-tiles{display:flex; gap:8px; margin-bottom:14px;}
+  .role-tile{
+    flex:1; padding:14px 8px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass);
+    color:var(--ink-dim); font-weight:700; font-size:.8em; display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .role-tile .ic{font-size:1.3em;}
+  .role-tile.active{background:linear-gradient(135deg, rgba(255,138,92,.9), rgba(232,102,58,.9)); color:#241005; border-color:transparent;}
+  .role-tile:active{transform:scale(.96);}
+  .policy-box{display:flex; gap:10px; align-items:flex-start; padding:14px; border-radius:14px; background:rgba(255,255,255,.06); border:1px solid var(--glass-brd); margin:14px 0;}
+  .policy-box input[type=checkbox]{margin-top:2px; width:18px; height:18px; accent-color:var(--coral); flex-shrink:0;}
+  .policy-box .txt{font-size:.8em; color:var(--ink-dim); line-height:1.55;}
+  .policy-box .txt button.link-inline{color:var(--lagoon); text-decoration:underline; font-weight:700; background:none; border:none; padding:0; font-size:1em; cursor:pointer;}
+  .policy-content .draft-note{padding:10px 12px; border-radius:12px; background:rgba(255,207,92,.12); border:1px solid rgba(255,207,92,.3); font-size:.78em; color:var(--warn); margin-bottom:16px;}
+  .policy-content h3{margin-top:18px; margin-bottom:6px; font-size:1em;}
+  .policy-content h3:first-of-type{margin-top:0;}
+  .policy-content p{margin-bottom:10px; font-size:.9em; color:var(--ink-dim); line-height:1.55;}
+  .policy-content ul{margin:0 0 10px; padding-left:20px;}
+  .policy-content li{margin-bottom:7px; font-size:.9em; color:var(--ink-dim); line-height:1.5;}
+  .policy-content strong{color:var(--ink);}
+
   ::-webkit-scrollbar{width:0; height:0;}
 </style>
 </head>
@@ -1033,7 +1135,11 @@ let state = {
   adminSearch: '',
   adminTab: 'businesses',   // 'businesses' | 'bankRequests' | 'swipeRequests'
   pendingIntent: null,      // 'business' | 'delivery' — signup intent to resume once auth (and any forced setupMobile step) finishes
-  storeTab: 'buyNow'        // 'buyNow' | 'auction' — which tab is showing on the customer store-browse screen
+  storeTab: 'buyNow',       // 'buyNow' | 'auction' — which tab is showing on the customer store-browse screen
+  homeListingType: 'buy_now', // 'buy_now' | 'auction' — which the home feed's Featured/Top-selling sections show
+  homeSwitcherOpen: false,  // whether the home feed's Buy now/Auctions dropdown pill is open
+  homeCategory: 'All',      // item category filter on the home feed
+  homeSearch: ''            // free-text search on the home feed (matches item name or store name)
 };
 
 function applySession(session){
@@ -1041,7 +1147,8 @@ function applySession(session){
     state.authed = true;
     state.customerId = session.user.id;
     state.customerEmail = session.user.email;
-    state.customerName = session.user.email.split('@')[0];
+    const fullName = session.user.user_metadata && session.user.user_metadata.full_name;
+    state.customerName = fullName || session.user.email.split('@')[0];
   } else {
     state.authed = false;
     state.customerId = null;
@@ -1347,12 +1454,12 @@ function bottomNav(role, active){
   const cfg = {
     business:[['bizHome','🏠','Home'],['bizItems','📦','Items'],['bizOrders','🧾','Orders'],['bizPayouts','🛵','Payouts']],
     delivery:[['delHome','🛵','Jobs'],['delHistory','🧾','History']],
-    customer:[['custHome','🛍️','Shop'],['custOrders','🧾','Orders'],['custCart','🛒','Cart']]
+    customer:[['custHome','🏠','Home'],['custCart','🛒','Cart'],['custOrders','🧾','Orders']]
   };
   const tabs = cfg[role].map(([scr,ic,label])=>`
     <button class="navbtn ${active===scr?'active':''}" onclick="go('${scr}')"><span class="ic">${ic}</span>${label}</button>
   `).join('');
-  return `<div class="bottomnav"><div class="glass bar">${tabs}</div></div>`;
+  return `<div class="bottomnav ${role==='customer'?'compact':''}"><div class="glass bar">${tabs}</div></div>`;
 }
 
 function wrapShell(role, active, contentHTML, extra=''){
@@ -1393,6 +1500,7 @@ function sheetHTML(){
   else if(state.sheet==='signUp') body = sheetSignUp();
   else if(state.sheet==='verifyEmail') body = sheetVerifyEmail();
   else if(state.sheet==='setupMobile') body = sheetSetupMobile();
+  else if(state.sheet==='policy') body = sheetPolicy();
   const dismissable = state.sheet!=='verifyEmail' && state.sheet!=='setupMobile';
   return `
   <div class="sheet-wrap${state.sheetClosing?'':' show'}" id="sheetWrap">
@@ -2143,26 +2251,169 @@ function renderCustomer(){
   if(state.screen==='custCart') return renderCustCart();
   if(state.screen==='custOrders') return renderCustOrders();
 }
-function renderCustHome(){
-  const cats = ['All', ...new Set(DB.businesses.map(b=>b.category))];
-  const list = DB.businesses.filter(b=> state.filterCat==='All' || b.category===state.filterCat);
-  document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${topbar('Browse stores', 'Local businesses near you')}
-    <div style="padding:4px 16px 0;">
-      <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c||(!state.filterCat&&c==='All')?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
-      ${list.map(b=>{
-        const n = DB.items.filter(i=>i.businessId===b.id).length;
-        return `
-        <button class="glass role-card" style="text-align:left;" onclick="openStore('${b.id}')">
-          <div class="ic">🏪</div>
-          <div class="txt"><h3>${b.name}</h3><small>${b.category} · ${n} items</small></div>
-          <div class="arrow">→</div>
-        </button>`;
-      }).join('') || `<div class="empty"><span class="ic">🏝️</span>No stores yet</div>`}
-    </div>
-  `);
+/* ---- Home feed: a market-wide item feed (not a store list) - Featured and
+   Top-selling both pull individual items from every business, filtered by
+   the Buy now/Auctions switcher, category, and search. There's no real
+   "featured"/"sales rank" data anywhere in this app, so Featured is just the
+   first few matches and Top-selling is the rest, in listing order - both
+   genuinely reflect the current filter, just without a curation signal to
+   rank by. ---- */
+const CATEGORY_ICONS = { Grocery:'🛒', Bakery:'🍞', 'Café':'☕', Hardware:'🔧', Fashion:'👗', Other:'🏷️', General:'🏷️' };
+function categoryIcon(cat){ return CATEGORY_ICONS[cat] || '🏷️'; }
+const FEATURED_GRADIENTS = [
+  'linear-gradient(135deg, #0f7a8c, #22b8c8)',
+  'linear-gradient(135deg, #ff8a5c, #e8663a)',
+  'linear-gradient(135deg, #23b47c, #3ddc97)',
+  'linear-gradient(135deg, #6a4c93, #b185db)'
+];
+function homeFilteredItems(){
+  const q = (state.homeSearch||'').trim().toLowerCase();
+  const wantAuction = state.homeListingType==='auction';
+  return DB.items.filter(i=>{
+    if((i.listingType==='auction') !== wantAuction) return false;
+    // A settled/ended (or expired-but-not-yet-settled) auction has nothing left to bid
+    // on, so it drops out of the Auctions feed the moment it's no longer live - the
+    // per-store auction card is still reachable for anyone with a direct link/history.
+    if(i.listingType==='auction'){
+      const a = auctionForItem(i.id);
+      if(!a || a.status!=='active' || Date.now()>=a.endTime) return false;
+    }
+    if(state.homeCategory!=='All' && (i.category||'General')!==state.homeCategory) return false;
+    if(q){
+      const biz = DB.businesses.find(b=>b.id===i.businessId);
+      const hay = (i.name+' '+(biz?biz.name:'')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
 }
-function openStore(id){ go('custStore', {browseBizId:id, storeTab:'buyNow'}); }
+function itemPriceLine(item){
+  if(item.listingType==='auction'){
+    const auction = auctionForItem(item.id);
+    const bid = auction ? (auction.currentHighestBid!=null?auction.currentHighestBid:auction.startingPrice) : item.price;
+    return `Highest bid ${money(bid)}`;
+  }
+  return money(item.price);
+}
+function openFeedItem(itemId){
+  const item = DB.items.find(i=>i.id===itemId);
+  if(!item) return;
+  go('custStore', {browseBizId:item.businessId, storeTab: item.listingType==='auction'?'auction':'buyNow'});
+}
+function homeHeaderHTML(){
+  const hasUnread = sb ? DB.orders.some(o=>o.customerId===state.customerId && o.paymentStatus==='awaiting_completion') : false;
+  return `
+  <div class="topbar glass home-header">
+    <button class="iconbtn" onclick="toggleDrawer(true)">☰</button>
+    <div class="home-logo">Maldexpress</div>
+    <button class="iconbtn" style="position:relative;" onclick="go('custOrders')">🔔${hasUnread?`<span class="notif-dot"></span>`:''}</button>
+  </div>`;
+}
+function homeSearchRowHTML(){
+  return `
+  <div class="row" style="gap:8px; margin:14px 0 18px;">
+    <div class="home-search-wrap">
+      <span class="field-icon">🔍</span>
+      <input id="homeSearchInput" placeholder="Search items or stores…" value="${state.homeSearch||''}" oninput="updateHomeSearch(this.value)">
+    </div>
+    <div class="switcher-wrap">
+      <button class="switcher-pill ${state.homeListingType==='buy_now'?'accent':''}" onclick="toggleHomeSwitcher()">
+        <span>${state.homeListingType==='auction'?'🔨':'🛍️'}</span>
+        <span>${state.homeListingType==='auction'?'Auctions':'Buy now'}</span>
+      </button>
+      ${state.homeSwitcherOpen ? `
+      <button class="switcher-pill switcher-dropdown ${state.homeListingType==='auction'?'accent':''}" onclick="setHomeListingType('${state.homeListingType==='auction'?'buy_now':'auction'}')">
+        <span>${state.homeListingType==='auction'?'🛍️':'🔨'}</span>
+        <span>${state.homeListingType==='auction'?'Buy now':'Auctions'}</span>
+      </button>` : ''}
+    </div>
+  </div>`;
+}
+function toggleHomeSwitcher(){ state.homeSwitcherOpen = !state.homeSwitcherOpen; render(); }
+function setHomeListingType(type){ state.homeListingType = type; state.homeSwitcherOpen = false; render(); }
+function setHomeCategory(cat){ state.homeCategory = cat; render(); }
+function updateHomeSearch(v){
+  state.homeSearch = v;
+  render();
+  const el = document.getElementById('homeSearchInput');
+  if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+function featuredCardHTML(item, idx){
+  const biz = DB.businesses.find(b=>b.id===item.businessId);
+  const bg = item.imageUrl ? `url('${item.imageUrl}') center/cover` : FEATURED_GRADIENTS[idx % FEATURED_GRADIENTS.length];
+  return `
+  <div class="featured-card" style="background:${bg};" onclick="openFeedItem('${item.id}')">
+    ${item.imageUrl?'<div class="featured-scrim"></div>':''}
+    <div style="position:relative;">
+      <div class="biz">${biz?biz.name:''}</div>
+      <h3>${item.name}</h3>
+      <div class="price">${itemPriceLine(item)}</div>
+    </div>
+  </div>`;
+}
+function syncFeaturedDots(){
+  const wrap = document.getElementById('featuredScroll');
+  const dotsWrap = document.getElementById('featuredDots');
+  if(!wrap || !dotsWrap || !wrap.children.length) return;
+  const cardWidth = wrap.children[0].getBoundingClientRect().width + 14;
+  const idx = Math.round(wrap.scrollLeft / cardWidth);
+  [...dotsWrap.children].forEach((d,i)=>d.classList.toggle('active', i===idx));
+}
+function topSellingCardHTML(item){
+  const biz = DB.businesses.find(b=>b.id===item.businessId);
+  const isAuction = item.listingType==='auction';
+  return `
+  <div class="top-card">
+    <div class="img-wrap" onclick="openFeedItem('${item.id}')">
+      ${item.imageUrl?`<img src="${item.imageUrl}" alt="">`:'🛍️'}
+      ${!isAuction?`<button class="top-add-btn" onclick="event.stopPropagation(); addToCart('${item.id}')">+</button>`:''}
+    </div>
+    <div class="info" onclick="openFeedItem('${item.id}')">
+      <div class="biz-label">${biz?biz.name:''}</div>
+      <h3>${item.name}</h3>
+      <div class="price">${itemPriceLine(item)}</div>
+    </div>
+  </div>`;
+}
+function renderCustHome(){
+  settleExpiredAuctions(DB.items);
+  const filtered = homeFilteredItems();
+  const featured = filtered.slice(0, 8);
+  const cats = ['All', ...new Set(DB.items.map(i=>i.category||'General'))];
+  const cartCount = Object.values(state.cart).reduce((a,b)=>a+b,0);
+  document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    ${homeHeaderHTML()}
+    <div style="padding:4px 16px 0;">
+      ${homeSearchRowHTML()}
+      <div class="section">
+        <h2 style="margin-bottom:12px;">Categories</h2>
+        <div class="cat-scroll">
+          ${cats.map(c=>`
+            <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="setHomeCategory('${c}')">
+              <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
+              <span class="cat-label">${c}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+      <div class="section">
+        <h2 style="margin-bottom:12px;">Featured</h2>
+        ${featured.length ? `
+          <div class="featured-scroll" id="featuredScroll" onscroll="syncFeaturedDots()">
+            ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
+          </div>
+          <div class="dots" id="featuredDots">${featured.map((_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>
+        ` : `<div class="empty"><span class="ic">✨</span>Nothing to feature yet</div>`}
+      </div>
+      <div class="section">
+        <h2 style="margin-bottom:12px;">Top selling</h2>
+        <div class="top-grid">
+          ${filtered.length? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
+        </div>
+      </div>
+    </div>
+  `, cartCount>0 ? `<div class="cart-fab" onclick="go('custCart')"><span>🛒 ${cartCount} item${cartCount>1?'s':''}</span><span>View cart →</span></div>`:'');
+  ensureCountdownTimer();
+}
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
   if(!biz){ go('custHome'); return; }
@@ -2348,6 +2599,42 @@ function goCheckout(){
 }
 let _pendingVerifyEmail = null;
 let _pendingSignupUserId = null;
+let _pendingSignupPhone = null;
+let _signupIntent = null;
+let _signupRole = 'buyer'; // 'buyer' | 'seller' | 'delivery' — which "I am a..." tile is selected
+let _signupShowPassword = false;
+let _signupDraft = { name:'', phone:'', email:'', password:'', policyAgreed:false };
+function escapeAttr(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function openSignUp(data){
+  _signupIntent = (data && data.intent) || null;
+  _signupRole = _signupIntent==='business' ? 'seller' : _signupIntent==='delivery' ? 'delivery' : 'buyer';
+  _signupShowPassword = false;
+  _signupDraft = { name:'', phone:'', email:'', password:'', policyAgreed:false };
+  openSheet('signUp', data);
+}
+// Role tiles / the password eye-toggle / policy links all need a re-render (or, for
+// policy links, a navigation away and back) that rebuilds the sheet's innerHTML from
+// scratch - so the already-typed fields (and the checkbox) are captured into
+// _signupDraft first and fed back in as `value=`/`checked` below, or they'd appear to
+// vanish every time the user picks a role, reveals their password, or reads a policy.
+function captureSignupDraft(){
+  const g = id => { const el = document.getElementById(id); return el ? el.value : undefined; };
+  const name = g('su_name'), phone = g('su_phone'), email = g('su_email'), password = g('su_password');
+  if(name!==undefined) _signupDraft.name = name;
+  if(phone!==undefined) _signupDraft.phone = phone;
+  if(email!==undefined) _signupDraft.email = email;
+  if(password!==undefined) _signupDraft.password = password;
+  const policyBox = document.getElementById('su_policy');
+  if(policyBox) _signupDraft.policyAgreed = policyBox.checked;
+}
+function setSignupRole(role){ captureSignupDraft(); _signupRole = role; render(); }
+function toggleSignupPasswordVisibility(){ captureSignupDraft(); _signupShowPassword = !_signupShowPassword; render(); }
+// Same reasoning as captureSignupDraft() above: navigating to a policy sheet and back
+// re-renders the sign-up form from scratch, so whatever was typed has to be captured
+// before leaving or "Back to sign up" would reopen it empty.
+function openPolicyFromSignup(type){ captureSignupDraft(); openSheet('policy', {type}); }
 function sheetSignIn(){
   const intent = state.sheetData && state.sheetData.intent;
   const copy = intent==='business' ? "You'll need to sign in to create or manage a store — this keeps your listings and orders locked to your account."
@@ -2360,7 +2647,7 @@ function sheetSignIn(){
   <div class="field" style="margin-top:14px;"><label>Mobile or Email</label><input id="auth_identifier" placeholder="you@example.com or 7XXXXXX"></div>
   <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="signInWithIdentifierPassword()">Sign in</button>
-  <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSheet('signUp', state.sheetData)">Sign up</button></p>`;
+  <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSignUp(state.sheetData)">Sign up</button></p>`;
 }
 async function signInWithIdentifierPassword(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
@@ -2384,32 +2671,144 @@ async function signInWithIdentifierPassword(){
   toast('Signed in!');
 }
 function sheetSignUp(){
-  const intent = state.sheetData && state.sheetData.intent;
+  const d = _signupDraft;
+  const roleOptions = [
+    {id:'buyer', ic:'🛍️', label:'Buyer'},
+    {id:'seller', ic:'🏪', label:'Seller'},
+    {id:'delivery', ic:'🛵', label:'Delivery partner'}
+  ];
   return `
-  <h2>Sign up</h2>
-  <p class="muted">Create an account with your email and a password.</p>
-  <div class="field" style="margin-top:14px;"><label>Email address</label><input id="su_email" type="email" placeholder="you@example.com"></div>
-  <div class="field"><label>Password</label><input id="su_email_pass" type="password" placeholder="At least 6 characters"></div>
-  <div class="field"><label>Confirm password</label><input id="su_email_pass2" type="password" placeholder="Re-enter password"></div>
-  <button class="btn btn-primary" onclick="submitSignUp()">Sign up</button>
-  <p class="muted" style="margin-top:14px;">Already have an account? <button class="link-btn" onclick="openSheet('signIn', {intent:'${intent||''}'})">Sign in</button></p>`;
+  <h2>Create account</h2>
+  <p class="muted">Sign up to start shopping, selling, or delivering.</p>
+  <div class="field" style="margin-top:14px;"><label>Full name</label>
+    <div class="field-icon-input"><span class="fi-icon">👤</span><input id="su_name" placeholder="Your full name" value="${escapeAttr(d.name)}"></div>
+  </div>
+  <div class="field"><label>Mobile number</label>
+    <div class="field-icon-input"><span class="fi-icon">📱</span><input id="su_phone" placeholder="7XXXXXX" value="${escapeAttr(d.phone)}"></div>
+  </div>
+  <div class="field"><label>Email address</label>
+    <div class="field-icon-input"><span class="fi-icon">✉️</span><input id="su_email" type="email" placeholder="you@example.com" value="${escapeAttr(d.email)}"></div>
+  </div>
+  <div class="field"><label>Password</label>
+    <div class="field-icon-input">
+      <span class="fi-icon">🔒</span>
+      <input id="su_password" type="${_signupShowPassword?'text':'password'}" placeholder="At least 6 characters" value="${escapeAttr(d.password)}">
+      <button type="button" class="fi-eye" onclick="toggleSignupPasswordVisibility()">${_signupShowPassword?'🙈':'👁️'}</button>
+    </div>
+  </div>
+  <label style="display:block; font-size:.82em; color:var(--ink-dim); margin-bottom:6px; font-weight:600;">I am a...</label>
+  <div class="role-tiles">
+    ${roleOptions.map(r=>`
+      <button type="button" class="role-tile ${_signupRole===r.id?'active':''}" onclick="setSignupRole('${r.id}')">
+        <span class="ic">${r.ic}</span><span>${r.label}</span>
+      </button>`).join('')}
+  </div>
+  <div class="policy-box">
+    <input type="checkbox" id="su_policy" ${d.policyAgreed?'checked':''}>
+    <div class="txt">I agree to the <button type="button" class="link-inline" onclick="openPolicyFromSignup('privacy')">Privacy Policy</button>, <button type="button" class="link-inline" onclick="openPolicyFromSignup('payment')">Payment Policy</button>, <button type="button" class="link-inline" onclick="openPolicyFromSignup('delivery')">Delivery Policy</button> and <button type="button" class="link-inline" onclick="openPolicyFromSignup('refund')">Return &amp; Refund Policy</button>.</div>
+  </div>
+  <button class="btn btn-primary" onclick="submitSignUp()">Create account</button>
+  <p class="muted" style="margin-top:14px;">Already have an account? <button class="link-btn" onclick="openSheet('signIn', {intent:'${_signupIntent||''}'})">Sign in</button></p>`;
 }
 async function submitSignUp(){
   if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
-  const email = val('su_email'), pass = val('su_email_pass'), pass2 = val('su_email_pass2');
+  const name = val('su_name'), phone = val('su_phone'), email = val('su_email'), pass = val('su_password');
+  const policyBox = document.getElementById('su_policy');
+  if(!name){ toast('Enter your full name','bad'); return; }
+  if(phone && !/^[79]\d{6}$/.test(phone)){ toast('Enter a valid mobile number, or leave it blank for now','bad'); return; }
   if(!email || !email.includes('@')){ toast('Enter a valid email','bad'); return; }
   if(!pass || pass.length<6){ toast('Password must be at least 6 characters','bad'); return; }
-  if(pass!==pass2){ toast('Passwords do not match','bad'); return; }
+  if(!policyBox || !policyBox.checked){ toast('Please agree to the policies to continue','bad'); return; }
   // Captured now, before openSheet('verifyEmail') below wipes state.sheetData (it opens
   // with no data) - without this, a business/delivery signup intent silently vanished
   // partway through signup -> verify-code -> mobile-number, leaving the user stranded
   // on customer home once it finished with no indication to continue into setup.
-  const intent = state.sheetData && state.sheetData.intent;
-  if(intent==='business' || intent==='delivery') state.pendingIntent = intent;
-  const { error } = await sb.auth.signUp({ email, password: pass });
+  if(_signupRole==='seller') state.pendingIntent = 'business';
+  else if(_signupRole==='delivery') state.pendingIntent = 'delivery';
+  _pendingSignupPhone = phone || null;
+  const { error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
   if(error){ toast(error.message,'bad'); return; }
   _pendingVerifyEmail = email;
   openSheet('verifyEmail');
+}
+// Draft policy copy grounded in how this app actually works (zones/fees, bank-transfer-
+// slip-vs-cash payment, free/Pro tiers, auctions). Not legal advice - flagged as a draft
+// pending real legal review before launch, per the "Back to sign up" flow returning
+// everything the user already typed (see _signupDraft above).
+const POLICY_CONTENT = {
+  privacy: { title:'Privacy Policy', html:`
+    <h3>What we collect</h3>
+    <ul>
+      <li>Your full name, mobile number, email address, and account password (handled by our authentication provider - we never see or store it in plain text).</li>
+      <li>If you register a store: your store name, category, bank account number, and account holder name.</li>
+      <li>If you sign up to deliver: your name and phone number.</li>
+      <li>Order details: items ordered, delivery zone, chosen payment method, and (for bank transfers) a photo of your transfer slip.</li>
+    </ul>
+    <h3>How we use it</h3>
+    <p>To run your account across the customer, store, and delivery portals; to process and fulfill orders; to match orders with a delivery partner; to verify bank-transfer and cash payments; and to contact you about an order or your account.</p>
+    <h3>Who can see what</h3>
+    <p>The store you order from sees your name, phone, delivery zone, and order details for orders placed with them - never your activity with other stores. The delivery partner assigned to your order sees your name, phone, and delivery zone, but not your payment details. We do not sell your personal information to anyone.</p>
+    <h3>Where it's stored</h3>
+    <p>Your data is stored in a secured database with row-level access controls, so only your own account, the relevant store, and the assigned delivery partner can access what they each need to.</p>
+    <h3>How long we keep it</h3>
+    <p>For as long as your account is active, plus a reasonable period afterward for accounting and dispute-resolution purposes. You can ask us to delete your account and associated data at any time.</p>
+    <h3>Your choices</h3>
+    <p>You can update your name, phone, and other details from the app, and request account deletion through Settings or by contacting us.</p>
+  `},
+  payment: { title:'Payment Policy', html:`
+    <h3>Accepted payment methods</h3>
+    <ul>
+      <li><strong>Bank transfer</strong> - you'll see the store's account number and holder name after checkout; upload a photo of your transfer slip, and the store confirms receipt before your order is marked paid.</li>
+      <li><strong>Cash to the delivery partner</strong> - pay in cash when your order is handed over; the delivery partner marks the cash collected once received.</li>
+    </ul>
+    <h3>When payment counts as confirmed</h3>
+    <p>Bank-transfer orders stay pending until the store reviews your slip and approves it. Cash orders stay pending until the delivery partner marks the cash collected. A store's account details are shown to you only until your payment is confirmed, then hidden.</p>
+    <h3>Delivery fees</h3>
+    <p>A flat fee applies based on the delivery zone you choose at checkout - Malé MVR 15, Hulhumalé Phase 1 MVR 20, or Hulhumalé Phase 2 MVR 25 - unless the store has marked that item as free delivery, in which case the store (not you) covers that cost.</p>
+    <h3>Auctions</h3>
+    <p>When an auction ends, the highest bid becomes an order. You'll choose a delivery zone and payment method to finish placing it, the same as any other order.</p>
+    <h3>Pro seller upgrade</h3>
+    <p>A one-time MVR 500 fee, paid by bank transfer (with slip upload) or card, permanently raises a store's item limit. This fee covers platform access and is refundable only as described in our Return &amp; Refund Policy.</p>
+    <h3>Payment disputes</h3>
+    <p>If a payment looks wrong, contact the store first. If it isn't resolved, contact Maldexpress support (see Contact us below).</p>
+  `},
+  delivery: { title:'Delivery Policy', html:`
+    <h3>Zones &amp; fees</h3>
+    <p>Delivery is a flat fee by zone, not a percentage of your order: Malé MVR 15, Hulhumalé Phase 1 MVR 20, Hulhumalé Phase 2 MVR 25. You pick your zone at checkout. Some items are listed with free delivery by the store - you won't pay a delivery fee on those.</p>
+    <h3>Who delivers</h3>
+    <p>An independent delivery partner registered on Maldexpress accepts and carries out each job. Maldexpress connects buyers, stores, and delivery partners, but the delivery itself is carried out by the partner, not by Maldexpress directly.</p>
+    <h3>Delivery timing</h3>
+    <p>Most orders are delivered the same day to the following day, depending on the store's preparation time and delivery-partner availability. This is a typical timeframe, not a guaranteed delivery window.</p>
+    <h3>If something goes wrong</h3>
+    <p>If a delivery is delayed, missed, or arrives damaged, contact the store you ordered from first - they're best placed to arrange a replacement, refund, or re-delivery. See our Return &amp; Refund Policy for what qualifies. Issues with a specific delivery partner's conduct can also be reported to Maldexpress support.</p>
+  `},
+  refund: { title:'Return & Refund Policy', html:`
+    <h3>Eligibility</h3>
+    <p>You may request a return or refund within 24 hours of delivery if an item is damaged, significantly different from its listing, or wasn't delivered at all. Contact the store you ordered from directly to start a request.</p>
+    <h3>Non-returnable</h3>
+    <p>Perishable goods (food, baked items) and won-auction items are final sale once delivered as described, except where the item arrived damaged or was misdescribed.</p>
+    <h3>How to request</h3>
+    <p>Reach out to the store from your order in My Orders. If you paid by bank transfer, keep your transfer slip as proof of payment; if you paid cash, your order history in the app is your proof of purchase.</p>
+    <h3>Refund method</h3>
+    <p>Refunds are issued by the store using the same method you paid with (bank transfer back to your account, or cash). The delivery fee is refunded only if the order was never delivered.</p>
+    <h3>Escalation</h3>
+    <p>If a store doesn't respond or you can't reach a fair resolution, contact Maldexpress support and we'll review the order to help mediate.</p>
+    <h3>Pro upgrade refunds</h3>
+    <p>The one-time Pro seller fee is refundable within 7 days of payment if you haven't yet listed beyond the free tier's 10-item limit; otherwise it is non-refundable.</p>
+  `}
+};
+function sheetPolicy(){
+  const type = state.sheetData && state.sheetData.type;
+  const copy = POLICY_CONTENT[type] || { title:'Policy', html:'<p>Details coming soon.</p>' };
+  return `
+  <h2>${copy.title}</h2>
+  <div class="policy-content">
+    <div class="draft-note">⚠ Draft policy, pending final legal review before launch.</div>
+    ${copy.html}
+    <h3>Contact us</h3>
+    <p>For order-specific issues, message the store you ordered from via My Orders. For account or platform-level issues, a dedicated Maldexpress support channel will be published here before launch.</p>
+  </div>
+  <button class="btn btn-primary" style="margin-top:18px;" onclick="openSheet('signUp', {intent:'${_signupIntent||''}'})">Back to sign up</button>`;
 }
 function sheetVerifyEmail(){
   return `
@@ -2426,6 +2825,21 @@ async function submitVerifyCode(){
   if(error){ toast(error.message,'bad'); return; }
   _pendingSignupUserId = data.user ? data.user.id : (data.session && data.session.user ? data.session.user.id : null);
   toast("Account verified — you're signed in!");
+  // If a valid mobile number was already captured on the sign-up form, submit it
+  // silently here and skip straight past setupMobile - it only needs to be shown
+  // as a fallback when no phone was given up front, or it turns out to be taken.
+  if(_pendingSignupPhone && /^[79]\d{6}$/.test(_pendingSignupPhone)){
+    const userId = _pendingSignupUserId || state.customerId;
+    const email = _pendingVerifyEmail || state.customerEmail;
+    const { error: profileErr } = await sb.from('user_profiles').insert({ user_id: userId, phone: _pendingSignupPhone, email });
+    _pendingSignupPhone = null;
+    if(!profileErr){
+      _pendingVerifyEmail = null; _pendingSignupUserId = null;
+      state.sheet = null; state.sheetData = null;
+      resolvePendingIntent();
+      return;
+    }
+  }
   openSheet('setupMobile');
 }
 async function resendVerifyCode(){

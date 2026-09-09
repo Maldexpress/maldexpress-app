@@ -2177,10 +2177,23 @@ function renderDelHome(d){
     </div>
   `);
 }
-function claimJob(id){
-  const o = DB.orders.find(x=>x.id===id); const d = currentDel();
-  o.deliveryPersonId = d.id; o.deliveryPersonName = d.name;
-  saveDB('orders', [o]); toast('Job accepted'); render();
+// A genuine partial update naming only the two columns actually changing - NOT
+// saveDB('orders', [o]), which upserts every column on the row (via toDbRow) and so
+// would need UPDATE privilege on total/payment_status/payout_status/
+// delivery_partner_payout too, even though their values never change here. The
+// "rider update assigned or open orders" RLS policy (delivery_person_id IS NULL to
+// claim; must be the assignee after) is what actually gates who can do this.
+async function claimJob(id){
+  const d = currentDel();
+  const { data, error } = await sb.from('orders')
+    .update({ delivery_person_id: d.id, delivery_person_name: d.name })
+    .eq('id', id).select();
+  if(error){ toast('Could not accept job: '+error.message, 'bad'); return; }
+  if(!data || !data.length){ toast('This job may have already been accepted by someone else', 'bad'); return; }
+  const updated = fromDbRow('orders', data[0]);
+  const idx = DB.orders.findIndex(o=>o.id===id);
+  if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
+  toast('Job accepted'); render();
 }
 function delJobCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);

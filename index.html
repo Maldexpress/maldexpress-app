@@ -853,6 +853,22 @@ async function saveDB(part, only){
     if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); }
   }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); }
 }
+// Every order mutation that touches a payment/payout column now goes through one of
+// the seven SECURITY DEFINER functions below instead of a client-side field write +
+// saveDB('orders') upsert - the function's own WHERE clause (ownership, status
+// preconditions) is the real gate, so a RETURNS SETOF orders with zero rows means the
+// precondition wasn't met (wrong owner, stale status, etc.), not a network failure.
+// On success the row Postgres actually wrote is applied back to DB.orders, rather than
+// trusting whatever the client optimistically computed beforehand.
+async function callOrderRpc(rpcName, args, orderId, failMsg){
+  const { data, error } = await sb.rpc(rpcName, args);
+  if(error){ toast('Could not update order: '+error.message, 'bad'); return null; }
+  if(!data || !data.length){ toast(failMsg || "Couldn't update this order — it may have changed, or you may not have permission", 'bad'); return null; }
+  const updated = fromDbRow('orders', data[0]);
+  const idx = DB.orders.findIndex(o=>o.id===orderId);
+  if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
+  return updated;
+}
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 const ZONES = {
   male: { label:"Malé", fee:15 },
@@ -1021,17 +1037,12 @@ function refreshCompleteOrderTotals(){
 async function submitCompleteAuctionOrder(orderId){
   const o = DB.orders.find(x=>x.id===orderId);
   if(!o) return;
-  const buyerPaysFee = o.deliveryType!=='free';
-  const fee = zoneFee(_selectedZone);
-  o.zone = _selectedZone;
-  o.deliveryFee = buyerPaysFee ? fee : 0;
-  o.total = o.itemsTotal + o.deliveryFee;
-  // The delivery partner is always paid the zone's flat fee, regardless of
-  // whether the buyer was charged for it.
-  o.deliveryPartnerPayout = fee;
-  o.paymentMethod = _selectedPay;
-  o.paymentStatus = _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash';
-  saveDB('orders');
+  // Zone fee, total, and delivery_partner_payout are all computed inside
+  // complete_auction_order() itself now - the RPC's own preconditions (still
+  // awaiting_completion, caller is the auction's winning bidder) are the real guard.
+  const updated = await callOrderRpc('complete_auction_order',
+    { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: _selectedPay }, orderId);
+  if(!updated) return;
   closeSheet();
   toast('Order confirmed!');
   render();
@@ -2020,10 +2031,9 @@ function orderDetailBizBody(o){
     <div style="margin-top:14px;">${actionArea}</div>
   `;
 }
-function approveOrderPayment(id){
-  const o = DB.orders.find(x=>x.id===id);
-  o.paymentStatus='paid';
-  saveDB('orders');
+async function approveOrderPayment(id){
+  const updated = await callOrderRpc('approve_order_payment', { p_order_id: id }, id);
+  if(!updated) return;
   closeSheet(); toast('Payment marked as received'); render();
 }
 
@@ -2074,8 +2084,16 @@ function feePayoutCard(o){
     ${o.payoutStatus==='pending' ? `<button class="btn btn-good btn-sm" style="margin-top:10px; width:100%;" onclick="markPayoutPaid('${o.id}')">Mark as paid to rider</button>` : ''}
   </div>`;
 }
-function settlePayout(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='settled'; saveDB('orders'); toast('Payout settled with rider'); render(); }
-function markPayoutPaid(id){ const o=DB.orders.find(x=>x.id===id); o.payoutStatus='settled'; saveDB('orders'); toast('Marked as paid to rider'); render(); }
+async function settlePayout(id){
+  const updated = await callOrderRpc('settle_payout', { p_order_id: id }, id);
+  if(!updated) return;
+  toast('Payout settled with rider'); render();
+}
+async function markPayoutPaid(id){
+  const updated = await callOrderRpc('mark_payout_paid', { p_order_id: id }, id);
+  if(!updated) return;
+  toast('Marked as paid to rider'); render();
+}
 
 /* =================== BUSINESS SETTINGS ==================== */
 function sheetBizSettings(){
@@ -2162,7 +2180,7 @@ function renderDelHome(d){
 function claimJob(id){
   const o = DB.orders.find(x=>x.id===id); const d = currentDel();
   o.deliveryPersonId = d.id; o.deliveryPersonName = d.name;
-  saveDB('orders'); toast('Job accepted'); render();
+  saveDB('orders', [o]); toast('Job accepted'); render();
 }
 function delJobCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
@@ -2202,17 +2220,21 @@ function sheetMarkCash(){
   </div>
   <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
 }
-function confirmCashReceived(id){ const o=DB.orders.find(x=>x.id===id); o.paymentStatus='cash_collected'; saveDB('orders'); closeSheet(); toast('Marked as cash received'); render(); }
+async function confirmCashReceived(id){
+  const updated = await callOrderRpc('confirm_cash_received', { p_order_id: id }, id);
+  if(!updated) return;
+  closeSheet(); toast('Marked as cash received'); render();
+}
 // A free-delivery order (buyer wasn't charged the zone fee) always creates a
 // payout obligation once delivered, regardless of payment method - a
 // buyer-pays order never needs this, since the buyer's own payment already
 // covers the fee either way (kept as the rider's cash cut, or already in the
 // store's account from the transfer).
-function markDelivered(id){
-  const o=DB.orders.find(x=>x.id===id);
-  o.status='delivered';
-  if(o.deliveryType==='free') o.payoutStatus='pending';
-  saveDB('orders'); toast('Marked delivered'); render();
+async function markDelivered(id){
+  const updated = await callOrderRpc('mark_delivered', { p_order_id: id }, id,
+    "Couldn't mark this delivered — it may already be marked delivered");
+  if(!updated) return;
+  toast('Marked delivered'); render();
 }
 // Cash orders show the cash-collected/settled state via paymentStatusPill AND,
 // when this was also a free-delivery order, the separate store-owes-payout state -
@@ -2916,7 +2938,7 @@ function placeOrder(bizId){
     paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null
   };
-  DB.orders.push(order); saveDB('orders');
+  DB.orders.push(order); saveDB('orders', [order]);
   state.cart = {};
   closeSheet();
   go('custOrders');
@@ -2988,10 +3010,12 @@ function previewSlip(e){
   reader.onload = ()=>{ _slipData = reader.result; const img=document.getElementById('slipPreview'); img.src=_slipData; img.style.display='block'; };
   reader.readAsDataURL(f);
 }
-function submitSlip(id){
-  const o = DB.orders.find(x=>x.id===id);
-  o.paymentStatus='slip_uploaded'; o.slipDataUrl = _slipData;
-  saveDB('orders'); _slipData=null; closeSheet(); toast('Slip submitted — waiting for store approval'); render();
+async function submitSlip(id){
+  const slipData = _slipData;
+  const updated = await callOrderRpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData }, id);
+  _slipData = null;
+  if(!updated) return;
+  closeSheet(); toast('Slip submitted — waiting for store approval'); render();
 }
 
 /* =================== INIT =================== */

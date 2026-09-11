@@ -682,7 +682,7 @@ create policy "customer insert own order" on orders for insert
 -- as a defense-in-depth backstop, but no client-side code relies on them for
 -- payment/payout columns anymore - see the SECURITY DEFINER functions and the
 -- column-level lockdown further down, which are what actually gate
--- submitSlip(), submitCompleteAuctionOrder(), confirmCashReceived(),
+-- submitSlip(), submitCompleteAuctionOrder(), confirmCashAndDeliver(),
 -- markDelivered(), approveOrderPayment(), settlePayout(), and
 -- markPayoutPaid() now. claimJob() is the sole remaining direct client write
 -- on this table, touching only delivery_person_id/delivery_person_name.
@@ -719,6 +719,11 @@ create policy "rider update assigned or open orders" on orders for update
 -- instead of a direct client update, so each write's precondition (ownership,
 -- order status) is enforced atomically in the same statement that makes the
 -- change - a raw REST update can no longer skip it.
+-- Also flips payment_method to 'transfer' - lets a customer who originally
+-- chose cash switch to a bank transfer instead, so every downstream branch
+-- (the business's order detail, the rider's job card) treats it as a
+-- transfer order from here on instead of payment_method/payment_status
+-- telling two different stories.
 create or replace function submit_transfer_slip(p_order_id text, p_slip_url text)
 returns setof orders
 language sql
@@ -726,7 +731,7 @@ security definer
 set search_path = public
 as $$
   update orders
-  set payment_status = 'slip_uploaded', slip_url = p_slip_url
+  set payment_status = 'slip_uploaded', slip_url = p_slip_url, payment_method = 'transfer'
   where id = p_order_id and customer_id = auth.uid()
   returning *;
 $$;
@@ -807,22 +812,31 @@ as $$
   returning *;
 $$;
 
+-- Either the assigned rider, or the business itself for a self-delivery
+-- order (there's no rider account to act on its behalf) - and only once the
+-- package has actually gone out (out_for_delivery), not the instant a job
+-- is claimed - see mark_order_out_for_delivery() further down.
 create or replace function confirm_cash_received(p_order_id text)
 returns setof orders
 language sql
 security definer
 set search_path = public
 as $$
-  update orders
-  set payment_status = 'cash_collected'
-  where id = p_order_id
-    and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
-  returning *;
+  update orders o set payment_status = 'cash_collected'
+  where o.id = p_order_id
+    and o.status = 'out_for_delivery'
+    and (
+      exists (select 1 from delivery_persons d where d.id = o.delivery_person_id and d.user_id = auth.uid())
+      or (o.self_delivery = true and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid()))
+    )
+  returning o.*;
 $$;
 
 -- "status is distinct from 'delivered'" is the idempotency guard - a repeat
 -- call (e.g. a retried request) can't re-open a payout that a first call
--- already settled.
+-- already settled. A rider can't mark a normal order delivered until the
+-- store has actually handed it over (out_for_delivery); a rental delivery
+-- job never goes through that handoff step at all, so it's exempted.
 create or replace function mark_delivered(p_order_id text)
 returns setof orders
 language sql
@@ -835,6 +849,7 @@ as $$
     payout_status = case when delivery_type = 'free' then 'pending' else payout_status end
   where id = p_order_id
     and status is distinct from 'delivered'
+    and (rental_item_id is not null or status = 'out_for_delivery')
     and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   returning *;
 $$;
@@ -977,6 +992,28 @@ as $$
   returning o.*;
 $$;
 
+-- The business takes a photo of the package at the moment they hand it
+-- over - to the assigned rider, or to themselves if self-delivering - and
+-- this is what actually flips the order to out_for_delivery, the status a
+-- customer sees. Only makes sense once a fulfillment method is chosen.
+alter table orders add column if not exists handoff_photo_url text;
+create or replace function mark_order_out_for_delivery(p_order_id text, p_photo_url text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set status = 'out_for_delivery', handoff_photo_url = p_photo_url
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.status not in ('delivered','out_for_delivery')
+    and (o.delivery_person_id is not null or o.self_delivery = true)
+  returning o.*;
+$$;
+
+-- Same handoff-first requirement as mark_delivered() above, for a
+-- self-delivered order's final mark.
 create or replace function mark_order_delivered_by_business(p_order_id text)
 returns setof orders
 language sql
@@ -987,8 +1024,7 @@ as $$
   where o.id = p_order_id
     and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
     and o.self_delivery = true
-    and o.delivery_person_id is null
-    and o.status is distinct from 'delivered'
+    and o.status = 'out_for_delivery'
   returning o.*;
 $$;
 
@@ -1006,6 +1042,7 @@ grant execute on function decrement_rental_stock(text) to authenticated;
 grant execute on function mark_order_ready_for_pickup(text) to authenticated;
 grant execute on function mark_order_self_delivery(text) to authenticated;
 grant execute on function mark_order_delivered_by_business(text) to authenticated;
+grant execute on function mark_order_out_for_delivery(text, text) to authenticated;
 
 -- The ten functions above are now the only way total/payment_status/
 -- payout_status/delivery_partner_payout/status/needs_delivery_partner/
@@ -1449,7 +1486,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -3590,20 +3627,28 @@ function orderDetailBizBody(o){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">${o.rentalFulfillment==='pickup'?'Picked up ✓':'Delivered ✓'}</div>`;
     }
   } else if(o.deliveryPersonId){
-    actionArea += o.status!=='delivered'
-      ? `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">${o.deliveryPersonName} accepted this job and is delivering it.</p></div>`
-      : `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
+    if(o.status==='delivered'){
+      actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
+    } else if(o.status==='out_for_delivery'){
+      actionArea += `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">Handed to ${o.deliveryPersonName} — out for delivery.</p></div>`;
+    } else {
+      actionArea += handoffPhotoHTML(o, `Take a photo of the package before handing it to ${o.deliveryPersonName}:`, 'Mark handed to delivery guy');
+    }
   } else if(o.readyForPickup){
     actionArea += `
     <div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Posted to delivery partners — waiting for one to accept.</p></div>
     <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderSelfDelivery('${o.id}')">🚚 I'll deliver this myself instead</button>`;
   } else if(o.selfDelivery){
-    actionArea += o.status!=='delivered'
-      ? `
-      <div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">You're delivering this yourself — not visible to delivery partners.</p></div>
-      <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>
-      <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderReadyForPickup('${o.id}')">📦 Send to a delivery partner instead</button>`
-      : `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered ✓</div>`;
+    if(o.status==='delivered'){
+      actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered ✓</div>`;
+    } else if(o.status==='out_for_delivery'){
+      actionArea += `
+      <div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">Out for delivery — you're delivering this yourself.</p></div>
+      <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>`;
+    } else {
+      actionArea += handoffPhotoHTML(o, `Take a photo of the package before you head out:`, 'Mark out for delivery')
+        + `<button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderReadyForPickup('${o.id}')">📦 Send to a delivery partner instead</button>`;
+    }
   } else if(o.status!=='delivered'){
     actionArea += `
     <div class="glass card tight" style="margin-top:10px;">
@@ -3661,10 +3706,56 @@ async function markOrderSelfDelivery(id){
   toast("You're delivering this one"); render();
 }
 async function markOrderDeliveredByBusiness(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(o && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
+    openSheet('markCash', id);
+    return;
+  }
   const updated = await callOrderRpc('mark_order_delivered_by_business', { p_order_id: id }, id,
     "Couldn't update this order — it may have changed");
   if(!updated) return;
   toast('Marked as delivered'); render();
+}
+// Shared by both the rider-assigned and self-delivery paths in
+// orderDetailBizBody() - a photo of the package is required before the
+// confirm button (disabled until one's chosen) actually flips the order to
+// out_for_delivery. capture="environment" opens the phone's camera directly
+// rather than a gallery picker, since the point is a fresh proof-of-handoff
+// photo, not any existing image.
+function handoffPhotoHTML(o, label, buttonText){
+  return `
+  <div class="glass card tight" style="margin-top:10px;">
+    <p class="muted" style="font-size:.82em; margin-bottom:8px;">${label}</p>
+    <input type="file" accept="image/*" capture="environment" id="handoffPhotoFile_${o.id}" style="display:none;" onchange="previewHandoffPhoto(event,'${o.id}')">
+    <label for="handoffPhotoFile_${o.id}" class="filebtn">📸 Take photo</label>
+    <div class="slip-preview-wrap" id="handoffPhotoPreviewWrap_${o.id}" style="display:none; margin-top:10px;">
+      <img id="handoffPhotoPreview_${o.id}" style="width:100%; border-radius:14px; display:block; max-height:200px; object-fit:cover;">
+    </div>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="handoffConfirmBtn_${o.id}" disabled onclick="markOrderOutForDelivery('${o.id}')">${buttonText}</button>
+  </div>`;
+}
+let _handoffPhotoData = null;
+function previewHandoffPhoto(e, orderId){
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    _handoffPhotoData = reader.result;
+    const img = document.getElementById('handoffPhotoPreview_'+orderId);
+    const wrap = document.getElementById('handoffPhotoPreviewWrap_'+orderId);
+    if(img) img.src = _handoffPhotoData;
+    if(wrap) wrap.style.display = 'block';
+    const btn = document.getElementById('handoffConfirmBtn_'+orderId);
+    if(btn) btn.disabled = false;
+  };
+  reader.readAsDataURL(f);
+}
+async function markOrderOutForDelivery(id){
+  if(!_handoffPhotoData){ toast('Take a photo of the package first','bad'); return; }
+  const updated = await callOrderRpc('mark_order_out_for_delivery', { p_order_id: id, p_photo_url: _handoffPhotoData }, id,
+    "Couldn't update this order — it may have changed");
+  _handoffPhotoData = null;
+  if(!updated) return;
+  toast('Marked out for delivery'); render();
 }
 function setRentalDeliveryTiming(orderId, timing){
   document.getElementById('rdel_timing_'+orderId).value = timing;
@@ -4143,13 +4234,10 @@ function delJobCard(o){
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
       <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the business marks payment received.</p>
     ` : ''}
-    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
-      <button class="btn btn-good btn-sm" style="width:100%;" onclick="event.stopPropagation(); openSheet('markCash', '${o.id}')">Mark cash received from customer</button>
-    ` : ''}
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
       <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${cashCut>0 ? `You owe the store ${money(o.total-Math.round(cashCut))} after your ${money(Math.round(cashCut))} cut.` : `No delivery fee was collected, so you owe the store the full ${money(o.total)} — the store pays your ${money(Math.round(payoutAmt))} payout separately.`}</p></div>
     ` : ''}
-    <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>
+    ${o.status!=='out_for_delivery' ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>` : `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>`}
   </div>`;
 }
 function openDelOrderDetail(orderId){ openSheet('delOrderDetail', orderId); }
@@ -4203,12 +4291,19 @@ function sheetDelOrderDetail(){
   ${o.paymentMethod==='transfer' && o.paymentStatus!=='paid' ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
   ` : ''}
-  ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
-    <button class="btn btn-good" style="width:100%; margin-top:14px;" onclick="closeSheet(); openSheet('markCash','${o.id}')">Mark cash received from customer</button>
-  ` : ''}
-  ${o.status!=='delivered' ? `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}'); closeSheet();">Mark delivered</button>` : ''}
+  ${o.status==='delivered' ? '' : o.status!=='out_for_delivery'
+    ? `<div class="card tight" style="margin-top:14px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>`
+    : `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}')">Mark delivered</button>`}
   `;
 }
+// Opened by markDelivered()/markOrderDeliveredByBusiness() instead of calling
+// their RPC straight away, whenever the order is still an uncollected cash
+// order - confirming here does both the cash collection and the delivery
+// mark in one step. The amount field defaults to the order total (most
+// deliveries are paid exactly), but stays editable for the real case of a
+// customer handing over a bigger note - the keypad opens immediately
+// (autofocus) and Enter submits, so a rider mid-handoff doesn't need to
+// find and tap a separate button.
 function sheetMarkCash(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
   const cashCut = Math.round(cashCutAmount(o));
@@ -4217,17 +4312,50 @@ function sheetMarkCash(){
     ? `Your cut (${money(cashCut)}) stays with you — you'll owe the store <strong>${money(owed)}</strong>.`
     : `No delivery fee was collected from the customer, so you'll owe the store the full <strong>${money(owed)}</strong> — the store pays your ${money(Math.round(payoutAmountFor(o)))} delivery payout separately.`;
   return `
-  <h2>Confirm cash received</h2>
-  <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · Total ${money(o.total)}</p>
-  <div class="card tight" style="margin:14px 0; background:rgba(61,220,151,.1);">
-    <p style="font-size:.88em;">Confirming you collected <strong>${money(o.total)}</strong> cash from the customer. ${cutNote}</p>
+  <h2>Cash received?</h2>
+  <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · Total due ${money(o.total)}</p>
+  <div class="field" style="margin-top:14px;">
+    <label>Amount handed over (MVR)</label>
+    <input type="number" step="0.01" inputmode="decimal" id="cashReceivedInput" value="${o.total.toFixed(2)}" autofocus
+      oninput="updateCashChangeNote('${o.id}')"
+      onkeydown="if(event.key==='Enter'){ event.preventDefault(); confirmCashAndDeliver('${o.id}'); }">
   </div>
-  <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashReceived('${o.id}')">Confirm cash received</button>`;
+  <div class="card tight" id="cashChangeNote" style="margin-top:10px; background:rgba(255,138,92,.12); display:none;">
+    <p style="font-size:.88em;">Give <strong id="cashChangeAmount"></strong> change back to the customer.</p>
+  </div>
+  <div class="card tight" style="margin-top:10px; background:rgba(61,220,151,.1);">
+    <p style="font-size:.85em;">${cutNote}</p>
+  </div>
+  <button class="btn btn-good" style="margin-top:14px;" onclick="confirmCashAndDeliver('${o.id}')">Confirm & mark delivered</button>`;
 }
-async function confirmCashReceived(id){
-  const updated = await callOrderRpc('confirm_cash_received', { p_order_id: id }, id);
-  if(!updated) return;
-  closeSheet(); toast('Marked as cash received'); render();
+function updateCashChangeNote(orderId){
+  const o = DB.orders.find(x=>x.id===orderId);
+  const input = document.getElementById('cashReceivedInput');
+  const note = document.getElementById('cashChangeNote');
+  if(!o || !input || !note) return;
+  const received = Number(input.value);
+  if(received > o.total + 0.001){
+    document.getElementById('cashChangeAmount').textContent = money(received - o.total);
+    note.style.display = 'block';
+  } else {
+    note.style.display = 'none';
+  }
+}
+// Confirms cash collection and the delivery mark together - the final RPC
+// differs depending on who's delivering: the assigned rider (mark_delivered)
+// or the business itself for a self-delivery order
+// (mark_order_delivered_by_business, since there's no rider account here).
+async function confirmCashAndDeliver(id){
+  const o = DB.orders.find(x=>x.id===id);
+  const isSelfDelivery = !!(o && o.selfDelivery);
+  const cashUpdated = await callOrderRpc('confirm_cash_received', { p_order_id: id }, id,
+    "Couldn't confirm cash received — the order may have changed");
+  if(!cashUpdated) return;
+  const finalRpc = isSelfDelivery ? 'mark_order_delivered_by_business' : 'mark_delivered';
+  const updated = await callOrderRpc(finalRpc, { p_order_id: id }, id,
+    "Cash confirmed, but couldn't mark delivered — try again");
+  closeSheet();
+  toast(updated ? 'Delivered!' : 'Cash confirmed'); render();
 }
 // A free-delivery order (buyer wasn't charged the zone fee) always creates a
 // payout obligation once delivered, regardless of payment method - a
@@ -4235,10 +4363,15 @@ async function confirmCashReceived(id){
 // covers the fee either way (kept as the rider's cash cut, or already in the
 // store's account from the transfer).
 async function markDelivered(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(o && !o.rentalItemId && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
+    openSheet('markCash', id);
+    return;
+  }
   const updated = await callOrderRpc('mark_delivered', { p_order_id: id }, id,
     "Couldn't mark this delivered — it may already be marked delivered");
   if(!updated) return;
-  toast('Marked delivered'); render();
+  closeSheet(); toast('Marked delivered'); render();
 }
 // Cash orders show the cash-collected/settled state via paymentStatusPill AND,
 // when this was also a free-delivery order, the separate store-owes-payout state -
@@ -6267,11 +6400,15 @@ function custOrderCard(o){
   <div class="glass card" onclick="openCustOrderDetail('${o.id}')">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
     <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · ${money(o.total)}</p>
+    ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:8px;">🚚 Out for delivery</div>` : ''}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
       ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
     ` : ''}
-    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} ready — cash to your delivery partner, or transfer to ${biz?biz.name:'the store'}'s account.</p>` : ''}
+    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
+      <p class="muted" style="font-size:.82em;">Have ${money(o.total)} ready — cash to your delivery partner, or transfer to ${biz?biz.name:'the store'}'s account.</p>
+      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip instead</button>
+    ` : ''}
     ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
     ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
   </div>`;
@@ -6289,6 +6426,7 @@ function sheetCustOrderDetail(){
     ${paymentStatusPill(o)}
   </div>
   <p class="muted" style="font-size:.85em; margin:4px 0 12px;">${o.businessName} · ${new Date(o.createdAt).toLocaleString()}</p>
+  ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:10px;">🚚 Out for delivery</div>` : ''}
   ${o.deliveryTargetType==='pickup' ? `
   <div class="glass card tight" style="margin-bottom:12px;">
     <p class="muted" style="font-size:.78em; margin-bottom:4px;">📦 Pickup from</p>
@@ -6313,6 +6451,7 @@ function sheetCustOrderDetail(){
   ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
     <p class="muted" style="font-size:.82em; margin-top:10px;">Have ${money(o.total)} ready for when it arrives — pay your delivery partner cash, or transfer it straight to the store's account instead:</p>
     <div class="acct-box" style="margin-top:8px;"><div class="lbl">Store account (if you'd rather transfer)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
+    <button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadSlip','${o.id}')">Upload transfer slip instead</button>
   ` : ''}
   ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em; margin-top:10px;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
   ${o.paymentStatus==='awaiting_completion' ? `<button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="closeSheet(); openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>` : ''}

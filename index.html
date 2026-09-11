@@ -844,6 +844,11 @@ $$;
 -- one "current custody" photo that matters. Rentals are exempted from this
 -- one too - a rental delivery job's rider has no UI to capture this second
 -- photo (its own claim_rental_job() flow never involved a handoff photo).
+-- A rental delivery job also can't be marked delivered until its payment is
+-- confirmed (payment_status='paid') - same "don't hand over the goods before
+-- the money's in" rule mark_rental_fulfilled enforces for a rental the
+-- business hands over itself; non-rental orders are untouched by this
+-- (rental_item_id is null short-circuits the check immediately).
 create or replace function mark_delivered(p_order_id text, p_boat_photo_url text default null)
 returns setof orders
 language sql
@@ -858,6 +863,7 @@ as $$
   where id = p_order_id
     and status is distinct from 'delivered'
     and (rental_item_id is not null or status = 'out_for_delivery')
+    and (rental_item_id is null or payment_status = 'paid')
     and (delivery_target_type is distinct from 'boat' or rental_item_id is not null or p_boat_photo_url is not null)
     and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   returning *;
@@ -868,6 +874,11 @@ $$;
 -- customer has picked it up or been handed it. Once a delivery partner has
 -- taken the job (see claim_rental_job below), it's their call via
 -- mark_delivered above instead - hence delivery_person_id is null here.
+-- payment_status='paid' used to not be required at all - a business could
+-- hand the item over before ever confirming payment. Now it can't, whether
+-- that's the full rental cost (an 'upfront'-timing order, same as before) or
+-- just the advance/deposit (an 'on_return' order - see the rental_fee_amount/
+-- rental_fee_timing columns and mark_rental_returned() below).
 create or replace function mark_rental_fulfilled(p_order_id text)
 returns setof orders
 language sql
@@ -880,6 +891,7 @@ as $$
     and rental_item_id is not null
     and status is distinct from 'delivered'
     and delivery_person_id is null
+    and payment_status = 'paid'
     and exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid())
   returning *;
 $$;
@@ -958,6 +970,63 @@ as $$
     and stock > 0
     and auth.uid() is not null
   returning *;
+$$;
+
+-- A rental order originally always bundled the full rental cost (days ×
+-- rate) and the deposit/advance into one lump total, collected in full
+-- before the item ever left the store. These columns split that apart:
+-- rental_fee_amount holds the day-rate portion when the customer chooses to
+-- pay it later instead of now (0/null when paying upfront, in which case
+-- it's already folded into total exactly like before); rental_fee_timing
+-- records that choice - distinct from rental_payout_timing above, which is
+-- about when a delivery *partner* gets paid their own courier fee, not
+-- when the customer pays the store; rental_returned_at and
+-- rental_return_fee_status track the item actually coming back (and, for a
+-- deferred order, its fee finally being collected) - see
+-- mark_rental_returned() just below. None of these are settable by a raw
+-- client update (see the orders column lockdown further down) - only via
+-- order creation (client insert, in submitRentItem()) or this function.
+alter table orders add column if not exists rental_fee_amount numeric;
+alter table orders add column if not exists rental_fee_timing text check (rental_fee_timing is null or rental_fee_timing in ('upfront','on_return'));
+alter table orders add column if not exists rental_returned_at timestamptz;
+alter table orders add column if not exists rental_return_fee_status text check (rental_return_fee_status is null or rental_return_fee_status in ('pending','collected'));
+
+-- Marks a rental's item as physically back in the store's hands - a step the
+-- app never had before, so a rented-out unit's stock never came back
+-- (decrement_rental_stock above had no counterpart). Works the same whether
+-- the customer picked it up themselves or a rider delivered it (status just
+-- needs to already be 'delivered'); for an 'on_return' order this also
+-- collects the deferred rental fee - p_fee_collected is trusted from the
+-- caller since there's no independent payment rail to verify it against,
+-- the same trust boundary approve_order_payment/confirm_cash_received
+-- already rely on elsewhere for an in-person cash handover.
+create or replace function mark_rental_returned(p_order_id text, p_fee_collected numeric default null)
+returns setof orders
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_result orders;
+begin
+  update orders o set
+    rental_returned_at = now(),
+    rental_return_fee_status = case when o.rental_fee_timing = 'on_return' then 'collected' else o.rental_return_fee_status end
+  where o.id = p_order_id
+    and o.rental_item_id is not null
+    and o.status = 'delivered'
+    and o.rental_returned_at is null
+    and (o.rental_fee_timing is distinct from 'on_return' or p_fee_collected is not null)
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+  returning o.* into v_result;
+
+  if v_result.id is null then
+    return;
+  end if;
+
+  update items set stock = stock + 1 where id = v_result.rental_item_id;
+
+  return query select v_result.*;
+end;
 $$;
 
 -- A non-rental order used to be visible to every rider as an open job the
@@ -1051,6 +1120,7 @@ grant execute on function mark_rental_fulfilled(text) to authenticated;
 grant execute on function offer_rental_delivery(text, numeric, text) to authenticated;
 grant execute on function claim_rental_job(text) to authenticated;
 grant execute on function decrement_rental_stock(text) to authenticated;
+grant execute on function mark_rental_returned(text, numeric) to authenticated;
 grant execute on function mark_order_ready_for_pickup(text) to authenticated;
 grant execute on function mark_order_self_delivery(text) to authenticated;
 grant execute on function mark_order_delivered_by_business(text) to authenticated;
@@ -1487,7 +1557,7 @@ function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
-  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null };
+  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
   if(part==='auctions') return { id:o.id, item_id:o.itemId, business_id:o.businessId, starting_price:o.startingPrice, bid_increment:o.bidIncrement, start_time:new Date(o.startTime).toISOString(), end_time:new Date(o.endTime).toISOString(), current_highest_bid:o.currentHighestBid, current_highest_bidder:o.currentHighestBidder, bid_count:o.bidCount||0, status:o.status, order_id:o.orderId||null };
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
@@ -1498,7 +1568,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -2598,6 +2668,7 @@ function sheetHTML(){
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
   else if(state.sheet==='markCash') body = sheetMarkCash();
+  else if(state.sheet==='rentalReturn') body = sheetRentalReturn();
   else if(state.sheet==='checkout') body = sheetCheckout();
   else if(state.sheet==='completeAuctionOrder') body = sheetCompleteAuctionOrder();
   else if(state.sheet==='signIn') body = sheetSignIn();
@@ -2984,11 +3055,16 @@ function orderCardBiz(o){
   <div class="glass card" onclick="openOrderDetailBiz('${o.id}')">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${pillHtml}</div>
     <p class="muted" style="font-size:.85em; margin-top:4px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${pm} · ${fulfilmentTag}</p>
-    <div class="row between" style="margin-top:8px;"><span class="price">${money(o.total)}</span><span class="muted" style="font-size:.8em;">${new Date(o.createdAt).toLocaleDateString()}</span></div>
+    <div class="row between" style="margin-top:8px;"><span class="price">${money(o.total)}${o.rentalItemId && o.rentalFeeTiming==='on_return' && o.rentalReturnFeeStatus!=='collected' ? ` <span class="muted" style="font-size:.7em; font-weight:600;">+ ${money(o.rentalFeeAmount||0)} on return</span>` : ''}</span><span class="muted" style="font-size:.8em;">${new Date(o.createdAt).toLocaleDateString()}</span></div>
   </div>`;
 }
 function paymentStatusPill(o){
   if(o.paymentStatus==='awaiting_completion') return `<span class="status-pill wait">Needs completion</span>`;
+  // An 'on_return' rental's payment_status flips to 'paid' the moment its
+  // advance is confirmed - same column a fully-paid order uses - but the
+  // rental fee itself is still outstanding at that point, so "Paid ✓" would
+  // overstate it until rentalReturnFeeStatus also says 'collected'.
+  if(o.rentalItemId && o.rentalFeeTiming==='on_return' && o.rentalReturnFeeStatus!=='collected' && (o.paymentStatus==='paid'||o.paymentStatus==='settled')) return `<span class="status-pill mid">Advance paid</span>`;
   if(o.paymentStatus==='paid'||o.paymentStatus==='settled') return `<span class="status-pill ok">Paid ✓</span>`;
   if(o.paymentStatus==='slip_uploaded') return `<span class="status-pill mid">Slip uploaded</span>`;
   if(o.paymentStatus==='cash_collected') return `<span class="status-pill mid">Cash with rider</span>`;
@@ -3616,13 +3692,24 @@ function orderDetailBizBody(o){
   // rental never gets this option at all, since nothing needs delivering.
   if(o.rentalItemId){
     if(o.deliveryPersonId){
-      actionArea += o.status!=='delivered'
-        ? `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">${o.deliveryPersonName} is delivering this, for ${money(payoutAmt)} ${o.rentalPayoutTiming==='upfront'?'(already paid upfront)':'(due once they mark it delivered)'}.</p></div>`
-        : `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
+      if(o.status!=='delivered'){
+        actionArea += `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">${o.deliveryPersonName} is delivering this, for ${money(payoutAmt)} ${o.rentalPayoutTiming==='upfront'?'(already paid upfront)':'(due once they mark it delivered)'}.${o.paymentStatus!=='paid'?` Still waiting on ${o.rentalFeeTiming==='on_return'?'the advance':'payment'} before they can hand it over.`:''}</p></div>`;
+      } else if(o.rentalReturnedAt){
+        actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓ · Returned ✓${o.rentalFeeTiming==='on_return'?' · rental fee collected':''}</div>`;
+      } else {
+        actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
+        actionArea += rentalReturnActionHTML(o);
+      }
     } else if(o.needsDeliveryPartner){
       actionArea += `<div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Waiting for a delivery partner to accept — offering ${money(payoutAmt)}, paid ${o.rentalPayoutTiming==='upfront'?'upfront on acceptance':'after delivery'}.</p></div>`;
     } else if(o.status!=='delivered'){
-      actionArea += `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markRentalFulfilled('${o.id}')">${o.rentalFulfillment==='pickup'?'Mark as picked up':'Mark as delivered'}</button>`;
+      // The item can't be handed over until payment_status='paid' - see
+      // mark_rental_fulfilled's own gate - which for an 'on_return' order
+      // only ever needs the advance/deposit (o.total already reflects just
+      // that amount, not the full rental cost - see submitRentItem()).
+      actionArea += o.paymentStatus==='paid'
+        ? `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markRentalFulfilled('${o.id}')">${o.rentalFulfillment==='pickup'?'Mark as picked up':'Mark as delivered'}</button>`
+        : `<div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Waiting for ${o.rentalFeeTiming==='on_return'?'the advance':'payment'} before you can hand this over.</p></div>`;
       if(o.rentalFulfillment==='deliver'){
         actionArea += `
         <div class="glass card tight" style="margin-top:10px;">
@@ -3639,8 +3726,11 @@ function orderDetailBizBody(o){
           <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="offerRentalDelivery('${o.id}')">Send to delivery partners</button>
         </div>`;
       }
+    } else if(o.rentalReturnedAt){
+      actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Returned ✓${o.rentalFeeTiming==='on_return'?' · rental fee collected':''}</div>`;
     } else {
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">${o.rentalFulfillment==='pickup'?'Picked up ✓':'Delivered ✓'}</div>`;
+      actionArea += rentalReturnActionHTML(o);
     }
   } else if(o.deliveryPersonId){
     if(o.status==='delivered'){
@@ -3675,6 +3765,11 @@ function orderDetailBizBody(o){
     </div>`;
   }
   const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
+  // An 'on_return' rental's own o.total only ever holds the advance due at
+  // checkout (see submitRentItem()) - the rental fee itself lives separately
+  // in rentalFeeAmount, so it needs its own line here or the order would
+  // look like it was worth far less than it actually is.
+  const rentalFeeLine = (o.rentalItemId && o.rentalFeeTiming==='on_return') ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : '';
   return `
     <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
     <p class="muted" style="margin-bottom:12px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
@@ -3692,7 +3787,8 @@ function orderDetailBizBody(o){
     <div class="glass card tight">${itemsList}<div class="divider"></div>
       <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-(buyerPaidFee?payoutAmt:0))}</span></div>
       ${deliveryLine}
-      <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>
+      ${rentalFeeLine}
+      <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return'?'Due now':'Total'}</strong><strong class="price">${money(o.total)}</strong></div>
     </div>
     <div style="margin-top:14px;">${actionArea}</div>
   `;
@@ -3702,6 +3798,58 @@ async function markRentalFulfilled(id){
     "Couldn't update this order — it may already be marked fulfilled");
   if(!updated) return;
   closeSheet(); toast(updated.rentalFulfillment==='pickup' ? 'Marked as picked up' : 'Marked as delivered'); render();
+}
+// Shown once a rental's been handed over (picked up or delivered) and hasn't
+// come back yet - the one step the app never had before, so a rented-out
+// item's stock never returned to the catalogue (see mark_rental_returned()
+// in the schema above). An 'on_return' order still owes its rental fee, so
+// that needs collecting first via its own popup, same idea as markCash's
+// cash-on-delivery popup for a normal order; an 'upfront' order already paid
+// everything, so returning it is a single button with nothing left to collect.
+function rentalReturnActionHTML(o){
+  if(o.rentalFeeTiming==='on_return' && o.rentalReturnFeeStatus!=='collected'){
+    return `
+    <div class="glass card tight" style="margin-top:10px;">
+      <p class="muted" style="font-size:.82em; margin-bottom:8px;">Rental fee of ${money(o.rentalFeeAmount||0)} due now that it's coming back.</p>
+      <button class="btn btn-good" style="width:100%;" onclick="openSheet('rentalReturn','${o.id}')">Collect fee &amp; mark returned</button>
+    </div>`;
+  }
+  return `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markRentalReturned('${o.id}')">Mark item as returned</button>`;
+}
+// Only reached for an 'upfront' order (or one whose fee was somehow already
+// collected) - nothing left to gather, so this skips the popup entirely.
+async function markRentalReturned(id){
+  const updated = await callOrderRpc('mark_rental_returned', { p_order_id: id, p_fee_collected: null }, id,
+    "Couldn't mark this returned — it may have changed");
+  if(!updated) return;
+  const item = DB.items.find(i=>i.id===updated.rentalItemId);
+  if(item) item.stock += 1;
+  toast('Marked as returned'); render();
+}
+function sheetRentalReturn(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<p class="muted">Order not found.</p>`;
+  const fee = o.rentalFeeAmount||0;
+  return `
+  <h2>Rental fee due</h2>
+  <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · ${o.customerName}</p>
+  <div class="field" style="margin-top:14px;">
+    <label>Amount collected (MVR)</label>
+    <input type="number" step="0.01" inputmode="decimal" id="rentalFeeReceivedInput" value="${fee.toFixed(2)}" autofocus
+      onkeydown="if(event.key==='Enter'){ event.preventDefault(); confirmRentalReturn('${o.id}'); }">
+  </div>
+  <button class="btn btn-good" style="margin-top:14px;" onclick="confirmRentalReturn('${o.id}')">Confirm &amp; mark returned</button>`;
+}
+async function confirmRentalReturn(id){
+  const input = document.getElementById('rentalFeeReceivedInput');
+  const collected = input ? Number(input.value) : null;
+  if(collected==null || isNaN(collected) || collected<0){ toast('Enter a valid amount', 'bad'); return; }
+  const updated = await callOrderRpc('mark_rental_returned', { p_order_id: id, p_fee_collected: collected }, id,
+    "Couldn't mark this returned — it may have changed");
+  if(!updated) return;
+  const item = DB.items.find(i=>i.id===updated.rentalItemId);
+  if(item) item.stock += 1;
+  closeSheet(); toast('Rental fee collected — marked as returned'); render();
 }
 // Posts a normal (non-rental) order to the delivery-partner network - it only
 // becomes visible/claimable to riders once this runs (see the "rider update
@@ -4237,7 +4385,9 @@ function delJobCard(o){
       <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.receiverName||o.customerName} · Rental delivery</p>
       ${o.receiverName ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤':'📍'} ${[o.receiverPhone,o.receiverAddress].filter(Boolean).join(' · ')}</p>` : ''}
       <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${o.rentalPayoutTiming==='upfront'?`You've already been paid ${money(payoutAmt)} upfront for this.`:`Store owes you ${money(payoutAmt)} once you mark this delivered.`}</p></div>
-      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>
+      ${o.paymentStatus==='paid'
+        ? `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>`
+        : `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.82em;">Waiting for the customer's ${o.rentalFeeTiming==='on_return'?'advance':'payment'} to be confirmed before you can hand this over.</p></div>`}
     </div>`;
   }
   const biz = DB.businesses.find(b=>b.id===o.businessId);
@@ -4288,7 +4438,9 @@ function sheetDelOrderDetail(){
       <div class="row between" style="margin-top:6px;"><span class="muted">Your delivery payout</span><strong>${money(payoutAmt)}</strong></div>
     </div>
     <div class="card tight" style="margin-top:12px; background:rgba(34,184,200,.12);"><p style="font-size:.85em;">${o.rentalPayoutTiming==='upfront'?'Paid upfront when you accepted this job.':'The store pays this once you mark it delivered.'}</p></div>
-    ${o.status!=='delivered' ? `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}'); closeSheet();">Mark delivered</button>` : ''}
+    ${o.status==='delivered' ? '' : o.paymentStatus==='paid'
+      ? `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}'); closeSheet();">Mark delivered</button>`
+      : `<div class="card tight" style="margin-top:10px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the customer's ${o.rentalFeeTiming==='on_return'?'advance':'payment'} to be confirmed before you can hand this over.</p></div>`}
     `;
   }
   const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
@@ -5507,12 +5659,20 @@ function goCheckout(){
 // payment screen checks o.rentalItemId to skip the delivery-fee/payout UI for these.
 let _rentDays = 1;
 let _rentWarning = null;
+// Whether the customer pays the rental-days cost now (bundled with the
+// advance/deposit, same as before this existed) or defers it to when they
+// return the item - only offered when the item actually has a deposit set
+// (see sheetRentItem()), since "pay nothing now" would leave the store with
+// no advance to release the item against at all.
+let _rentFeeTiming = 'upfront';
 function openRentItem(itemId){
   if(sb && !state.authed){ state.pendingItemAction = {type:'rent', itemId}; openSheet('signIn', {intent:'rent'}); return; }
   _rentDays = 1;
   _rentWarning = null;
+  _rentFeeTiming = 'upfront';
   openSheet('rentItem', itemId);
 }
+function setRentFeeTiming(v){ _rentFeeTiming = v==='on_return' ? 'on_return' : 'upfront'; render(); }
 // Earliest accepted-booking start date that's today or later, if any - an
 // instant rental starting today can never run that far without crossing it.
 function nextBookingStart(itemId){
@@ -5556,7 +5716,11 @@ function sheetRentItem(){
   // item's higher ceiling, never by changeRentDays() itself.
   const maxDays = maxRentDaysAvailable(item.id);
   if(_rentDays > maxDays) _rentDays = maxDays;
-  const rentTotal = effectiveDailyRate(item)*_rentDays + (item.rentalDeposit||0);
+  const deposit = item.rentalDeposit||0;
+  const canDeferFee = deposit>0;
+  if(!canDeferFee) _rentFeeTiming = 'upfront';
+  const isDeferred = canDeferFee && _rentFeeTiming==='on_return';
+  const rentCost = effectiveDailyRate(item)*_rentDays;
   const windows = itemBookingWindows(item.id);
   return `
   <h2>Rent ${item.name}</h2>
@@ -5580,15 +5744,29 @@ function sheetRentItem(){
     <p style="font-weight:700;">${escapeAttr(item.pickupLocation||'Contact the store for details')}</p>
     <p class="muted" style="font-size:.8em; margin-top:6px;">This item is for pickup only — the store doesn't deliver it.</p>
   </div>` : deliveryTargetFieldsHTML()}
+  ${canDeferFee ? `
+  <div class="field">
+    <label>When do you want to pay the rental fee?</label>
+    <div class="tabs">
+      <button type="button" class="tab ${isDeferred?'':'active'}" id="rentFeeTabUpfront" style="flex:1; text-align:center;" onclick="setRentFeeTiming('upfront')">Pay in full now</button>
+      <button type="button" class="tab ${isDeferred?'active':''}" id="rentFeeTabReturn" style="flex:1; text-align:center;" onclick="setRentFeeTiming('on_return')">When I return it</button>
+    </div>
+    <p class="muted" style="font-size:.78em; margin-top:6px;">${isDeferred ? `Pay the ${item.category==='Home & Living'?'deposit / advance payment':'deposit'} now to secure it — the rental fee itself is due when you hand it back.` : 'Pay the rental fee and deposit together now.'}</p>
+  </div>` : ''}
   <div class="glass card tight" style="margin-bottom:14px;">
-    <div class="row between"><span class="muted">Rental (<span id="rent_days_label">${_rentDays}</span> day${_rentDays>1?'s':''})</span><span id="rent_days_cost">${money(effectiveDailyRate(item)*_rentDays)}</span></div>
-    ${item.rentalDeposit?`<div class="row between" style="margin-top:6px;"><span class="muted">${item.category==='Home & Living'?'Deposit / advance payment':'Refundable deposit'}</span><span>${money(item.rentalDeposit)}</span></div>`:''}
+    <div class="row between"><span class="muted">Rental (<span id="rent_days_label">${_rentDays}</span> day${_rentDays>1?'s':''})</span><span id="rent_days_cost">${money(rentCost)}</span></div>
+    ${deposit?`<div class="row between" style="margin-top:6px;"><span class="muted">${item.category==='Home & Living'?'Deposit / advance payment':'Refundable deposit'}</span><span>${money(deposit)}</span></div>`:''}
     ${extraFee>0?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra fee</span><span>${money(extraFee)}</span></div>`:''}
     <div class="divider"></div>
-    <div class="row between"><strong>Total</strong><strong class="price" id="rent_total">${money(rentTotal+extraFee)}</strong></div>
+    ${isDeferred ? `
+    <div class="row between"><span class="muted">Due now</span><span id="rent_total">${money(deposit+extraFee)}</span></div>
+    <div class="row between" style="margin-top:6px;"><span class="muted">Due when you return it</span><span id="rent_due_later">${money(rentCost)}</span></div>
+    ` : `
+    <div class="row between"><strong>Total</strong><strong class="price" id="rent_total">${money(rentCost+deposit+extraFee)}</strong></div>
+    `}
   </div>
   <div class="field">
-    <label>How will you pay?</label>
+    <label>How will you pay ${isDeferred?'the advance':''}?</label>
     <div class="stack">
       <button class="glass role-card" style="padding:14px;" onclick="selectPay('transfer')" id="pay_transfer">
         <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
@@ -5616,9 +5794,13 @@ function refreshRentTotals(){
   const dd = document.getElementById('rent_days_display'); if(dd) dd.textContent = _rentDays;
   const dl = document.getElementById('rent_days_label'); if(dl) dl.textContent = _rentDays;
   const extraFee = item.extraDeliveryFee||0;
+  const deposit = item.rentalDeposit||0;
   const dailyRate = effectiveDailyRate(item);
-  document.getElementById('rent_days_cost').textContent = money(dailyRate*_rentDays);
-  document.getElementById('rent_total').textContent = money(dailyRate*_rentDays+(item.rentalDeposit||0)+extraFee);
+  const rentCost = dailyRate*_rentDays;
+  const isDeferred = deposit>0 && _rentFeeTiming==='on_return';
+  document.getElementById('rent_days_cost').textContent = money(rentCost);
+  document.getElementById('rent_total').textContent = isDeferred ? money(deposit+extraFee) : money(rentCost+deposit+extraFee);
+  const later = document.getElementById('rent_due_later'); if(later) later.textContent = money(rentCost);
 }
 // Rentals are paid entirely to the renter (the store) - there's no zone fee,
 // no delivery partner, and no payout split, regardless of payment method or
@@ -5651,15 +5833,21 @@ async function submitRentItem(itemId){
   }
   const biz = DB.businesses.find(b=>b.id===item.businessId);
   const extraFee = item.extraDeliveryFee||0;
+  const deposit = item.rentalDeposit||0;
   const rentCost = effectiveDailyRate(item)*_rentDays;
-  const itemsTotal = rentCost + (item.rentalDeposit||0);
+  // Deferring the rental fee to return time only makes sense when there's an
+  // actual advance/deposit to collect now - otherwise nothing at all would be
+  // due at checkout, which submitRentItem never allows regardless of what
+  // _rentFeeTiming happens to still be set to from a previous item.
+  const isDeferred = deposit>0 && _rentFeeTiming==='on_return';
+  const itemsTotal = isDeferred ? deposit : rentCost + deposit;
   const total = itemsTotal + extraFee;
   const order = {
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: state.customerName, customerPhone: state.customerPhone||'',
     deliveryTargetType, receiverName, receiverPhone, receiverAddress, pickupLocation,
-    items: [{itemId:item.id, name:`${item.name} (rental, ${_rentDays} day${_rentDays>1?'s':''})`, price:itemsTotal, qty:1}],
+    items: [{itemId:item.id, name:`${item.name} (rental, ${_rentDays} day${_rentDays>1?'s':''}${isDeferred?' · advance':''})`, price:itemsTotal, qty:1}],
     itemsTotal, deliveryFee: 0, extraDeliveryFee: extraFee, total, zone:null,
     deliveryType: 'free',
     // The rental payment itself always goes straight to the renter (the store) -
@@ -5673,7 +5861,17 @@ async function submitRentItem(itemId){
     paymentMethod: _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
     paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null,
-    rentalDays: _rentDays, rentalItemId: item.id, rentalFulfillment: fulfillment
+    rentalDays: _rentDays, rentalItemId: item.id, rentalFulfillment: fulfillment,
+    // See mark_rental_fulfilled/mark_delivered's payment_status='paid' gate -
+    // the item can't be handed over until whatever's due right now (the full
+    // rentalFeeTiming:'upfront' amount above, or just the advance here) is
+    // confirmed paid. rentalReturnedAt/rentalReturnFeeStatus start unset and
+    // are only ever touched by mark_rental_returned(), once the item actually
+    // comes back - see markRentalReturned()/sheetRentalReturn() below.
+    rentalFeeAmount: isDeferred ? rentCost : null,
+    rentalFeeTiming: isDeferred ? 'on_return' : 'upfront',
+    rentalReturnedAt: null,
+    rentalReturnFeeStatus: isDeferred ? 'pending' : null
   };
   if(sb){
     const { error } = await sb.from('orders').insert(toDbRow('orders', order));
@@ -6440,6 +6638,8 @@ function custOrderCard(o){
     ` : ''}
     ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
     ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
+    ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<p class="muted" style="font-size:.82em; margin-top:6px;">${o.rentalReturnFeeStatus==='collected' ? `Rental fee of ${money(o.rentalFeeAmount||0)} collected on return.` : `Rental fee of ${money(o.rentalFeeAmount||0)} due when you return the item.`}</p>` : ''}
+    ${o.rentalItemId && o.rentalReturnedAt ? `<div class="status-pill ok" style="display:inline-block; margin-top:6px;">Returned ✓</div>` : ''}
   </div>`;
 }
 function openCustOrderDetail(orderId){ openSheet('custOrderDetail', orderId); }
@@ -6471,8 +6671,10 @@ function sheetCustOrderDetail(){
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}
     ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${o.deliveryType==='free'?'Free':money(o.deliveryFee)}</span></div>`}
     ${o.extraDeliveryFee?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra delivery fee</span><span>${money(o.extraDeliveryFee)}</span></div>`:''}
-    <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>
+    ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : ''}
+    <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return' ? 'Paid now':'Total'}</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>
   </div>
+  ${o.rentalItemId && o.rentalReturnedAt ? `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Returned ✓</div>` : ''}
   ${showAcct ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
     ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}

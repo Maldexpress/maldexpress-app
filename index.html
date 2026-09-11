@@ -700,9 +700,14 @@ create policy "customer update own order" on orders for update
   with check (auth.uid() = customer_id);
 create policy "business update own orders" on orders for update
   using (exists (select 1 from businesses b where b.id = orders.business_id and b.owner_id = auth.uid()));
+-- A non-rental order is only claimable once the business has explicitly
+-- marked it ready_for_pickup (see mark_order_ready_for_pickup() below) - a
+-- rider can't claim it the instant it's placed just by knowing its id. A
+-- rental delivery job's claim goes through claim_rental_job() instead,
+-- which runs as SECURITY DEFINER and so isn't gated by this policy at all.
 create policy "rider update assigned or open orders" on orders for update
   using (
-    orders.delivery_person_id is null
+    (orders.delivery_person_id is null and orders.ready_for_pickup = true)
     or exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   )
   with check (
@@ -931,6 +936,62 @@ as $$
   returning *;
 $$;
 
+-- A non-rental order used to be visible to every rider as an open job the
+-- instant it was placed, with no way for the business to hold it back until
+-- it was actually packed - or to say "I'll deliver this myself" and keep it
+-- out of the rider pool entirely. These two columns plus the three
+-- functions below give the business that choice; see the "rider update
+-- assigned or open orders" policy above for the enforcement half (a rider
+-- can't claim a job that isn't ready_for_pickup, not just "the UI doesn't
+-- show it").
+alter table orders add column if not exists ready_for_pickup boolean not null default false;
+alter table orders add column if not exists self_delivery boolean not null default false;
+
+create or replace function mark_order_ready_for_pickup(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set ready_for_pickup = true, self_delivery = false
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.delivery_person_id is null
+    and o.status is distinct from 'delivered'
+  returning o.*;
+$$;
+
+create or replace function mark_order_self_delivery(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set self_delivery = true, ready_for_pickup = false
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.delivery_person_id is null
+    and o.status is distinct from 'delivered'
+  returning o.*;
+$$;
+
+create or replace function mark_order_delivered_by_business(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set status = 'delivered'
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.self_delivery = true
+    and o.delivery_person_id is null
+    and o.status is distinct from 'delivered'
+  returning o.*;
+$$;
+
 grant execute on function submit_transfer_slip(text, text) to authenticated;
 grant execute on function approve_order_payment(text) to authenticated;
 grant execute on function complete_auction_order(text, text, text, text, text, text, text) to authenticated;
@@ -942,6 +1003,9 @@ grant execute on function mark_rental_fulfilled(text) to authenticated;
 grant execute on function offer_rental_delivery(text, numeric, text) to authenticated;
 grant execute on function claim_rental_job(text) to authenticated;
 grant execute on function decrement_rental_stock(text) to authenticated;
+grant execute on function mark_order_ready_for_pickup(text) to authenticated;
+grant execute on function mark_order_self_delivery(text) to authenticated;
+grant execute on function mark_order_delivered_by_business(text) to authenticated;
 
 -- The ten functions above are now the only way total/payment_status/
 -- payout_status/delivery_partner_payout/status/needs_delivery_partner/
@@ -1385,7 +1449,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -1606,22 +1670,30 @@ function ensureCountdownTimer(){
 const LIVE_REFRESH_MS = 8000;
 let _liveRefreshTimer = null;
 async function refreshLiveListings(){
-  if(!sb) return;
+  if(!sb || !state.authed) return;
   try{
-    const [i, b, au] = await Promise.all([
+    // orders included so a delivery partner sees a newly-posted job (see
+    // markOrderReadyForPickup()) show up on delHome without a manual refresh -
+    // RLS already scopes the rows back to exactly what this account can see
+    // (their own orders, their own store's, and/or open + assigned delivery
+    // jobs), same as every other fetch in this app.
+    const [i, b, au, o] = await Promise.all([
       sb.from('items').select('*'),
       sb.from('businesses').select('*'),
-      sb.from('auction_listings').select('*')
+      sb.from('auction_listings').select('*'),
+      sb.from('orders').select('*')
     ]);
-    if(i.error || b.error || au.error) return; // silent - background refresh, not a user action
+    if(i.error || b.error || au.error || o.error) return; // silent - background refresh, not a user action
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
-    // Only auto-render on the two screens that actually read this data, and never
+    DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r));
+    // Only auto-render on the screens that actually read this data, and never
     // while a sheet is open or the person is mid-typing (a search box, a sign-in/
     // checkout field) - a surprise full re-render would otherwise blow away focus
     // and half-typed input.
-    const onLiveScreen = state.role==='customer' && (state.screen==='custHome' || state.screen==='custStore');
+    const onLiveScreen = (state.role==='customer' && (state.screen==='custHome' || state.screen==='custStore'))
+      || (state.role==='delivery' && state.screen==='delHome');
     const typing = document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
     if(onLiveScreen && !state.sheet && !typing) render();
   }catch(e){ /* silent - background refresh */ }
@@ -2716,6 +2788,11 @@ function renderBizHome(biz,t){
   const myOrders = DB.orders.filter(o=>o.businessId===biz.id);
   const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded').length;
   const activeOrders = myOrders.filter(o=>o.status!=='delivered').length;
+  // A normal order sits here until you pick how it's getting delivered (see
+  // markOrderReadyForPickup()/markOrderSelfDelivery()) - surfaced alongside
+  // slip approvals so a placed order never just quietly waits unnoticed.
+  const needsFulfillmentChoice = myOrders.filter(o=>!o.rentalItemId && !o.deliveryPersonId && o.status!=='delivered' && !o.readyForPickup && !o.selfDelivery && o.paymentStatus!=='awaiting_completion');
+  const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || needsFulfillmentChoice.includes(o));
   const myItems = DB.items.filter(i=>i.businessId===biz.id);
   const badge = biz.tier==='pro'
     ? `<span class="badge pro">PRO</span>`
@@ -2761,8 +2838,8 @@ function renderBizHome(biz,t){
 
       <div class="section">
         <div class="section-head"><h2>Needs your attention</h2><button class="link-btn" onclick="go('bizOrders')">See all</button></div>
-        ${pendingApproval===0 ? `<div class="empty"><span class="ic">✅</span>Nothing waiting on you right now</div>` :
-          myOrders.filter(o=>o.paymentStatus==='slip_uploaded').slice(0,3).map(o=>orderCardBiz(o)).join('')}
+        ${attentionOrders.length===0 ? `<div class="empty"><span class="ic">✅</span>Nothing waiting on you right now</div>` :
+          attentionOrders.slice(0,3).map(o=>orderCardBiz(o)).join('')}
       </div>
     </div>
   `);
@@ -3406,13 +3483,15 @@ async function markBookingChargeCollected(id){
   toast('Marked as collected'); render();
 }
 function openOrderDetailBiz(id){
-  const o = DB.orders.find(x=>x.id===id);
-  openSheet('orderDetailBiz', o);
+  openSheet('orderDetailBiz', id);
 }
 // custom sheet content injected directly (handled in sheetHTML switch below via generic fallback)
 const _origSheetHTML = sheetHTML;
 sheetHTML = function(){
-  if(state.sheet==='orderDetailBiz') return wrapSheetOnly(orderDetailBizBody(state.sheetData));
+  // Looked up fresh by id (not the order object captured at open time) so the
+  // sheet reflects the live row - matters now that ensureLiveRefresh() polls
+  // orders too and can swap in a whole new DB.orders array underneath it.
+  if(state.sheet==='orderDetailBiz') return wrapSheetOnly(orderDetailBizBody(DB.orders.find(x=>x.id===state.sheetData)));
   return _origSheetHTML();
 };
 function wrapSheetOnly(body){
@@ -3423,6 +3502,7 @@ function wrapSheetOnly(body){
   </div>`;
 }
 function orderDetailBizBody(o){
+  if(!o) return `<h2>Order not found</h2>`;
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
   const payoutAmt = Math.round(o.deliveryPartnerPayout!=null ? o.deliveryPartnerPayout : o.deliveryFee);
   const buyerPaidFee = o.deliveryType!=='free';
@@ -3509,6 +3589,28 @@ function orderDetailBizBody(o){
     } else {
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">${o.rentalFulfillment==='pickup'?'Picked up ✓':'Delivered ✓'}</div>`;
     }
+  } else if(o.deliveryPersonId){
+    actionArea += o.status!=='delivered'
+      ? `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">${o.deliveryPersonName} accepted this job and is delivering it.</p></div>`
+      : `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
+  } else if(o.readyForPickup){
+    actionArea += `
+    <div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Posted to delivery partners — waiting for one to accept.</p></div>
+    <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderSelfDelivery('${o.id}')">🚚 I'll deliver this myself instead</button>`;
+  } else if(o.selfDelivery){
+    actionArea += o.status!=='delivered'
+      ? `
+      <div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">You're delivering this yourself — not visible to delivery partners.</p></div>
+      <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>
+      <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderReadyForPickup('${o.id}')">📦 Send to a delivery partner instead</button>`
+      : `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered ✓</div>`;
+  } else if(o.status!=='delivered'){
+    actionArea += `
+    <div class="glass card tight" style="margin-top:10px;">
+      <p class="muted" style="font-size:.82em; margin-bottom:8px;">How is this getting to the customer?</p>
+      <button class="btn btn-primary" style="width:100%;" onclick="markOrderReadyForPickup('${o.id}')">📦 Ready for delivery pickup</button>
+      <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderSelfDelivery('${o.id}')">🚚 I'll deliver this myself</button>
+    </div>`;
   }
   const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
   return `
@@ -3538,6 +3640,31 @@ async function markRentalFulfilled(id){
     "Couldn't update this order — it may already be marked fulfilled");
   if(!updated) return;
   closeSheet(); toast(updated.rentalFulfillment==='pickup' ? 'Marked as picked up' : 'Marked as delivered'); render();
+}
+// Posts a normal (non-rental) order to the delivery-partner network - it only
+// becomes visible/claimable to riders once this runs (see the "rider update
+// assigned or open orders" policy and renderDelHome()'s job list), rather
+// than the instant it's placed.
+async function markOrderReadyForPickup(id){
+  const updated = await callOrderRpc('mark_order_ready_for_pickup', { p_order_id: id }, id,
+    "Couldn't update this order — it may already be assigned or delivered");
+  if(!updated) return;
+  toast('Posted to delivery partners'); render();
+}
+// The business handling delivery themselves instead - keeps the order out of
+// the rider pool entirely until/unless they change their mind (see the
+// "Send to a delivery partner instead" button next to markOrderDeliveredByBusiness()).
+async function markOrderSelfDelivery(id){
+  const updated = await callOrderRpc('mark_order_self_delivery', { p_order_id: id }, id,
+    "Couldn't update this order — it may already be assigned or delivered");
+  if(!updated) return;
+  toast("You're delivering this one"); render();
+}
+async function markOrderDeliveredByBusiness(id){
+  const updated = await callOrderRpc('mark_order_delivered_by_business', { p_order_id: id }, id,
+    "Couldn't update this order — it may have changed");
+  if(!updated) return;
+  toast('Marked as delivered'); render();
 }
 function setRentalDeliveryTiming(orderId, timing){
   document.getElementById('rdel_timing_'+orderId).value = timing;
@@ -3940,8 +4067,12 @@ function renderDelHome(d){
         <!-- Most rentals (rentalItemId set) never show up here - the renter handles
              their own pickup/delivery. The exception: a "deliver"-fulfillment rental
              the store has explicitly posted (needsDeliveryPartner) for a fee it's
-             offering out of its own pocket - see offerRentalDelivery(). -->
-        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion' && (!o.rentalItemId || o.needsDeliveryPartner)).map(o=>`
+             offering out of its own pocket - see offerRentalDelivery(). A normal
+             order is the same idea in reverse: it stays hidden from every rider
+             until the business posts it (readyForPickup, see
+             markOrderReadyForPickup()) or not at all if they chose to deliver
+             it themselves (selfDelivery). -->
+        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion' && (o.rentalItemId ? o.needsDeliveryPartner : o.readyForPickup)).map(o=>`
           <div class="glass card">
             <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
             <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${o.rentalItemId ? 'Rental delivery' : (ZONES[o.zone]?ZONES[o.zone].label:'—')}</p>

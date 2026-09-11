@@ -4738,7 +4738,13 @@ function sheetItemDetail(){
             : `<button class="btn btn-primary" onclick="openRentItem('${item.id}')">Rent this item</button>`}
         <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for a future date</button>
       `) : ''}
-    ${isAuction && !ended ? `<button class="btn btn-primary" onclick="closeSheet(); openFeedItem('${item.id}');">Bid now</button>` : ''}
+    ${isAuction && !ended && auction ? `
+      <div class="row" style="gap:8px; align-items:center;">
+        <div class="field" style="margin:0; flex:1;"><input type="number" id="bidInput_${auction.id}" placeholder="Min ${money(auctionMinNextBid(auction))}"></div>
+        <button class="btn btn-primary" style="width:auto; flex-shrink:0; padding:0 24px;" onclick="placeBid('${auction.id}')">Bid</button>
+      </div>
+      <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>
+    ` : ''}
     ${!isAuction || ended ? `<button class="btn btn-outline" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>` : ''}
   </div>`;
 }

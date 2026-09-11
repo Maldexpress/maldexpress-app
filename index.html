@@ -3572,11 +3572,15 @@ function orderDetailBizBody(o){
     }
   } else {
     if(o.paymentStatus==='pending_cash'){
-      actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Delivery partner will collect ${money(o.total)} cash from the customer.</p></div>`;
+      actionArea = o.selfDelivery
+        ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">You'll collect ${money(o.total)} cash from the customer yourself.</p></div>`
+        : `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Delivery partner will collect ${money(o.total)} cash from the customer.</p></div>`;
     } else if(o.paymentStatus==='cash_collected'){
-      actionArea = cashCut>0
-        ? `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash. They owe you ${money(o.total-cashCut)} (after their ${money(cashCut)} cut). See Payouts tab once they settle.</p></div>`
-        : `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash and owes you the full ${money(o.total)} — the delivery fee wasn't charged to the customer, so you pay the rider's ${money(payoutAmt)} separately. See Payouts tab once they settle.</p></div>`;
+      actionArea = o.selfDelivery
+        ? `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">You collected ${money(o.total)} cash directly — nothing to settle with a delivery partner.</p></div>`
+        : cashCut>0
+          ? `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash. They owe you ${money(o.total-cashCut)} (after their ${money(cashCut)} cut). See Payouts tab once they settle.</p></div>`
+          : `<div class="card tight" style="background:rgba(34,184,200,.12);"><p style="font-size:.85em;">Rider collected cash and owes you the full ${money(o.total)} — the delivery fee wasn't charged to the customer, so you pay the rider's ${money(payoutAmt)} separately. See Payouts tab once they settle.</p></div>`;
     } else {
       actionArea = `<div class="status-pill ok" style="display:inline-block;">Settled with rider</div>`;
     }

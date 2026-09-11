@@ -1007,7 +1007,7 @@ create policy "admin read all profiles" on user_profiles for select using (is_ad
 -- Product photos: stored in Supabase Storage (bucket 'product-images', public),
 -- not as base64 in the row - this column just holds the resulting public URL.
 alter table items add column if not exists image_url text;
-alter table items add column if not exists listing_type text not null default 'buy_now' check (listing_type in ('buy_now','auction'));
+alter table items add column if not exists listing_type text not null default 'buy_now' check (listing_type in ('buy_now','auction','rental'));
 
 -- Storage bucket for product photos. Create via Dashboard -> Storage -> New
 -- bucket named "product-images" with Public bucket ON, or run:

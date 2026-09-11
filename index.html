@@ -4471,7 +4471,20 @@ window.addEventListener('scroll', updateHomeLogoScroll, { passive:true });
 // scroll events fired on an inner scrolling element (like an open sheet,
 // which scrolls itself rather than the page) don't bubble - capture still
 // sees them on the way down regardless of that.
+// Focusing a field inside a scrollable sheet makes the browser scroll it
+// into view on its own (more so once the on-screen keyboard shrinks the
+// viewport) - that counts as a "scroll" too, so without this guard the
+// listener below would blur the field the instant it's focused, closing
+// the keyboard before it ever finishes opening. Only treat a scroll as the
+// user actually scrolling away once a little time has passed since the
+// field was focused.
+let _lastFieldFocusAt = 0;
+document.addEventListener('focusin', (e)=>{
+  const tag = e.target && e.target.tagName;
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') _lastFieldFocusAt = Date.now();
+}, true);
 function dismissKeyboardOnScroll(){
+  if(Date.now() - _lastFieldFocusAt < 600) return;
   const a = document.activeElement;
   if(!a) return;
   const tag = a.tagName;

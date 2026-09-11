@@ -3682,13 +3682,24 @@ function saveBizSettings(){
 
 /* =================== BULK ADD ITEMS (SPREADSHEET) ==================== */
 // Buy-now and rental items only - auctions need their own duration/increment
-// setup, so those still go through the usual + button one at a time. A
-// downloadable ready-made file isn't available in this preview (a page here
-// can't hand the browser a file to save), so instead this shows the exact
-// header row to copy into a new spreadsheet, which gets filled in and saved
-// as .csv, then uploaded back here.
+// setup, so those still go through the usual + button one at a time. A real
+// file download (see downloadBulkImportTemplate()) works fine on a normally
+// hosted page - filled in and saved as .csv, then uploaded back here.
 const BULK_IMPORT_HEADERS = ['Name','Price','Stock','Category','Listing type (buy_now or rental)','Free delivery (yes/no)','Extra delivery fee','Discount percent','Rental deposit','Rental fulfillment (pickup or deliver)','Pickup location','Description'];
 const BULK_IMPORT_EXAMPLE = ['Coconut Bondi Cake','180','8','Bakery','buy_now','yes','0','0','','','','Freshly baked - ask about flavors'];
+// Builds the same CSV text either downloaded as the template or parsed back
+// on upload - kept as one function so the two can never drift apart.
+function bulkImportCsvText(){
+  return [BULK_IMPORT_HEADERS.join(','), BULK_IMPORT_EXAMPLE.map(v=>/[,"]/.test(v)?`"${v.replace(/"/g,'""')}"`:v).join(',')].join('\n');
+}
+function downloadBulkImportTemplate(){
+  const blob = new Blob([bulkImportCsvText()], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'maldexpress-bulk-import-template.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
 const BULK_COLUMN_ALIASES = {
   name:['name','itemname','item'], price:['price'], stock:['stock','qty','quantity'],
   category:['category','cat'], listingtype:['listingtype','listing','type'],
@@ -3698,15 +3709,11 @@ const BULK_COLUMN_ALIASES = {
   description:['description','desc','details']
 };
 function sheetBizBulkImport(){
-  const csvSample = [BULK_IMPORT_HEADERS.join(','), BULK_IMPORT_EXAMPLE.map(v=>/[,"]/.test(v)?`"${v.replace(/"/g,'""')}"`:v).join(',')].join('\n');
   return `
   <h2>Bulk add items from a spreadsheet</h2>
-  <p class="muted" style="font-size:.85em; margin-bottom:10px;">A ready-made file isn't downloadable from here, so copy the header row below into a new spreadsheet (Excel, Google Sheets, Numbers — anything that can save as CSV), fill in a row per item, save it as .csv, then upload it here.</p>
-  <div class="field">
-    <label>Column headers (tap to select, then copy)</label>
-    <textarea readonly rows="3" style="font-family:monospace; font-size:.76em;" onclick="this.select()">${csvSample}</textarea>
-    <p class="muted" style="font-size:.78em; margin-top:5px;">The second line is an example row in the same order — replace it (or add more rows after it) with your own items. Only Name and Price are required; leave anything else blank for sensible defaults.</p>
-  </div>
+  <p class="muted" style="font-size:.85em; margin-bottom:10px;">Download the template below, fill in a row per item in Excel, Google Sheets, Numbers — anything that can save as CSV, save it as .csv, then upload it here.</p>
+  <button class="btn btn-outline" style="width:100%;" onclick="downloadBulkImportTemplate()">⬇️ Download CSV template</button>
+  <p class="muted" style="font-size:.78em; margin-top:8px;">The template's second row is an example item — replace it (or add more rows after it) with your own. Only Name and Price are required; leave anything else blank for sensible defaults.</p>
   <div class="field" style="margin-top:14px;">
     <input type="file" accept=".csv,text/csv" id="bulkImportFile" style="display:none;" onchange="handleBulkImportFile(event)">
     <label for="bulkImportFile" class="filebtn">📄 Tap to choose a .csv file</label>

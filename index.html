@@ -836,8 +836,15 @@ $$;
 -- call (e.g. a retried request) can't re-open a payout that a first call
 -- already settled. A rider can't mark a normal order delivered until the
 -- store has actually handed it over (out_for_delivery); a rental delivery
--- job never goes through that handoff step at all, so it's exempted.
-create or replace function mark_delivered(p_order_id text)
+-- job never goes through that handoff step at all, so it's exempted. A
+-- boat delivery needs its own proof-of-handoff photo at the actual moment
+-- of final delivery (handed to the boat) - the earlier handoff photo (from
+-- when the package left the store/rider's hands) is superseded and
+-- overwritten here rather than kept alongside it, since there's only ever
+-- one "current custody" photo that matters. Rentals are exempted from this
+-- one too - a rental delivery job's rider has no UI to capture this second
+-- photo (its own claim_rental_job() flow never involved a handoff photo).
+create or replace function mark_delivered(p_order_id text, p_boat_photo_url text default null)
 returns setof orders
 language sql
 security definer
@@ -846,10 +853,12 @@ as $$
   update orders
   set
     status = 'delivered',
-    payout_status = case when delivery_type = 'free' then 'pending' else payout_status end
+    payout_status = case when delivery_type = 'free' then 'pending' else payout_status end,
+    handoff_photo_url = case when delivery_target_type = 'boat' and rental_item_id is null then p_boat_photo_url else handoff_photo_url end
   where id = p_order_id
     and status is distinct from 'delivered'
     and (rental_item_id is not null or status = 'out_for_delivery')
+    and (delivery_target_type is distinct from 'boat' or rental_item_id is not null or p_boat_photo_url is not null)
     and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
   returning *;
 $$;
@@ -1014,17 +1023,20 @@ $$;
 
 -- Same handoff-first requirement as mark_delivered() above, for a
 -- self-delivered order's final mark.
-create or replace function mark_order_delivered_by_business(p_order_id text)
+create or replace function mark_order_delivered_by_business(p_order_id text, p_boat_photo_url text default null)
 returns setof orders
 language sql
 security definer
 set search_path = public
 as $$
-  update orders o set status = 'delivered'
+  update orders o set
+    status = 'delivered',
+    handoff_photo_url = case when o.delivery_target_type = 'boat' then p_boat_photo_url else o.handoff_photo_url end
   where o.id = p_order_id
     and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
     and o.self_delivery = true
     and o.status = 'out_for_delivery'
+    and (o.delivery_target_type is distinct from 'boat' or p_boat_photo_url is not null)
   returning o.*;
 $$;
 
@@ -3646,9 +3658,10 @@ function orderDetailBizBody(o){
     if(o.status==='delivered'){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered ✓</div>`;
     } else if(o.status==='out_for_delivery'){
-      actionArea += `
-      <div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">Out for delivery — you're delivering this yourself.</p></div>
-      <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>`;
+      actionArea += `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">Out for delivery — you're delivering this yourself.</p></div>`;
+      actionArea += o.deliveryTargetType==='boat'
+        ? handoffPhotoHTML(o, `Take a photo handing the package to the boat before marking it delivered:`, 'Mark as delivered', 'markOrderDeliveredByBusiness')
+        : `<button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>`;
     } else {
       actionArea += handoffPhotoHTML(o, `Take a photo of the package before you head out:`, 'Mark out for delivery')
         + `<button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderReadyForPickup('${o.id}')">📦 Send to a delivery partner instead</button>`;
@@ -3711,12 +3724,15 @@ async function markOrderSelfDelivery(id){
 }
 async function markOrderDeliveredByBusiness(id){
   const o = DB.orders.find(x=>x.id===id);
+  const isBoat = o && o.deliveryTargetType==='boat';
+  if(isBoat && !_handoffPhotoData){ toast('Take a photo of the handover to the boat first','bad'); return; }
   if(o && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
     openSheet('markCash', id);
     return;
   }
-  const updated = await callOrderRpc('mark_order_delivered_by_business', { p_order_id: id }, id,
+  const updated = await callOrderRpc('mark_order_delivered_by_business', { p_order_id: id, p_boat_photo_url: isBoat ? _handoffPhotoData : null }, id,
     "Couldn't update this order — it may have changed");
+  _handoffPhotoData = null;
   if(!updated) return;
   toast('Marked as delivered'); render();
 }
@@ -3726,7 +3742,7 @@ async function markOrderDeliveredByBusiness(id){
 // out_for_delivery. capture="environment" opens the phone's camera directly
 // rather than a gallery picker, since the point is a fresh proof-of-handoff
 // photo, not any existing image.
-function handoffPhotoHTML(o, label, buttonText){
+function handoffPhotoHTML(o, label, buttonText, onclickFn='markOrderOutForDelivery'){
   return `
   <div class="glass card tight" style="margin-top:10px;">
     <p class="muted" style="font-size:.82em; margin-bottom:8px;">${label}</p>
@@ -3735,7 +3751,7 @@ function handoffPhotoHTML(o, label, buttonText){
     <div class="slip-preview-wrap" id="handoffPhotoPreviewWrap_${o.id}" style="display:none; margin-top:10px;">
       <img id="handoffPhotoPreview_${o.id}" style="width:100%; border-radius:14px; display:block; max-height:200px; object-fit:cover;">
     </div>
-    <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="handoffConfirmBtn_${o.id}" disabled onclick="markOrderOutForDelivery('${o.id}')">${buttonText}</button>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="handoffConfirmBtn_${o.id}" disabled onclick="${onclickFn}('${o.id}')">${buttonText}</button>
   </div>`;
 }
 let _handoffPhotoData = null;
@@ -4241,7 +4257,9 @@ function delJobCard(o){
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
       <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${cashCut>0 ? `You owe the store ${money(o.total-Math.round(cashCut))} after your ${money(Math.round(cashCut))} cut.` : `No delivery fee was collected, so you owe the store the full ${money(o.total)} — the store pays your ${money(Math.round(payoutAmt))} payout separately.`}</p></div>
     ` : ''}
-    ${o.status!=='out_for_delivery' ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>` : `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>`}
+    ${o.status!=='out_for_delivery' ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>`
+      : o.deliveryTargetType==='boat' ? `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); openDelOrderDetail('${o.id}')">📸 Take photo to mark delivered</button>`
+      : `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>`}
   </div>`;
 }
 function openDelOrderDetail(orderId){ openSheet('delOrderDetail', orderId); }
@@ -4297,7 +4315,9 @@ function sheetDelOrderDetail(){
   ` : ''}
   ${o.status==='delivered' ? '' : o.status!=='out_for_delivery'
     ? `<div class="card tight" style="margin-top:14px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>`
-    : `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}')">Mark delivered</button>`}
+    : o.deliveryTargetType==='boat'
+      ? handoffPhotoHTML(o, 'Take a photo handing the package to the boat before marking it delivered:', 'Mark delivered', 'markDelivered')
+      : `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}')">Mark delivered</button>`}
   `;
 }
 // Opened by markDelivered()/markOrderDeliveredByBusiness() instead of calling
@@ -4352,12 +4372,14 @@ function updateCashChangeNote(orderId){
 async function confirmCashAndDeliver(id){
   const o = DB.orders.find(x=>x.id===id);
   const isSelfDelivery = !!(o && o.selfDelivery);
+  const isBoat = o && !o.rentalItemId && o.deliveryTargetType==='boat';
   const cashUpdated = await callOrderRpc('confirm_cash_received', { p_order_id: id }, id,
     "Couldn't confirm cash received — the order may have changed");
   if(!cashUpdated) return;
   const finalRpc = isSelfDelivery ? 'mark_order_delivered_by_business' : 'mark_delivered';
-  const updated = await callOrderRpc(finalRpc, { p_order_id: id }, id,
+  const updated = await callOrderRpc(finalRpc, { p_order_id: id, p_boat_photo_url: isBoat ? _handoffPhotoData : null }, id,
     "Cash confirmed, but couldn't mark delivered — try again");
+  _handoffPhotoData = null;
   closeSheet();
   toast(updated ? 'Delivered!' : 'Cash confirmed'); render();
 }
@@ -4368,12 +4390,15 @@ async function confirmCashAndDeliver(id){
 // store's account from the transfer).
 async function markDelivered(id){
   const o = DB.orders.find(x=>x.id===id);
+  const isBoat = o && !o.rentalItemId && o.deliveryTargetType==='boat';
+  if(isBoat && !_handoffPhotoData){ toast('Take a photo of the handover to the boat first','bad'); return; }
   if(o && !o.rentalItemId && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
     openSheet('markCash', id);
     return;
   }
-  const updated = await callOrderRpc('mark_delivered', { p_order_id: id }, id,
+  const updated = await callOrderRpc('mark_delivered', { p_order_id: id, p_boat_photo_url: isBoat ? _handoffPhotoData : null }, id,
     "Couldn't mark this delivered — it may already be marked delivered");
+  _handoffPhotoData = null;
   if(!updated) return;
   closeSheet(); toast('Marked delivered'); render();
 }

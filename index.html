@@ -132,6 +132,27 @@
   .role-card .txt small{color:var(--ink-dim); font-size:.85em;}
   .role-card .arrow{color:var(--coral); font-size:1.3em; flex-shrink:0;}
 
+  /* Payment-method choice buttons (checkout, rent, complete-auction-order) -
+     a plain .glass.role-card here used to stack two translucent layers (this
+     button's own .glass over the checkout card's .glass behind it), which
+     washed out the text against the background. A solid-ish, more opaque
+     background gives it real contrast on its own regardless of what's under it. */
+  .pay-option{
+    width:100%; text-align:left; border:1.5px solid var(--glass-brd); border-radius:18px;
+    background:rgba(255,255,255,.16); padding:14px;
+    display:flex; align-items:center; gap:14px;
+    transition:transform .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .pay-option:active{transform:scale(.98);}
+  .pay-option .ic{
+    width:38px; height:38px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:1.05em; background:linear-gradient(145deg, rgba(255,255,255,.32), rgba(255,255,255,.1));
+    border:1px solid var(--glass-brd); flex-shrink:0;
+  }
+  .pay-option .txt{flex:1; min-width:0;}
+  .pay-option .txt h3{font-size:.95em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .pay-option .txt small{color:var(--ink-dim); font-size:.82em;}
+
   /* Header */
   .topbar{
     position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px;
@@ -1965,13 +1986,13 @@ function sheetCompleteAuctionOrder(){
   <div class="field">
     <label>How will you pay?</label>
     <div class="stack">
-      <button class="glass role-card" style="padding:14px;" onclick="selectPay('transfer')" id="pay_transfer">
-        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
-        <div class="txt"><h3 style="font-size:1em;">Bank transfer to store</h3><small>Upload your slip after paying</small></div>
+      <button class="pay-option" onclick="selectPay('transfer')" id="pay_transfer">
+        <div class="ic">🏦</div>
+        <div class="txt"><h3>Bank transfer to store</h3><small>Upload your slip after paying</small></div>
       </button>
-      <button class="glass role-card" style="padding:14px;" onclick="selectPay('cash_to_delivery')" id="pay_cash">
-        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💵</div>
-        <div class="txt"><h3 style="font-size:1em;">Cash or transfer on delivery</h3><small>Pay when your order arrives</small></div>
+      <button class="pay-option" onclick="selectPay('cash_to_delivery')" id="pay_cash">
+        <div class="ic">💵</div>
+        <div class="txt"><h3>Cash or transfer on delivery</h3><small>Pay when your order arrives</small></div>
       </button>
     </div>
   </div>
@@ -1999,6 +2020,7 @@ async function submitCompleteAuctionOrder(orderId){
       p_delivery_target_type: deliveryTarget.deliveryTargetType, p_receiver_name: deliveryTarget.receiverName,
       p_receiver_phone: deliveryTarget.receiverPhone, p_receiver_address: deliveryTarget.receiverAddress }, orderId);
   if(!updated) return;
+  await rememberDeliveryAddress(deliveryTarget);
   closeSheet();
   toast('Order confirmed!');
   render();
@@ -5654,7 +5676,7 @@ function sheetCheckout(){
   const isPartial = lines.length < allLines.length;
   return `
   <h2>Checkout</h2>
-  <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${state.customerEmail}</strong>` : 'Demo mode — connect Supabase to require sign-in'}</p></div>
+  <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${escapeAttr(state.customerName)}${state.customerPhone?` · ${escapeAttr(state.customerPhone)}`:''}</strong>` : 'Demo mode — connect Supabase to require sign-in'}</p></div>
   ${isPartial ? `<p class="muted" style="font-size:.82em; margin-bottom:10px;">Checking out ${lines.length} selected item${lines.length>1?'s':''} — the rest stays in your cart.</p>` : ''}
   <div class="field"><label>Your name</label><input id="c_name" value="${escapeAttr(state.customerName)}" ${sb && state.authed?'disabled style="opacity:.7;"':''}></div>
   <div class="field"><label>Phone</label><input id="c_phone" placeholder="7XXXXXX" value="${escapeAttr(state.customerPhone||'')}" ${sb && state.authed && state.customerPhone?'disabled style="opacity:.7;"':''}></div>
@@ -5693,24 +5715,24 @@ function storeCheckoutCardHTML(g){
     <div class="field" style="margin-top:12px;">
       <label>How will you pay?</label>
       <div class="stack">
-        <button class="glass role-card" style="padding:12px;" onclick="selectStorePay('${biz.id}','transfer')" id="pay_transfer_${biz.id}">
-          <div class="ic" style="width:34px;height:34px;font-size:1em;">🏦</div>
-          <div class="txt"><h3 style="font-size:.92em;">Bank transfer</h3><small>Upload your slip to place</small></div>
+        <button class="pay-option" onclick="selectStorePay('${biz.id}','transfer')" id="pay_transfer_${biz.id}">
+          <div class="ic">🏦</div>
+          <div class="txt"><h3>Bank transfer</h3><small>Pay now or after delivery</small></div>
         </button>
-        <button class="glass role-card" style="padding:12px;" onclick="selectStorePay('${biz.id}','cash_to_delivery')" id="pay_cash_${biz.id}">
-          <div class="ic" style="width:34px;height:34px;font-size:1em;">💵</div>
-          <div class="txt"><h3 style="font-size:.92em;">Cash or transfer on delivery</h3><small>Pay when it arrives</small></div>
+        <button class="pay-option" onclick="selectStorePay('${biz.id}','cash_to_delivery')" id="pay_cash_${biz.id}">
+          <div class="ic">💵</div>
+          <div class="txt"><h3>Cash or transfer on delivery</h3><small>Pay when it arrives</small></div>
         </button>
       </div>
     </div>
     <div id="transferBox_${biz.id}" class="${payMethod==='transfer'?'':'hidden'}" style="margin-top:10px;">
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
       <div class="field" style="margin-top:10px;">
-        <label>Amount you sent</label>
+        <label>Amount to be paid</label>
         <input type="number" step="0.01" inputmode="decimal" id="slipAmount_${biz.id}" placeholder="${total.toFixed(2)}">
       </div>
       <div class="field" style="margin-top:10px;">
-        <label>Account number you sent to</label>
+        <label>Account number to be transferred</label>
         <input id="slipAccount_${biz.id}" placeholder="${biz.accountNumber}">
       </div>
       <div class="field" style="margin-top:10px;">
@@ -5722,7 +5744,7 @@ function storeCheckoutCardHTML(g){
           <button type="button" class="slip-remove-btn" onclick="removeStoreSlip('${biz.id}')" title="Remove image">✕</button>
         </div>
       </div>
-      <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number above must match this order's total (<span id="ck_slipnote_${biz.id}">${money(total)}</span>) and the "Pay to" details, or the slip can't be submitted.</p>
+      <p class="muted" style="font-size:.78em; margin-top:8px;">Optional right now — leave these blank to pay whenever you're ready (even after delivery) and upload the slip from the order later. If you fill any of them in, the amount and account number must match this order's total (<span id="ck_slipnote_${biz.id}">${money(total)}</span>) and the "Pay to" details, or the slip can't be submitted.</p>
     </div>
     <div id="cashNote_${biz.id}" class="${payMethod==='cash_to_delivery'?'':'hidden'}" style="margin-top:10px;">
       <p class="muted" style="font-size:.82em;">Have <span id="ck_cash_${biz.id}">${money(total)}</span> ready for when it arrives — pay your delivery partner cash, or transfer it straight to the store's account instead:</p>
@@ -5766,7 +5788,32 @@ function removeStoreSlip(bizId){
 // Shared by every checkout-shaped sheet (cart checkout, rent, complete-auction-win) -
 // who the order actually gets handed to: a person (default - you, unless you say
 // otherwise) or a boat (name/contact/harbor instead of name/phone/address).
+// Reads from - and writes back into, once an order actually goes through
+// (see rememberDeliveryAddress()) - the saved address book (see myAddresses()/
+// defaultAddress() in the Settings section). Three independent slots: your own
+// default address (autofilled - editing the name away from it switches to the
+// "other person" block instead of overwriting it), a default "other person"
+// address for when you're sending it elsewhere, and a default boat. Whichever
+// of the three sheets embedding this (checkout, rent, complete-auction-order)
+// also renders its own zone <select> (#c_zone / #cao_zone) still owns that -
+// picking a saved address here just syncs it to that address's saved zone.
 function deliveryTargetFieldsHTML(){
+  const ownDefault = defaultAddress('own');
+  const otherDefault = defaultAddress('other');
+  const boatDefault = defaultAddress('boat');
+  const ownList = myAddresses('own');
+  const otherList = myAddresses('other');
+  const boatList = myAddresses('boat');
+  if(ownDefault && ownDefault.zone) _selectedZone = ownDefault.zone;
+  const selfName = ownDefault ? ownDefault.name : state.customerName;
+  const selfPhone = ownDefault ? ownDefault.phone : (state.customerPhone||'');
+  const selfAddress = ownDefault ? ownDefault.address : '';
+  const otherName = otherDefault ? otherDefault.name : '';
+  const otherPhone = otherDefault ? otherDefault.phone : '';
+  const otherAddress = otherDefault ? otherDefault.address : '';
+  const boatName = boatDefault ? boatDefault.name : '';
+  const boatPhone = boatDefault ? boatDefault.phone : '';
+  const boatHarbour = boatDefault ? boatDefault.harbour : '';
   return `
   <div class="field">
     <label>Deliver to</label>
@@ -5776,33 +5823,66 @@ function deliveryTargetFieldsHTML(){
     </div>
   </div>
   <input type="hidden" id="c_delivery_target" value="person">
+  <input type="hidden" id="c_recv_mode" value="self">
+  <input type="hidden" id="c_recv_self_name" value="${escapeAttr(selfName)}">
   <div id="personFields">
-    <div class="field">
-      ${chkRowHTML('c_receiving_self', true, "I'm receiving this package", 'onchange="toggleReceivingSelf(this.checked)"')}
+    <div id="recvOwnBlock">
+      ${ownList.length>1 ? `
+      <div class="field">
+        <label>Your saved addresses</label>
+        <select id="c_own_addr_pick" onchange="pickSavedAddress('own', this.value)">
+          ${ownList.map(a=>`<option value="${a.id}" ${a.isDefault?'selected':''}>${escapeAttr(a.name)} — ${escapeAttr(a.address)}</option>`).join('')}
+        </select>
+      </div>` : ''}
+      <div class="field"><label>Name</label><input id="c_recv_name" value="${escapeAttr(selfName)}" onfocus="this.select()" oninput="handleRecvNameEdit()"></div>
+      <div class="field"><label>Phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(selfPhone)}"></div>
+      <div class="field"><label>Address</label><input id="c_recv_address" placeholder="House, street, island" value="${escapeAttr(selfAddress)}"></div>
+      <button type="button" class="link-btn" onclick="switchDeliverToOther()">Deliver to another person instead</button>
     </div>
-    <div class="field"><label>Receiver's name</label><input id="c_recv_name" value="${escapeAttr(state.customerName)}"></div>
-    <div class="field"><label>Receiver's phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(state.customerPhone||'')}"></div>
-    <div class="field"><label>Receiver's address</label><input id="c_recv_address" placeholder="House, street, island"></div>
+    <div id="recvOtherBlock" class="hidden">
+      ${otherList.length>1 ? `
+      <div class="field">
+        <label>Saved receivers</label>
+        <select id="c_other_addr_pick" onchange="pickSavedAddress('other', this.value)">
+          ${otherList.map(a=>`<option value="${a.id}" ${a.isDefault?'selected':''}>${escapeAttr(a.name)} — ${escapeAttr(a.address)}</option>`).join('')}
+        </select>
+      </div>` : ''}
+      <div class="field"><label>Receiver's name</label><input id="c_other_name" value="${escapeAttr(otherName)}"></div>
+      <div class="field"><label>Receiver's phone</label><input id="c_other_phone" placeholder="7XXXXXX" value="${escapeAttr(otherPhone)}"></div>
+      <div class="field"><label>Receiver's address</label><input id="c_other_address" placeholder="House, street, island" value="${escapeAttr(otherAddress)}"></div>
+      <button type="button" class="link-btn" onclick="switchDeliverToSelf()">Deliver to me instead</button>
+    </div>
   </div>
   <div id="boatFields" class="hidden">
-    <div class="field"><label>Boat / Speed Boat / Vessel name</label><input id="c_boat_name" placeholder="e.g. Dhoni Safari 2"></div>
-    <div class="field"><label>Contact phone</label><input id="c_boat_phone" placeholder="7XXXXXX"></div>
-    <div class="field"><label>Harbor / mooring location</label><input id="c_boat_location" placeholder="Where is the boat docked?"></div>
+    ${boatList.length>1 ? `
+    <div class="field">
+      <label>Saved boats</label>
+      <select id="c_boat_pick" onchange="pickSavedAddress('boat', this.value)">
+        ${boatList.map(a=>`<option value="${a.id}" ${a.isDefault?'selected':''}>${escapeAttr(a.name)} — ${escapeAttr(a.harbour)}</option>`).join('')}
+      </select>
+    </div>` : ''}
+    <div class="field"><label>Boat / Speed Boat / Vessel name</label><input id="c_boat_name" placeholder="e.g. Dhoni Safari 2" value="${escapeAttr(boatName)}"></div>
+    <div class="field"><label>Contact phone</label><input id="c_boat_phone" placeholder="7XXXXXX" value="${escapeAttr(boatPhone)}"></div>
+    <div class="field"><label>Harbor / mooring location</label><input id="c_boat_location" placeholder="Where is the boat docked?" value="${escapeAttr(boatHarbour)}"></div>
   </div>`;
 }
 // Reads + validates whichever half of deliveryTargetFieldsHTML() is showing.
 // Returns null (after toasting the problem) if anything required is still empty -
-// every submit function below must bail out when this returns null.
+// every submit function below must bail out when this returns null. addressCategory
+// tells rememberDeliveryAddress() which of the three saved-address slots this
+// order's details belong in, once the order actually succeeds.
 function readDeliveryTargetFields(){
   const deliveryTargetType = val('c_delivery_target') || 'person';
   if(deliveryTargetType==='boat'){
     const receiverName = val('c_boat_name'), receiverPhone = val('c_boat_phone'), receiverAddress = val('c_boat_location');
     if(!receiverName || !receiverPhone || !receiverAddress){ toast('Enter the boat name, contact phone, and harbor location','bad'); return null; }
-    return { deliveryTargetType, receiverName, receiverPhone, receiverAddress };
+    return { deliveryTargetType, receiverName, receiverPhone, receiverAddress, addressCategory:'boat' };
   }
-  const receiverName = val('c_recv_name'), receiverPhone = val('c_recv_phone'), receiverAddress = val('c_recv_address');
+  const mode = document.getElementById('c_recv_mode') ? val('c_recv_mode') : 'self';
+  const prefix = mode==='other' ? 'c_other_' : 'c_recv_';
+  const receiverName = val(prefix+'name'), receiverPhone = val(prefix+'phone'), receiverAddress = val(prefix+'address');
   if(!receiverName || !receiverPhone || !receiverAddress){ toast("Enter the receiver's name, phone, and address",'bad'); return null; }
-  return { deliveryTargetType, receiverName, receiverPhone, receiverAddress };
+  return { deliveryTargetType, receiverName, receiverPhone, receiverAddress, addressCategory: mode==='other'?'other':'own' };
 }
 // Switches which set of receiver fields is shown/required - a direct DOM toggle
 // (mirrors setAddItemListingType() in Add Item) rather than a full render(), so any
@@ -5814,20 +5894,92 @@ function setDeliveryTarget(type){
   document.getElementById('personFields').classList.toggle('hidden', type!=='person');
   document.getElementById('boatFields').classList.toggle('hidden', type!=='boat');
 }
-// "I'm receiving this package" (checked by default): pulls the buyer's own
-// name/phone (whatever's currently typed in Your name/Phone, not just the stored
-// account values) into the receiver fields. Unchecking clears them for someone
-// else's details - the receiver's address is never auto-filled either way.
-function toggleReceivingSelf(checked){
-  const nameEl = document.getElementById('c_recv_name');
-  const phoneEl = document.getElementById('c_recv_phone');
-  if(checked){
-    nameEl.value = val('c_name') || state.customerName;
-    phoneEl.value = val('c_phone') || state.customerPhone || '';
-  } else {
-    nameEl.value = '';
-    phoneEl.value = '';
+function switchDeliverToOther(){
+  document.getElementById('c_recv_mode').value = 'other';
+  document.getElementById('recvOwnBlock').classList.add('hidden');
+  document.getElementById('recvOtherBlock').classList.remove('hidden');
+}
+function switchDeliverToSelf(){
+  document.getElementById('c_recv_mode').value = 'self';
+  document.getElementById('recvOtherBlock').classList.add('hidden');
+  document.getElementById('recvOwnBlock').classList.remove('hidden');
+}
+// Tapping the name field selects all of it (see the onfocus on c_recv_name) so
+// typing immediately replaces it, same as tapping to rename something on a
+// phone - but only actually *editing it away* from the saved self-name should
+// switch this into "someone else" mode, not just focusing it. Restores the
+// self field back to the saved name (since it's "myself" again) and carries
+// whatever was typed over to the other-person block as a head start, clearing
+// its phone/address since those definitely don't apply to this new name.
+function handleRecvNameEdit(){
+  const selfName = val('c_recv_self_name');
+  const typed = val('c_recv_name');
+  if(typed === selfName) return;
+  switchDeliverToOther();
+  document.getElementById('c_other_name').value = typed;
+  document.getElementById('c_other_phone').value = '';
+  document.getElementById('c_other_address').value = '';
+  document.getElementById('c_recv_name').value = selfName;
+}
+// Fills whichever block's fields from a saved address the customer picked from
+// its dropdown (only shown once there's more than one saved in that category -
+// with just one, it's already the default and already autofilled). For own/
+// other addresses this also syncs whichever zone <select> the embedding sheet
+// actually has (#c_zone in checkout, #cao_zone completing an auction win) -
+// boats don't carry a zone of their own, so nothing to sync there.
+function pickSavedAddress(category, id){
+  const a = DB.addresses.find(x=>x.id===id);
+  if(!a) return;
+  if(category==='own'){
+    document.getElementById('c_recv_name').value = a.name;
+    document.getElementById('c_recv_phone').value = a.phone;
+    document.getElementById('c_recv_address').value = a.address;
+    document.getElementById('c_recv_self_name').value = a.name;
+  } else if(category==='other'){
+    document.getElementById('c_other_name').value = a.name;
+    document.getElementById('c_other_phone').value = a.phone;
+    document.getElementById('c_other_address').value = a.address;
+  } else if(category==='boat'){
+    document.getElementById('c_boat_name').value = a.name;
+    document.getElementById('c_boat_phone').value = a.phone;
+    document.getElementById('c_boat_location').value = a.harbour;
   }
+  if((category==='own'||category==='other') && a.zone){
+    _selectedZone = a.zone;
+    const cz = document.getElementById('c_zone'); if(cz){ cz.value = a.zone; if(typeof refreshCheckoutTotals==='function') refreshCheckoutTotals(); }
+    const caoz = document.getElementById('cao_zone'); if(caoz){ caoz.value = a.zone; if(typeof refreshCompleteOrderTotals==='function') refreshCompleteOrderTotals(); }
+  }
+}
+// Called once an order actually places successfully (see the three
+// readDeliveryTargetFields() call sites) - saves whatever was used as the new
+// default for its category, matching an already-saved address instead of
+// duplicating it if the details are identical. Silent no-op for a guest
+// (no sb/customerId) since there's no account to attach it to.
+async function rememberDeliveryAddress(deliveryTarget){
+  if(!sb || !state.customerId || !deliveryTarget) return;
+  const cat = deliveryTarget.addressCategory;
+  const fields = cat==='boat'
+    ? { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: null, zone: null, harbour: deliveryTarget.receiverAddress }
+    : { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: deliveryTarget.receiverAddress, zone: _selectedZone, harbour: null };
+  await saveAddressFromCheckout(cat, fields);
+}
+async function saveAddressFromCheckout(category, fields){
+  const existing = myAddresses(category).find(a =>
+    a.name===fields.name && a.phone===fields.phone &&
+    (category==='boat' ? a.harbour===fields.harbour : a.address===fields.address));
+  if(existing){
+    if(!existing.isDefault) await setAddressDefault(existing.id, category);
+    return;
+  }
+  // Not using set_default_address here since it expects an existing row -
+  // simplest correct way to make a brand-new row the default is to unset
+  // whatever's default first (RLS lets the customer update their own rows
+  // directly), then insert this one already flagged as default.
+  await sb.from('customer_addresses').update({ is_default: false }).eq('customer_id', state.customerId).eq('category', category).eq('is_default', true);
+  DB.addresses.forEach(a=>{ if(a.category===category && a.customerId===state.customerId) a.isDefault=false; });
+  const row = { id: uid('addr'), customerId: state.customerId, category, isDefault: true, createdAt: Date.now(), ...fields };
+  const { data, error } = await sb.from('customer_addresses').insert(toDbRow('addresses', row)).select();
+  if(!error && data && data[0]) DB.addresses.push(fromDbRow('addresses', data[0]));
 }
 // Zone change affects every store's delivery fee (and so its total) at once, since
 // there's one shared delivery destination - updates each store card's numbers in
@@ -5975,13 +6127,13 @@ function sheetRentItem(){
   <div class="field">
     <label>How will you pay ${isDeferred?'the advance':''}?</label>
     <div class="stack">
-      <button class="glass role-card" style="padding:14px;" onclick="selectPay('transfer')" id="pay_transfer">
-        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
-        <div class="txt"><h3 style="font-size:1em;">Bank transfer to store</h3><small>Upload your slip after paying</small></div>
+      <button class="pay-option" onclick="selectPay('transfer')" id="pay_transfer">
+        <div class="ic">🏦</div>
+        <div class="txt"><h3>Bank transfer to store</h3><small>Upload your slip after paying</small></div>
       </button>
-      <button class="glass role-card" style="padding:14px;" onclick="selectPay('cash_to_delivery')" id="pay_cash">
-        <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💵</div>
-        <div class="txt"><h3 style="font-size:1em;">Cash to the store</h3><small>${fulfillment==='pickup'?'Visit and pay to the store':'Pay to the store'} — no delivery partner involved</small></div>
+      <button class="pay-option" onclick="selectPay('cash_to_delivery')" id="pay_cash">
+        <div class="ic">💵</div>
+        <div class="txt"><h3>Cash to the store</h3><small>${fulfillment==='pickup'?'Visit and pay to the store':'Pay to the store'} — no delivery partner involved</small></div>
       </button>
     </div>
   </div>
@@ -6030,11 +6182,12 @@ async function submitRentItem(itemId){
   }
   const fulfillment = item.rentalFulfillment==='pickup' ? 'pickup' : 'deliver';
   let deliveryTargetType, receiverName, receiverPhone, receiverAddress, pickupLocation=null;
+  let deliveryTarget = null;
   if(fulfillment==='pickup'){
     deliveryTargetType = 'pickup'; receiverName = null; receiverPhone = null; receiverAddress = null;
     pickupLocation = item.pickupLocation || '';
   } else {
-    const deliveryTarget = readDeliveryTargetFields();
+    deliveryTarget = readDeliveryTargetFields();
     if(!deliveryTarget) return;
     ({ deliveryTargetType, receiverName, receiverPhone, receiverAddress } = deliveryTarget);
   }
@@ -6088,6 +6241,7 @@ async function submitRentItem(itemId){
     // decrement has to go through this SECURITY DEFINER RPC instead.
     const { data: updated, error: stockErr } = await sb.rpc('decrement_rental_stock', { p_item_id: item.id });
     if(!stockErr && updated && updated[0]) item.stock = updated[0].stock;
+    if(deliveryTarget) await rememberDeliveryAddress(deliveryTarget);
   } else {
     item.stock -= 1;
   }
@@ -6650,16 +6804,26 @@ async function placeStoreOrder(bizId){
   const extraFee = cartExtraFee(cartLines);
   const total = itemsTotal + (buyerPaysFee?fee:0) + extraFee;
   const slipData = payMethod==='transfer' ? _storeSlipData[bizId] : null;
-  // A slip alone isn't enough - the amount and account number the buyer says they
-  // sent must match this order's total and the store's real account, or the slip
-  // is refused outright (rather than just flagged for the store to sort out later).
+  let paymentStatus = payMethod==='transfer' ? 'pending_transfer' : 'pending_cash';
+  // Paying by transfer doesn't require proof of it right this second - the
+  // customer can transfer whenever's convenient, even after the delivery
+  // arrives, and upload the slip later from the order itself (same as any
+  // other pending_transfer order - see "Upload transfer slip" on the order
+  // card/detail). But if they've already started filling any of the slip
+  // fields in, treat that as "I'm submitting proof now" and validate the
+  // whole thing properly rather than silently dropping a half-filled slip -
+  // the amount and account number they say they sent still has to match
+  // this order's total and the store's real account.
   if(payMethod==='transfer'){
-    if(!slipData){ toast(`Upload a transfer slip for ${biz.name} first`, 'bad'); return; }
     const enteredAmount = Number(val('slipAmount_'+bizId));
     const enteredAccount = val('slipAccount_'+bizId);
-    if(!enteredAmount || !enteredAccount){ toast(`Enter the amount and account number for the ${biz.name} slip`, 'bad'); return; }
-    if(Math.abs(enteredAmount - total) > 0.01){ toast(`That amount doesn't match this order's total (${money(total)}) for ${biz.name}`, 'bad'); return; }
-    if(enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match ${biz.name}'s account (${biz.accountNumber})`, 'bad'); return; }
+    const attemptingSlipNow = !!(slipData || enteredAmount || enteredAccount);
+    if(attemptingSlipNow){
+      if(!slipData || !enteredAmount || !enteredAccount){ toast(`Fill in the amount, account number, and slip image for ${biz.name} — or leave all three blank to pay later`, 'bad'); return; }
+      if(Math.abs(enteredAmount - total) > 0.01){ toast(`That amount doesn't match this order's total (${money(total)}) for ${biz.name}`, 'bad'); return; }
+      if(enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match ${biz.name}'s account (${biz.accountNumber})`, 'bad'); return; }
+      paymentStatus = 'slip_uploaded';
+    }
   }
   state.customerName = name;
   const order = {
@@ -6674,8 +6838,8 @@ async function placeStoreOrder(bizId){
     deliveryPartnerPayout: fee, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
     paymentMethod: payMethod,
-    paymentStatus: payMethod==='transfer' ? 'slip_uploaded' : 'pending_cash',
-    status:'placed', createdAt: Date.now(), slipDataUrl: slipData
+    paymentStatus,
+    status:'placed', createdAt: Date.now(), slipDataUrl: paymentStatus==='slip_uploaded' ? slipData : null
   };
   // A genuine insert, not saveDB('orders', [order])'s upsert - PostgREST's upsert
   // always compiles to INSERT ... ON CONFLICT DO UPDATE, and Postgres checks UPDATE
@@ -6688,6 +6852,7 @@ async function placeStoreOrder(bizId){
   if(sb){
     const { error } = await sb.from('orders').insert(toDbRow('orders', order));
     if(error){ toast('Could not place order: '+error.message, 'bad'); return; }
+    await rememberDeliveryAddress(deliveryTarget);
   }
   DB.orders.push(order);
   // Clear only this store's lines, not the whole cart - any other store, or
@@ -6904,11 +7069,11 @@ function sheetUploadSlip(){
   <p class="muted">Order #${o.id.slice(-5).toUpperCase()} · ${money(o.total)}</p>
   ${biz?`<div class="acct-box" style="margin-top:10px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>`:''}
   <div class="field" style="margin-top:14px;">
-    <label>Amount you sent</label>
+    <label>Amount to be paid</label>
     <input type="number" step="0.01" inputmode="decimal" id="slipAmountUpload" placeholder="${o.total.toFixed(2)}">
   </div>
   <div class="field" style="margin-top:10px;">
-    <label>Account number you sent to</label>
+    <label>Account number to be transferred</label>
     <input id="slipAccountUpload" placeholder="${biz?biz.accountNumber:''}">
   </div>
   <div class="field" style="margin-top:14px;">

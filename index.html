@@ -5596,6 +5596,19 @@ function groupCartLinesByBusiness(lines){
   }
   return groups;
 }
+// Object.entries(state.cart) preserves insertion order (item ids are
+// non-numeric strings), so the last entry is whichever item was most
+// recently added - re-sorting groups by their most-recent line's position
+// surfaces "whatever you were just adding to" first, both in the cart's
+// store tabs and in the checkout sheet's stack of per-store cards.
+function sortGroupsByRecency(groups){
+  const order = Object.keys(state.cart);
+  return groups.slice().sort((a,b)=>{
+    const lastA = Math.max(...a.lines.map(l=>order.indexOf(l.it.id)));
+    const lastB = Math.max(...b.lines.map(l=>order.indexOf(l.it.id)));
+    return lastB - lastA;
+  });
+}
 // Signing in is required to add anything to the cart (same bar as checkout/renting/
 // bidding) - browsing stays open to everyone, but this is the first point that
 // actually needs an account, so it opens sign-in right here rather than letting a
@@ -5648,10 +5661,30 @@ function cartItemRowHTML(l){
     <div class="glass item-card" onclick="openItemDetail('${l.it.id}')">
       <button class="cart-check-circle" onclick="event.stopPropagation(); toggleCartSelected('${l.it.id}')" title="${selected?'Selected':'Not selected'}">${iconCheckCircle(selected)}</button>
       <div class="item-thumb">${itemThumbHTML(l.it)}</div>
-      <div class="item-info"><h3>${l.it.name}</h3><p class="muted" style="font-size:.85em;">${money(effectivePrice(l.it))} each</p></div>
+      <div class="item-info">
+        <h3>${l.it.name}</h3>
+        <p class="muted" style="font-size:.85em;">${money(effectivePrice(l.it))} each</p>
+        ${itemDeliveryNoteHTML(l.it)}
+      </div>
       <div class="qty-ctrl"><button onclick="event.stopPropagation(); changeQty('${l.it.id}',-1)">−</button><strong>${l.qty}</strong><button onclick="event.stopPropagation(); changeQty('${l.it.id}',1)">+</button></div>
     </div>`;
 }
+// Items total, delivery fee (broken out on its own line), and the grand total
+// that actually adds them together - same buyer-pays/zone/extra-fee math as
+// cartGroupTotals()'s checkout-card sibling above, just for a group of lines
+// still sitting in the cart rather than mid-checkout. A buyer-pays group with
+// no saved zone yet leaves the fee (and so the grand total) unknown rather
+// than guessing - same "+ delivery fee" treatment as the browse cards.
+function cartGroupTotals(lines){
+  const itemsTotal = lines.reduce((s,l)=>s+effectivePrice(l.it)*l.qty,0);
+  const extraFee = cartExtraFee(lines);
+  if(!cartBuyerPaysFee(lines)) return { itemsTotal, fee:extraFee, feeKnown:true, grandTotal:itemsTotal+extraFee };
+  const ownDefault = defaultAddress('own');
+  if(!ownDefault || !ownDefault.zone) return { itemsTotal, fee:null, feeKnown:false, grandTotal:itemsTotal };
+  const fee = zoneFee(ownDefault.zone) + extraFee;
+  return { itemsTotal, fee, feeKnown:true, grandTotal:itemsTotal+fee };
+}
+function setCartActiveStore(bizId){ state.cartActiveStore = bizId; render(); }
 function renderCustCart(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
@@ -5662,33 +5695,48 @@ function renderCustCart(){
   }
   const entries = Object.entries(state.cart);
   const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
-  const checkoutLines = cartCheckoutLines(lines);
-  const total = checkoutLines.reduce((s,l)=>s+effectivePrice(l.it)*l.qty,0);
-  const allSelected = checkoutLines.length === lines.length;
-  const groups = groupCartLinesByBusiness(lines);
+  // Grouped by store, most-recently-added-to store first (see
+  // sortGroupsByRecency()) - with more than one store in the cart, only one
+  // store's items show at a time (via horizontally-scrollable tabs) instead
+  // of stacking every store's items in one long list, since each store is
+  // paid for and placed as its own separate order anyway.
+  const groups = sortGroupsByRecency(groupCartLinesByBusiness(lines));
+  const activeId = groups.some(g=>g.biz && g.biz.id===state.cartActiveStore) ? state.cartActiveStore : (groups[0] && groups[0].biz ? groups[0].biz.id : null);
+  const activeGroup = groups.find(g=>g.biz && g.biz.id===activeId) || groups[0];
+  const activeLines = activeGroup ? activeGroup.lines : [];
+  const activeCheckoutLines = cartCheckoutLines(activeLines);
+  const totals = cartGroupTotals(activeCheckoutLines);
+  const allSelected = activeCheckoutLines.length === activeLines.length;
   // Total + Checkout live in a fixed bar (see .cart-checkout-bar) pinned just above
   // the bottom nav, rather than scrolling away with the item list below - so extra
   // bottom padding on the list keeps the last item from ever sitting under it.
+  // Checkout itself isn't scoped to the active tab - it proceeds with whatever's
+  // selected across the whole cart (see goCheckout()/sheetCheckout(), which already
+  // give every store its own card and its own "place order") - the tabs are purely
+  // a browsing convenience so this totals preview matches one real checkout card.
   const checkoutBar = lines.length ? `
     <div class="glass cart-checkout-bar">
-      <div class="row between"><span class="muted">${allSelected?'Total':`Total (${checkoutLines.length} selected)`}</span><strong class="price">${money(total)}</strong></div>
-      ${checkoutLines.length
+      <div class="row between"><span class="muted">Items total</span><span>${money(totals.itemsTotal)}</span></div>
+      <div class="row between" style="margin-top:2px; font-size:.85em;">
+        <span class="muted">${totals.feeKnown?(totals.fee>0?'Delivery fee':'Free delivery'):''}</span>
+        <span class="muted">${totals.feeKnown?(totals.fee>0?money(totals.fee):'Free'):'+ delivery fee'}</span>
+      </div>
+      <div class="row between" style="margin-top:6px;"><strong>${allSelected?'Total':`Total (${activeCheckoutLines.length} selected)`}</strong><strong class="price">${money(totals.grandTotal)}</strong></div>
+      ${cartCheckoutLines(lines).length
         ? `<button class="btn btn-primary" style="margin-top:10px;" onclick="goCheckout()">Checkout</button>`
         : `<button class="btn btn-primary" style="margin-top:10px; opacity:.5;" disabled>Select an item to checkout</button>`}
     </div>` : '';
-  // Grouped by store — with items from more than one store in the cart, each
-  // store's items sit under its own name so it's clear they'll be paid for and
-  // placed separately at checkout (see groupCartLinesByBusiness()).
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
     ${topbar('Your cart')}
     <div style="padding:4px 16px ${lines.length?'190px':'0'};">
-      ${lines.length? groups.map(g=>`
-        ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:16px 4px 6px;">
-          <button class="cart-check-circle" onclick="toggleStoreSelected('${g.biz?g.biz.id:''}')" title="${g.lines.every(l=>isCartItemSelected(l.it.id))?'Unmark all from this store':'Mark all from this store'}">${iconCheckCircle(g.lines.every(l=>isCartItemSelected(l.it.id)))}</button>
-          <p class="muted" style="font-size:.78em; text-transform:uppercase; letter-spacing:.03em; margin:0;">${g.biz?g.biz.name:'Store'}</p>
+      ${lines.length? `
+        ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
+        ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:2px 4px 6px;">
+          <button class="cart-check-circle" onclick="toggleStoreSelected('${activeGroup&&activeGroup.biz?activeGroup.biz.id:''}')" title="${activeLines.every(l=>isCartItemSelected(l.it.id))?'Unmark all from this store':'Mark all from this store'}">${iconCheckCircle(activeLines.every(l=>isCartItemSelected(l.it.id)))}</button>
+          <p class="muted" style="font-size:.78em; text-transform:uppercase; letter-spacing:.03em; margin:0;">${activeGroup&&activeGroup.biz?activeGroup.biz.name:'Store'}</p>
         </div>`:''}
-        ${g.lines.map(cartItemRowHTML).join('')}
-      `).join('') : `<div class="empty"><span class="ic">🛒</span>Your cart is empty</div>`}
+        ${activeLines.map(cartItemRowHTML).join('')}
+      ` : `<div class="empty"><span class="ic">🛒</span>Your cart is empty</div>`}
     </div>
   `, checkoutBar);
 }
@@ -5716,7 +5764,7 @@ function sheetCheckout(){
   const entries = Object.entries(state.cart);
   const allLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   const lines = cartCheckoutLines(allLines); // only the selected lines (see toggleCartSelected()), or the whole cart if everything's selected
-  const groups = groupCartLinesByBusiness(lines);
+  const groups = sortGroupsByRecency(groupCartLinesByBusiness(lines));
   if(!_selectedZone) _selectedZone = 'male';
   const isPartial = lines.length < allLines.length;
   return `

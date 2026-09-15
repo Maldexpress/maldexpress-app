@@ -5064,6 +5064,24 @@ function isRentalSoon(item){
 function oosStickerHTML(item){
   return (isOutOfStock(item) && !isRentalSoon(item)) ? `<span class="oos-stamp">Out of stock</span>` : '';
 }
+// A buyer-pays buy_now item's real all-in delivery fee if we can already tell
+// which zone the buyer's in (their default "own" address) - the same
+// zoneFee()+extraDeliveryFee math checkout itself uses, so this is never a
+// number the card promises and checkout then contradicts. Null when we don't
+// know the zone yet (guest, or no saved address) - the card falls back to a
+// plain "+ delivery fee" note instead of guessing.
+function cardDeliveryFee(item){
+  if(item.freeDelivery===false){
+    const ownDefault = defaultAddress('own');
+    if(ownDefault && ownDefault.zone) return zoneFee(ownDefault.zone) + (item.extraDeliveryFee||0);
+    return null;
+  }
+  return item.extraDeliveryFee||0;
+}
+// The headline price on a Buy Now card - item price alone once free delivery
+// or an unknown zone means we can't show a real total, otherwise the price
+// with the buyer's own delivery fee folded in so it matches what checkout
+// will actually charge.
 function itemPriceLine(item){
   if(item.listingType==='auction'){
     const auction = auctionForItem(item.id);
@@ -5073,7 +5091,21 @@ function itemPriceLine(item){
   if(item.listingType==='rental'){
     return `${money(item.price)}/${rentalRateSuffix(item)}`;
   }
+  const fee = cardDeliveryFee(item);
+  if(item.freeDelivery===false && fee!=null) return money(effectivePrice(item) + fee);
   return money(effectivePrice(item));
+}
+// Small note under a Buy Now card's price - the delivery fee broken out on
+// its own (when the buyer's zone is known and it's not free), a plain "+
+// delivery fee" heads-up when it isn't known yet, or the existing "Free
+// delivery" badge. Auctions/rentals never show this - they have no
+// concept of buyer-pays delivery.
+function itemDeliveryNoteHTML(item){
+  if(item.listingType!=='buy_now') return '';
+  if(item.freeDelivery!==false) return `<p class="muted" style="font-size:.72em; margin-top:2px;">🚚 Free delivery</p>`;
+  const fee = cardDeliveryFee(item);
+  if(fee==null) return `<p class="muted" style="font-size:.72em; margin-top:2px;">+ delivery fee</p>`;
+  return `<p class="muted" style="font-size:.72em; margin-top:2px;">${money(fee)} delivery</p>`;
 }
 // Shared by the Home feed's Rentals view and a single store's Rental tab -
 // splits rental items into "available right now" vs. "listed but not ready
@@ -5334,7 +5366,8 @@ function topSellingCardHTML(item, showName=true){
         ${!isAuction && !isRental && item.discountPercent>0?`<span class="discount-badge">${item.discountPercent}% OFF</span>`:''}
       </div>
       ${soon?`<p class="muted" style="font-size:.72em; margin-top:2px;">From ${fmtDateShort(item.availableFrom)}</p>`
-        :bookedNow?`<p class="muted" style="font-size:.72em; margin-top:2px; color:var(--coral);">Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</p>`:''}
+        :bookedNow?`<p class="muted" style="font-size:.72em; margin-top:2px; color:var(--coral);">Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</p>`
+        :itemDeliveryNoteHTML(item)}
     </div>
   </div>`;
 }
@@ -5353,10 +5386,10 @@ function storeItemCardHTML(item, qty){
     <div class="info" onclick="openItemDetail('${item.id}')">
       <h3>${item.name}</h3>
       <div class="row between" style="align-items:baseline;">
-        <div class="price">${money(effectivePrice(item))}</div>
+        <div class="price">${itemPriceLine(item)}</div>
         ${item.discountPercent>0?`<span class="discount-badge">${item.discountPercent}% OFF</span>`:''}
       </div>
-      ${item.freeDelivery!==false?`<p class="muted" style="font-size:.72em; margin-top:2px;">🚚 Free delivery</p>`:''}
+      ${itemDeliveryNoteHTML(item)}
       ${qty>0?`
         <div class="qty-ctrl" style="margin-top:8px; justify-content:center;">
           <button onclick="event.stopPropagation(); changeQty('${item.id}',-1)">−</button><strong>${qty}</strong><button onclick="event.stopPropagation(); changeQty('${item.id}',1)">+</button>

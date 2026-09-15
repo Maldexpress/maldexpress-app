@@ -2279,20 +2279,32 @@ function go(screen, extra={}){
   render();
   window.scrollTo(0,0);
 }
-// Swipe-right-to-go-back: closes whatever's on top first (an open sheet, then
-// the notification dropdown), and only once nothing's open does it step back
-// to the previous screen. With an empty history (e.g. already at Home) it
-// simply does nothing, rather than continuing on to sign anyone out.
-function goBack(){
-  if(state.sheet){ closeSheet(); return; }
-  if(state.notifOpen){ state.notifOpen = false; render(); return; }
-  if(state.drawerOpen){ toggleDrawer(false); return; }
+// Closes whatever's on top - an open sheet, then the notification dropdown,
+// then the drawer - without touching screen history. Split out from goBack()
+// so the anywhere-on-screen swipe (handleSwipeEnd() below) can dismiss an
+// overlay from any starting point, while the edge-swipe-back gesture
+// (handleEdgeSwipeEnd()) only ever steps back a screen, never doubles up on
+// closing something the anywhere-swipe already handled.
+function closeTopmostOverlay(){
+  if(state.sheet){ closeSheet(); return true; }
+  if(state.notifOpen){ state.notifOpen = false; render(); return true; }
+  if(state.drawerOpen){ toggleDrawer(false); return true; }
+  return false;
+}
+// Steps back to the previous screen in _screenHistory. With an empty history
+// (e.g. already at Home) it simply does nothing, rather than continuing on
+// to sign anyone out.
+function goBackScreen(){
   if(_screenHistory.length){
     const prev = _screenHistory.pop();
     Object.assign(state, prev);
     render();
     window.scrollTo(0,0);
   }
+}
+function goBack(){
+  if(closeTopmostOverlay()) return;
+  goBackScreen();
 }
 
 /* =================== RENDER ROOT =================== */
@@ -5237,8 +5249,11 @@ function dismissKeyboardOnScroll(){
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') a.blur();
 }
 document.addEventListener('scroll', dismissKeyboardOnScroll, { passive:true, capture:true });
-// Swipe left-to-right anywhere on screen to go back (see goBack() above) -
-// skipped when the touch starts inside one of the app's own horizontally-
+// Swipe left-to-right anywhere on screen to dismiss whatever's on top (a
+// sheet, the notification dropdown, the drawer) - see closeTopmostOverlay().
+// Screen-to-screen back navigation is a separate, edge-only gesture (see
+// handleEdgeSwipeStart() and friends below) so the two never double up.
+// Skipped when the touch starts inside one of the app's own horizontally-
 // scrolling strips (the Featured carousel, category rows, the category
 // checklist), which need the same gesture for themselves.
 let _swipeStartX = 0, _swipeStartY = 0, _swipeStartTime = 0, _swipeTracking = false;
@@ -5253,10 +5268,72 @@ function handleSwipeEnd(e){
   _swipeTracking = false;
   const t = e.changedTouches && e.changedTouches[0]; if(!t) return;
   const dx = t.clientX - _swipeStartX, dy = t.clientY - _swipeStartY, dt = Date.now() - _swipeStartTime;
-  if(dx > 80 && Math.abs(dy) < 60 && dt < 800) goBack();
+  if(dx > 80 && Math.abs(dy) < 60 && dt < 800) closeTopmostOverlay();
 }
 document.addEventListener('touchstart', handleSwipeStart, { passive:true });
 document.addEventListener('touchend', handleSwipeEnd, { passive:true });
+// iOS-style interactive edge-swipe-back: a touch starting within EDGE_ZONE
+// of the left screen edge drags #app itself along with the finger instead of
+// jumping straight to the previous screen - release past the halfway point
+// completes the navigation (animating the rest of the way off-screen first,
+// so the transform is back at 0 by the time the new screen's HTML replaces
+// it), release short of halfway snaps back in place. Never engages on a
+// role's own Home screen (nothing to go back to, and swiping there must
+// never navigate away - see EDGE_SWIPE_HOME_SCREENS) or while any sheet/
+// notification dropdown/drawer is open (those close instantly via the
+// anywhere-swipe above instead, which already exists for exactly that).
+const EDGE_SWIPE_ZONE = 24;
+const EDGE_SWIPE_HOME_SCREENS = new Set(['custHome','bizHome','delHome']);
+let _edgeSwipeActive = false, _edgeSwipeDeciding = false, _edgeSwipeStartX = 0, _edgeSwipeStartY = 0, _edgeSwipeDx = 0;
+function edgeSwipeEligible(){
+  return !state.sheet && !state.notifOpen && !state.drawerOpen && _screenHistory.length>0 && !EDGE_SWIPE_HOME_SCREENS.has(state.screen);
+}
+function handleEdgeSwipeStart(e){
+  const t = e.touches && e.touches[0]; if(!t) return;
+  if(t.clientX > EDGE_SWIPE_ZONE || !edgeSwipeEligible()){ _edgeSwipeActive = false; return; }
+  _edgeSwipeStartX = t.clientX; _edgeSwipeStartY = t.clientY; _edgeSwipeDx = 0;
+  _edgeSwipeActive = true; _edgeSwipeDeciding = true;
+}
+function handleEdgeSwipeMove(e){
+  if(!_edgeSwipeActive) return;
+  const t = e.touches && e.touches[0]; if(!t) return;
+  const dx = t.clientX - _edgeSwipeStartX, dy = t.clientY - _edgeSwipeStartY;
+  if(_edgeSwipeDeciding){
+    // A clearly-more-vertical drag is a page scroll, not a back-swipe -
+    // bail out and let it scroll normally instead of fighting it.
+    if(Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ _edgeSwipeActive = false; return; }
+    if(Math.abs(dx) < 6) return;
+    _edgeSwipeDeciding = false;
+  }
+  _edgeSwipeDx = Math.max(0, dx);
+  const app = document.getElementById('app');
+  app.style.transition = 'none';
+  app.style.transform = `translateX(${_edgeSwipeDx}px)`;
+}
+function handleEdgeSwipeEnd(){
+  if(!_edgeSwipeActive) return;
+  _edgeSwipeActive = false;
+  if(_edgeSwipeDx<=0) return;
+  const app = document.getElementById('app');
+  const width = window.innerWidth;
+  if(_edgeSwipeDx > width/2){
+    app.style.transition = 'transform .22s ease-out';
+    app.style.transform = `translateX(${width}px)`;
+    setTimeout(()=>{
+      app.style.transition = 'none';
+      app.style.transform = '';
+      goBackScreen();
+    }, 220);
+  } else {
+    app.style.transition = 'transform .2s ease-out';
+    app.style.transform = 'translateX(0)';
+    setTimeout(()=>{ if(!_edgeSwipeActive) app.style.transition = 'none'; }, 200);
+  }
+  _edgeSwipeDx = 0;
+}
+document.addEventListener('touchstart', handleEdgeSwipeStart, { passive:true });
+document.addEventListener('touchmove', handleEdgeSwipeMove, { passive:true });
+document.addEventListener('touchend', handleEdgeSwipeEnd, { passive:true });
 const LISTING_TYPE_META = {
   buy_now: { icon:'🛍️', label:'Buy now' },
   auction: { icon:'🔨', label:'Auctions' },

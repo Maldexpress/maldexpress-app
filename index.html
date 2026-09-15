@@ -153,10 +153,13 @@
   .pay-option .txt h3{font-size:.95em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .pay-option .txt small{color:var(--ink-dim); font-size:.82em;}
 
-  /* Header */
+  /* Header - the heading sits as close to the top of the screen as it can
+     while still clearing the notch/status bar (env(safe-area-inset-top)); the
+     bottom padding/margin are untouched so the gap from the hamburger icon
+     down to the first card below stays exactly what it was. */
   .topbar{
     position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px;
-    padding:calc(16px + env(safe-area-inset-top)) 18px 16px; margin-bottom:6px;
+    padding:calc(8px + env(safe-area-inset-top)) 18px 16px; margin-bottom:6px;
   }
   .topbar .iconbtn{
     width:42px; height:42px; border-radius:14px; border:1px solid var(--glass-brd); background:var(--glass);

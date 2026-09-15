@@ -1158,6 +1158,82 @@ as $$
   returning o.*;
 $$;
 
+-- Mid-flight reassignment: a rider already assigned to pick up one of this
+-- business's orders (deliveryPersonId set, status still 'placed' - not yet
+-- handed off) can be offered a second one directly, instead of it going
+-- into the open pool for a stranger to claim. Sits as a pending offer
+-- (pending_rider_id) rather than an instant assignment - deliveryPersonId
+-- itself is treated everywhere else in this app as "the rider has already
+-- agreed to this", so a genuinely new "assigned but not yet accepted" state
+-- needed its own column rather than reusing that one. The rider still has
+-- to accept or decline (see accept_delivery_offer()/decline_delivery_offer()
+-- below); a decline just clears this and leaves the order exactly where
+-- mark_order_ready_for_pickup()/mark_order_self_delivery() found it, free
+-- for the business to choose differently.
+alter table orders add column if not exists pending_rider_id text references delivery_persons(id);
+
+-- Extends (rather than replaces) the original policy - a rider can also now
+-- see an order they've been offered but not yet accepted/declined, on top
+-- of the two cases they could already see (their own assigned jobs, and any
+-- unclaimed open job).
+drop policy if exists "rider read assigned or open orders" on orders;
+create policy "rider read assigned or open orders" on orders for select
+  using (
+    exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+    or exists (select 1 from delivery_persons d where d.id = orders.pending_rider_id and d.user_id = auth.uid())
+    or (orders.delivery_person_id is null and exists (select 1 from delivery_persons d where d.user_id = auth.uid()))
+  );
+
+create or replace function offer_order_to_rider(p_order_id text, p_rider_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set pending_rider_id = p_rider_id
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.delivery_person_id is null
+    and o.pending_rider_id is null
+    and o.status is distinct from 'delivered'
+    and exists (
+      select 1 from orders o2
+      where o2.business_id = o.business_id and o2.delivery_person_id = p_rider_id
+        and o2.status = 'placed' and o2.id <> o.id
+    )
+  returning o.*;
+$$;
+
+create or replace function accept_delivery_offer(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set
+    delivery_person_id = o.pending_rider_id,
+    delivery_person_name = (select d.name from delivery_persons d where d.id = o.pending_rider_id),
+    pending_rider_id = null
+  where o.id = p_order_id
+    and o.pending_rider_id is not null
+    and exists (select 1 from delivery_persons d where d.id = o.pending_rider_id and d.user_id = auth.uid())
+  returning o.*;
+$$;
+
+create or replace function decline_delivery_offer(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set pending_rider_id = null
+  where o.id = p_order_id
+    and o.pending_rider_id is not null
+    and exists (select 1 from delivery_persons d where d.id = o.pending_rider_id and d.user_id = auth.uid())
+  returning o.*;
+$$;
+
 grant execute on function submit_transfer_slip(text, text) to authenticated;
 grant execute on function approve_order_payment(text) to authenticated;
 grant execute on function complete_auction_order(text, text, text, text, text, text, text) to authenticated;
@@ -1174,6 +1250,9 @@ grant execute on function mark_order_ready_for_pickup(text) to authenticated;
 grant execute on function mark_order_self_delivery(text) to authenticated;
 grant execute on function mark_order_delivered_by_business(text) to authenticated;
 grant execute on function mark_order_out_for_delivery(text, text) to authenticated;
+grant execute on function offer_order_to_rider(text, text) to authenticated;
+grant execute on function accept_delivery_offer(text) to authenticated;
+grant execute on function decline_delivery_offer(text) to authenticated;
 
 -- The ten functions above are now the only way total/payment_status/
 -- payout_status/delivery_partner_payout/status/needs_delivery_partner/
@@ -1666,7 +1745,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -3751,6 +3830,22 @@ function wrapSheetOnly(body){
     <div class="glass sheet"><div class="handle"></div><button class="sheet-close" onclick="closeSheet()">✕</button>${body}</div>
   </div>`;
 }
+// Riders already coming to pick up at least one of this business's other
+// orders (assigned - deliveryPersonId set - but not yet handed off, so
+// status is still 'placed') - offering a new order directly to one of them
+// (see offerOrderToRider()) bundles it onto a trip that's already happening
+// instead of dropping it into the open pool for a different rider to claim
+// separately. Deduped by rider, since the same rider could have more than
+// one other order from this store in flight.
+function ridersInFlightForBusiness(businessId, excludeOrderId){
+  const seen = new Map();
+  DB.orders.forEach(o=>{
+    if(o.businessId!==businessId || o.id===excludeOrderId) return;
+    if(!o.deliveryPersonId || o.status!=='placed') return;
+    if(!seen.has(o.deliveryPersonId)) seen.set(o.deliveryPersonId, o.deliveryPersonName);
+  });
+  return [...seen.entries()].map(([id,name])=>({id,name}));
+}
 function orderDetailBizBody(o){
   if(!o) return `<h2>Order not found</h2>`;
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
@@ -3865,6 +3960,15 @@ function orderDetailBizBody(o){
     } else {
       actionArea += handoffPhotoHTML(o, `Take a photo of the package before handing it to ${o.deliveryPersonName}:`, 'Mark handed to delivery guy');
     }
+  } else if(o.pendingRiderId){
+    // Offered directly to a specific rider (see offerOrderToRider()) rather
+    // than posted to the open pool - only they can accept or decline it
+    // (sheetDelOrderDetail()/delJobCard() on their side), so there's nothing
+    // for the business to do here but wait. A decline clears pendingRiderId
+    // and drops the order back into this same "how is this getting to the
+    // customer?" choice below, this time free to pick differently.
+    const pendingRiderName = (DB.delivery.find(d=>d.id===o.pendingRiderId)||{}).name || 'the rider';
+    actionArea += `<div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Offered to ${pendingRiderName} (already picking up another order from you) — waiting for them to accept.</p></div>`;
   } else if(o.readyForPickup){
     actionArea += `
     <div class="card tight" style="background:rgba(255,207,92,.1); margin-top:10px;"><p style="font-size:.85em;">Posted to delivery partners — waiting for one to accept.</p></div>
@@ -3882,11 +3986,18 @@ function orderDetailBizBody(o){
         + `<button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderReadyForPickup('${o.id}')">📦 Send to a delivery partner instead</button>`;
     }
   } else if(o.status!=='delivered'){
+    // Riders already coming to pick up another of this business's orders
+    // (assigned, not yet handed off - see ridersInFlightForBusiness()) get
+    // their own button - bundling this order onto a trip that's already
+    // happening instead of dropping it into the open pool for a stranger,
+    // subject to that rider actually accepting the offer.
+    const inFlight = ridersInFlightForBusiness(o.businessId, o.id);
     actionArea += `
     <div class="glass card tight" style="margin-top:10px;">
       <p class="muted" style="font-size:.82em; margin-bottom:8px;">How is this getting to the customer?</p>
       <button class="btn btn-primary" style="width:100%;" onclick="markOrderReadyForPickup('${o.id}')">📦 Ready for delivery pickup</button>
       <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="markOrderSelfDelivery('${o.id}')">🚚 I'll deliver this myself</button>
+      ${inFlight.map(r=>`<button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="offerOrderToRider('${o.id}','${r.id}')">🛵 Add to ${escapeAttr(r.name)}'s pickup</button>`).join('')}
     </div>`;
   }
   const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
@@ -3995,6 +4106,31 @@ async function markOrderSelfDelivery(id){
     "Couldn't update this order — it may already be assigned or delivered");
   if(!updated) return;
   toast("You're delivering this one"); render();
+}
+// Offers (doesn't assign) a new order to a rider who's already picking up
+// another of this business's orders - offer_order_to_rider() re-checks
+// server-side that the rider still actually has one in flight, in case
+// they've handed it off in the meantime. The rider still has to accept it
+// (see acceptDeliveryOffer()/declineDeliveryOffer() below) before
+// deliveryPersonId is ever set.
+async function offerOrderToRider(orderId, riderId){
+  const riderName = (DB.delivery.find(d=>d.id===riderId)||{}).name || 'the rider';
+  const updated = await callOrderRpc('offer_order_to_rider', { p_order_id: orderId, p_rider_id: riderId }, orderId,
+    `Couldn't offer this to ${riderName} — they may no longer have an order of yours in progress`);
+  if(!updated) return;
+  toast(`Sent to ${riderName} — waiting for them to accept`); render();
+}
+async function acceptDeliveryOffer(orderId){
+  const updated = await callOrderRpc('accept_delivery_offer', { p_order_id: orderId }, orderId,
+    "Couldn't accept this — it may have been withdrawn already");
+  if(!updated) return;
+  toast('Delivery accepted'); render();
+}
+async function declineDeliveryOffer(orderId){
+  const updated = await callOrderRpc('decline_delivery_offer', { p_order_id: orderId }, orderId,
+    "Couldn't decline this — it may have already changed");
+  if(!updated) return;
+  toast('Declined — the store can reassign it'); render();
 }
 async function markOrderDeliveredByBusiness(id){
   const o = DB.orders.find(x=>x.id===id);
@@ -4590,9 +4726,21 @@ function payoutAmountFor(o){ return o.deliveryPartnerPayout!=null ? o.deliveryPa
 function cashCutAmount(o){ return o.deliveryType==='free' ? 0 : payoutAmountFor(o); }
 function renderDelHome(d){
   const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status!=='delivered');
+  // A store offering this rider a second (or third...) order directly - see
+  // offerOrderToRider() - because they're already picking up another one of
+  // that store's orders. Sits here, separate from Active jobs, until this
+  // rider explicitly accepts or declines it (acceptDeliveryOffer()/
+  // declineDeliveryOffer()) - unlike the open pool below, deliveryPersonId
+  // never gets set just by it existing.
+  const offers = DB.orders.filter(o=>o.pendingRiderId===d.id);
   document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
     ${topbar(d.name, `MVR 15–25 per delivery, by zone`)}
     <div style="padding:4px 16px 0;">
+      ${offers.length? `
+      <div class="section" style="margin-bottom:22px;">
+        <div class="section-head"><h2>Delivery requests</h2></div>
+        ${offers.map(o=>delOfferCard(o)).join('')}
+      </div>` : ''}
       <div class="section-head"><h2>Active jobs</h2></div>
       ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
       <div class="section" style="margin-top:22px;">
@@ -4645,6 +4793,23 @@ async function claimJob(id){
   const idx = DB.orders.findIndex(o=>o.id===id);
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   toast('Job accepted'); render();
+}
+// A pending direct offer (see offerOrderToRider()) rather than an open-pool
+// job - no detail sheet, no claim-race with other riders, just accept or
+// decline right here. Rentals never reach this (offerOrderToRider() only
+// ever touches non-rental orders - a rental delivery job's own separate
+// offer flow is offerRentalDelivery()/claim_rental_job()).
+function delOfferCard(o){
+  return `
+  <div class="glass card">
+    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
+    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.receiverName||o.customerName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
+    <p class="muted" style="font-size:.8em; margin-bottom:10px;">You're already picking up another order from ${o.businessName} - they'd like you to take this one too.</p>
+    <div class="row" style="gap:8px;">
+      <button class="btn btn-outline btn-sm" style="flex:1;" onclick="declineDeliveryOffer('${o.id}')">Decline</button>
+      <button class="btn btn-primary btn-sm" style="flex:1;" onclick="acceptDeliveryOffer('${o.id}')">Accept</button>
+    </div>
+  </div>`;
 }
 function delJobCard(o){
   // A rental delivery job has nothing to do with the rental's own payment at all

@@ -1476,6 +1476,10 @@ alter table orders add column if not exists delivery_target_type text not null d
 alter table orders add column if not exists receiver_name text;
 alter table orders add column if not exists receiver_phone text;
 alter table orders add column if not exists receiver_address text;
+-- When the boat is expected to depart, so the store/rider know the actual
+-- deadline for getting the package there - optional (a customer may not know
+-- yet), only ever set for delivery_target_type='boat'.
+alter table orders add column if not exists boat_departure_at timestamptz;
 
 -- Superseded columns from the short-lived previous version of this feature -
 -- the custom per-item payout amount and the manual address/boat-info fields
@@ -1622,7 +1626,7 @@ function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
-  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null };
+  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
   if(part==='auctions') return { id:o.id, item_id:o.itemId, business_id:o.businessId, starting_price:o.startingPrice, bid_increment:o.bidIncrement, start_time:new Date(o.startTime).toISOString(), end_time:new Date(o.endTime).toISOString(), current_highest_bid:o.currentHighestBid, current_highest_bidder:o.currentHighestBidder, bid_count:o.bidCount||0, status:o.status, order_id:o.orderId||null };
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
@@ -1634,7 +1638,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -1754,6 +1758,11 @@ function daysBetween(a,b){ return Math.floor((b-a)/(1000*60*60*24)); }
 // 'YYYY-MM-DD' -> "12 Mar" - parsed as separate y/m/d rather than passed straight
 // to `new Date()` so it reads as a plain calendar date, not a UTC-midnight
 // instant that a viewer in a different timezone could see shifted a day off.
+function fmtBoatDeparture(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { day:'numeric', month:'short' }) + ' at ' + d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+}
 function fmtDateShort(dateStr){
   if(!dateStr) return '';
   const [y,m,d] = dateStr.split('-').map(Number);
@@ -3856,6 +3865,7 @@ function orderDetailBizBody(o){
       <p style="font-weight:700;">${o.receiverName}</p>
       ${o.receiverPhone?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverPhone}</p>`:''}
       ${o.receiverAddress?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverAddress}</p>`:''}
+      ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
     </div>` : ''}
     <div class="glass card tight">${itemsList}<div class="divider"></div>
       <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-(buyerPaidFee?payoutAmt:0))}</span></div>
@@ -4653,6 +4663,7 @@ function sheetDelOrderDetail(){
       <p style="font-weight:700;">${o.receiverName}</p>
       ${o.receiverPhone?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverPhone}</p>`:''}
       ${o.receiverAddress?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverAddress}</p>`:''}
+      ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
     </div>` : ''}
     <div class="card tight">
       ${itemsList}
@@ -4677,6 +4688,7 @@ function sheetDelOrderDetail(){
     <p style="font-weight:700;">${o.receiverName}</p>
     ${o.receiverPhone?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverPhone}</p>`:''}
     ${o.receiverAddress?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverAddress}</p>`:''}
+    ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
   </div>` : ''}
   <div class="card tight">
     ${itemsList}
@@ -5863,7 +5875,18 @@ function deliveryTargetFieldsHTML(){
     </div>` : ''}
     <div class="field"><label>Boat / Speed Boat / Vessel name</label><input id="c_boat_name" placeholder="e.g. Dhoni Safari 2" value="${escapeAttr(boatName)}"></div>
     <div class="field"><label>Contact phone</label><input id="c_boat_phone" placeholder="7XXXXXX" value="${escapeAttr(boatPhone)}"></div>
-    <div class="field"><label>Harbor / mooring location</label><input id="c_boat_location" placeholder="Where is the boat docked?" value="${escapeAttr(boatHarbour)}"></div>
+    <div class="field">
+      <label>Harbor / mooring location</label>
+      <input id="c_boat_location" list="boatHarbourOptions" placeholder="Where is the boat docked?" value="${escapeAttr(boatHarbour)}">
+      <datalist id="boatHarbourOptions">
+        ${[...new Set(boatList.map(a=>a.harbour).filter(Boolean))].map(h=>`<option value="${escapeAttr(h)}">`).join('')}
+      </datalist>
+    </div>
+    <div class="row" style="gap:10px;">
+      <div class="field" style="flex:1;"><label>Departure date</label><input type="date" id="c_boat_date"></div>
+      <div class="field" style="flex:1;"><label>Departure time</label><input type="time" id="c_boat_time"></div>
+    </div>
+    <p class="muted" style="font-size:.78em; margin-top:-8px; margin-bottom:14px;">Optional — leave blank if you're not sure yet.</p>
   </div>`;
 }
 // Reads + validates whichever half of deliveryTargetFieldsHTML() is showing.
@@ -5876,7 +5899,12 @@ function readDeliveryTargetFields(){
   if(deliveryTargetType==='boat'){
     const receiverName = val('c_boat_name'), receiverPhone = val('c_boat_phone'), receiverAddress = val('c_boat_location');
     if(!receiverName || !receiverPhone || !receiverAddress){ toast('Enter the boat name, contact phone, and harbor location','bad'); return null; }
-    return { deliveryTargetType, receiverName, receiverPhone, receiverAddress, addressCategory:'boat' };
+    // Both date and time are optional, but only combined into a timestamp
+    // when both are given - a lone date or lone time isn't a meaningful
+    // departure moment, so it's treated the same as neither being set.
+    const boatDate = val('c_boat_date'), boatTime = val('c_boat_time');
+    const boatDepartureAt = (boatDate && boatTime) ? new Date(`${boatDate}T${boatTime}`).getTime() : null;
+    return { deliveryTargetType, receiverName, receiverPhone, receiverAddress, addressCategory:'boat', boatDepartureAt };
   }
   const mode = document.getElementById('c_recv_mode') ? val('c_recv_mode') : 'self';
   const prefix = mode==='other' ? 'c_other_' : 'c_recv_';
@@ -6191,6 +6219,7 @@ async function submitRentItem(itemId){
     if(!deliveryTarget) return;
     ({ deliveryTargetType, receiverName, receiverPhone, receiverAddress } = deliveryTarget);
   }
+  const boatDepartureAt = deliveryTarget ? deliveryTarget.boatDepartureAt||null : null;
   const biz = DB.businesses.find(b=>b.id===item.businessId);
   const extraFee = item.extraDeliveryFee||0;
   const deposit = item.rentalDeposit||0;
@@ -6206,7 +6235,7 @@ async function submitRentItem(itemId){
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: state.customerName, customerPhone: state.customerPhone||'',
-    deliveryTargetType, receiverName, receiverPhone, receiverAddress, pickupLocation,
+    deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt, pickupLocation,
     items: [{itemId:item.id, name:`${item.name} (rental, ${_rentDays} day${_rentDays>1?'s':''}${isDeferred?' · advance':''})`, price:itemsTotal, qty:1}],
     itemsTotal, deliveryFee: 0, extraDeliveryFee: extraFee, total, zone:null,
     deliveryType: 'free',
@@ -6797,7 +6826,7 @@ async function placeStoreOrder(bizId){
   }
   const deliveryTarget = readDeliveryTargetFields();
   if(!deliveryTarget) return;
-  const { deliveryTargetType, receiverName, receiverPhone, receiverAddress } = deliveryTarget;
+  const { deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt } = deliveryTarget;
   const payMethod = _storePayMethod[bizId] || 'transfer';
   const buyerPaysFee = cartBuyerPaysFee(cartLines);
   const fee = zoneFee(_selectedZone);
@@ -6830,7 +6859,7 @@ async function placeStoreOrder(bizId){
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: name, customerPhone: phone, items: lines,
-    deliveryTargetType, receiverName, receiverPhone, receiverAddress,
+    deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt: boatDepartureAt||null,
     itemsTotal, deliveryFee: buyerPaysFee ? fee : 0, extraDeliveryFee: extraFee, total, zone:_selectedZone,
     deliveryType: buyerPaysFee ? 'zone' : 'free',
     // The delivery partner is always paid the zone's flat fee, regardless of
@@ -7038,6 +7067,7 @@ function sheetCustOrderDetail(){
     <p style="font-weight:700;">${o.receiverName}</p>
     ${o.receiverPhone?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverPhone}</p>`:''}
     ${o.receiverAddress?`<p class="muted" style="font-size:.85em; margin-top:2px;">${o.receiverAddress}</p>`:''}
+    ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
   </div>` : ''}
   <div class="card tight">
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}

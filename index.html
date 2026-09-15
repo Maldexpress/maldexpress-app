@@ -512,6 +512,14 @@
      original two-column layout, so more fits on screen at once without
      feeling cramped. */
   .top-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+  /* A store's Buy Now/Rental grid switches from 3 columns to 2 once a specific
+     category is picked from storeCategoryDropdownHTML() - fewer items on
+     screen at once, so each card gets a bit more room to read as more of a
+     highlighted pick than a dense browsing grid. A plain descendant rule
+     rather than a rentalSectionsHTML()/storeItemCardHTML() change, since
+     rentalSectionsHTML() is shared with the Home feed's Rentals view, which
+     has no such per-category "expanded" concept. */
+  .store-grid-expanded .top-grid{grid-template-columns:1fr 1fr;}
   .top-card{border-radius:14px; overflow:hidden; background:rgba(255,255,255,.06);}
   .top-card .img-wrap{
     position:relative; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; font-size:1.6em;
@@ -5604,30 +5612,66 @@ function renderCustHome(){
   ensureCountdownTimer();
   updateHomeLogoScroll();
 }
+// The category dropdown under a store's listing-type tabs (see
+// renderCustStore()) - only the categories that actually have an item of
+// that listing type in THIS store, never the app-wide category list, so it's
+// never showing a choice that would just filter down to nothing. Hidden
+// entirely when there's nothing to narrow down (0 or 1 category).
+function storeCategoriesForItems(items){
+  return [...new Set(items.map(i=>i.category||'General'))].sort();
+}
+function storeCategoryDropdownHTML(categories, current){
+  if(categories.length<2) return '';
+  return `
+  <div class="field" style="margin:10px 0 14px;">
+    <select onchange="setStoreCategoryFilter(this.value)">
+      <option value="All" ${current==='All'?'selected':''}>All categories</option>
+      ${categories.map(c=>`<option value="${escapeAttr(c)}" ${current===c?'selected':''}>${c}</option>`).join('')}
+    </select>
+  </div>`;
+}
+// Switching listing-type tab resets the category filter - Buy Now's
+// categories rarely mean anything for Rental/Auction's own items, so
+// whatever was picked under one tab shouldn't silently narrow another.
+function setStoreTab(tab){ state.storeTab = tab; state.storeCategoryFilter = 'All'; render(); }
+function setStoreCategoryFilter(cat){ state.storeCategoryFilter = cat; render(); }
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
   if(!biz){ go('custHome'); return; }
+  // A fresh store visit (or switching from browsing a different store)
+  // starts the category filter over - it's scoped per-store, so a filter
+  // picked while looking at one store's items has no meaning for another's.
+  if(state._lastStoreBizId !== biz.id){ state.storeCategoryFilter = 'All'; state._lastStoreBizId = biz.id; }
   const items = DB.items.filter(i=>i.businessId===biz.id);
   settleExpiredAuctions(items);
   const buyNowItems = items.filter(i=>(i.listingType||'buy_now')==='buy_now');
   const auctionItems = items.filter(i=>i.listingType==='auction');
   const rentalItems = items.filter(i=>i.listingType==='rental');
   if(!state.storeTab) state.storeTab = 'buyNow';
-  const buyNowHTML = buyNowItems.length ? `<div class="top-grid">${buyNowItems.map(i=>storeItemCardHTML(i, state.cart[i.id]||0)).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items listed yet</div>`;
-  const auctionHTML = auctionItems.map(i=>{
+  const activeItems = state.storeTab==='buyNow' ? buyNowItems : state.storeTab==='auction' ? auctionItems : rentalItems;
+  const categoriesForTab = storeCategoriesForItems(activeItems);
+  const catFilter = categoriesForTab.includes(state.storeCategoryFilter) ? state.storeCategoryFilter : 'All';
+  const filteredBuyNow = catFilter==='All' ? buyNowItems : buyNowItems.filter(i=>(i.category||'General')===catFilter);
+  const filteredAuction = catFilter==='All' ? auctionItems : auctionItems.filter(i=>(i.category||'General')===catFilter);
+  const filteredRental = catFilter==='All' ? rentalItems : rentalItems.filter(i=>(i.category||'General')===catFilter);
+  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, state.cart[i.id]||0)).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
+  const auctionHTML = filteredAuction.map(i=>{
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
-  }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions right now</div>`;
-  const rentalHTML = rentalItems.length ? rentalSectionsHTML(rentalItems) : `<div class="empty"><span class="ic">🔁</span>Nothing listed for rent yet</div>`;
+  }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions ${catFilter==='All'?'right now':'in this category'}</div>`;
+  const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar(biz.name, biz.category)}
     <div style="padding:4px 16px 0;">
       <div class="tabs">
-        <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="state.storeTab='buyNow'; render();">Buy Now</button>
-        <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="state.storeTab='auction'; render();">Auction</button>
-        <button class="tab ${state.storeTab==='rental'?'active':''}" onclick="state.storeTab='rental'; render();">Rental</button>
+        <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
+        <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="setStoreTab('auction')">Auction</button>
+        <button class="tab ${state.storeTab==='rental'?'active':''}" onclick="setStoreTab('rental')">Rental</button>
       </div>
-      ${state.storeTab==='buyNow' ? buyNowHTML : state.storeTab==='auction' ? auctionHTML : rentalHTML}
+      ${storeCategoryDropdownHTML(categoriesForTab, catFilter)}
+      <div class="${catFilter!=='All'?'store-grid-expanded':''}">
+        ${state.storeTab==='buyNow' ? buyNowHTML : state.storeTab==='auction' ? auctionHTML : rentalHTML}
+      </div>
     </div>
   `);
   ensureCountdownTimer();

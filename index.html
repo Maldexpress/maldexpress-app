@@ -197,6 +197,13 @@
   .item-thumb img{width:100%; height:100%; object-fit:cover;}
   .item-info{flex:1; min-width:0;}
   .item-info h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* Multi-item order card thumbnail: the top item's photo sits front and
+     center, the runner-up peeks out from behind (offset, dimmed) - same
+     .item-thumb square just layered instead of a single flat image. */
+  .order-thumb-wrap{position:relative; width:56px; height:56px; flex-shrink:0;}
+  .order-thumb-wrap .item-thumb{position:absolute; top:0; left:0;}
+  .order-thumb-wrap .item-thumb.behind{transform:translate(7px,7px) scale(.9); z-index:0; filter:brightness(.7);}
+  .order-thumb-wrap .item-thumb.front{z-index:1; box-shadow:0 3px 10px rgba(0,0,0,.3);}
 
   .qty-ctrl{display:flex; align-items:center; gap:6px; flex-shrink:0;}
   .qty-ctrl button{
@@ -7017,6 +7024,16 @@ function renderCustOrders(){
     }
   });
   const hasOtherSections = myBookings.length || myBidAuctions.length;
+  // Buy Now / Auction / Rentals tabs (default All) narrow which orders show at
+  // all; within whatever that leaves, Ongoing always lists above Completed
+  // (a rental only counts as Completed once actually returned - see
+  // isOrderCompleted() - everything else just off o.status) so the most
+  // recent unfinished order is always what a customer sees first, not
+  // whatever's merely newest overall.
+  const activeTab = state.ordersTab || 'all';
+  const tabFiltered = activeTab==='all' ? sorted : sorted.filter(o=>orderListingType(o)===activeTab);
+  const ongoing = tabFiltered.filter(o=>!isOrderCompleted(o));
+  const completed = tabFiltered.filter(o=>isOrderCompleted(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
     ${topbar('My orders')}
     <div style="padding:4px 16px 0;">
@@ -7031,7 +7048,11 @@ function renderCustOrders(){
         ${myBidAuctions.map(a=>bidCardCust(a)).join('')}
       </div>` : ''}
       ${hasOtherSections? `<div class="section-head"><h2>Orders</h2></div>` : ''}
-      ${sorted.length? sorted.map(o=>custOrderCard(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No orders yet — go browse a store!</div>`}
+      ${sorted.length? `<div class="tabs">${ORDERS_TABS.map(t=>`<button class="tab ${activeTab===t.id?'active':''}" onclick="setOrdersTab('${t.id}')">${t.label}</button>`).join('')}</div>` : ''}
+      ${tabFiltered.length ? `
+        ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>Ongoing</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
+        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
+      ` : `<div class="empty"><span class="ic">🧾</span>${sorted.length?`No ${ORDERS_TABS.find(t=>t.id===activeTab).label.toLowerCase()} orders`:'No orders yet — go browse a store!'}</div>`}
     </div>
   `);
   ensureCountdownTimer();
@@ -7094,21 +7115,69 @@ function sheetBookingDetailCust(){
   ${bk.status==='pending' ? `<p class="muted" style="font-size:.85em;">Waiting for ${bk.businessName} to accept or decline.</p>` : ''}
   `;
 }
+const ORDERS_TABS = [
+  {id:'all', label:'All'}, {id:'buy_now', label:'Buy Now'}, {id:'auction', label:'Auction'}, {id:'rental', label:'Rentals'}
+];
+// Which of the three listing types an order came from - a rental's item stays
+// on the order itself (rentalItemId), but an auction leaves no trace on the
+// order at all, so the only way to tell is checking which auction (if any)
+// settled into it (see settleAuctionWin(), which sets auction.orderId).
+function orderListingType(o){
+  if(o.rentalItemId) return 'rental';
+  if(DB.auctions.some(a=>a.orderId===o.id)) return 'auction';
+  return 'buy_now';
+}
+// A rental isn't "done" when it's delivered (picked up) - only once it's
+// actually been returned (rentalReturnedAt) - so it gets its own completion
+// check instead of just reading o.status like every other order type does.
+function isOrderCompleted(o){
+  if(o.rentalItemId) return !!o.rentalReturnedAt;
+  return o.status==='delivered';
+}
+// A single product photo for a one-line order, or a two-photo stack for a
+// multi-line one - the highest-quantity line's photo goes front and center
+// (see .order-thumb-wrap's CSS), so the stack always leads with whatever the
+// buyer bought the most of rather than just whichever line was added first.
+// Looks the item back up in DB.items for its current photo/category (falling
+// back to the order line's own name/id if that item's since been removed).
+function orderThumbHTML(o){
+  const lines = o.items||[];
+  const lineToItem = l => DB.items.find(i=>i.id===l.itemId) || {id:l.itemId, name:l.name, category:null};
+  if(!lines.length) return `<div class="item-thumb">${itemArtHTML(null)}</div>`;
+  const sorted = lines.slice().sort((a,b)=>b.qty-a.qty);
+  if(sorted.length===1) return `<div class="item-thumb">${itemThumbHTML(lineToItem(sorted[0]))}</div>`;
+  return `
+  <div class="order-thumb-wrap">
+    <div class="item-thumb behind">${itemThumbHTML(lineToItem(sorted[1]))}</div>
+    <div class="item-thumb front">${itemThumbHTML(lineToItem(sorted[0]))}</div>
+  </div>`;
+}
+function setOrdersTab(tab){ state.ordersTab = tab; render(); }
 function custOrderCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   if(o.paymentStatus==='awaiting_completion'){
     return `
     <div class="glass card" onclick="openCustOrderDetail('${o.id}')">
-      <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
-      <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · Won at auction for ${money(o.itemsTotal)}</p>
+      <div class="row" style="gap:12px; align-items:flex-start;">
+        ${orderThumbHTML(o)}
+        <div style="flex:1; min-width:0;">
+          <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
+          <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · Won at auction for ${money(o.itemsTotal)}</p>
+        </div>
+      </div>
       <button class="btn btn-primary btn-sm" style="width:100%;" onclick="event.stopPropagation(); openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>
     </div>`;
   }
   const showAcct = o.paymentMethod==='transfer' && o.paymentStatus!=='paid';
   return `
   <div class="glass card" onclick="openCustOrderDetail('${o.id}')">
-    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
-    <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · ${money(o.total)}</p>
+    <div class="row" style="gap:12px; align-items:flex-start; margin-bottom:8px;">
+      ${orderThumbHTML(o)}
+      <div style="flex:1; min-width:0;">
+        <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${paymentStatusPill(o)}</div>
+        <p class="muted" style="font-size:.85em; margin:4px 0 0;">${o.businessName} · ${money(o.total)}</p>
+      </div>
+    </div>
     ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:8px;">🚚 Out for delivery</div>` : ''}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>

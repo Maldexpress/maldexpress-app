@@ -1546,11 +1546,55 @@ create policy "business read own bookings" on rental_bookings for select
 -- partner whose column-level lockdown this would need to defend against.
 create policy "business update own bookings" on rental_bookings for update
   using (exists (select 1 from businesses b where b.id = rental_bookings.business_id and b.owner_id = auth.uid()));
+
+-- A customer's saved delivery addresses - three independent categories, each
+-- with its own default: 'own' (places the customer themselves gets things
+-- delivered to), 'other' (people the customer has delivered to on their
+-- behalf, e.g. a gift), and 'boat' (harbours/vessels the customer has used).
+-- Purely the customer's own data, so plain ownership RLS is enough - unlike
+-- orders there's no other party's money or column here that needs a
+-- SECURITY DEFINER function to defend, except the one-default-per-category
+-- swap below (see set_default_address()), which needs to be atomic.
+create table customer_addresses (
+  id text primary key,
+  customer_id uuid references auth.users(id) on delete cascade,
+  category text not null check (category in ('own','other','boat')),
+  name text,
+  phone text,
+  address text,
+  zone text check (zone is null or zone in ('male','hulhumale1','hulhumale2')),
+  harbour text,
+  is_default boolean not null default false,
+  created_at timestamptz default now()
+);
+alter table customer_addresses enable row level security;
+create policy "customer manage own addresses" on customer_addresses for all
+  using (auth.uid() = customer_id) with check (auth.uid() = customer_id);
+
+-- Swaps which address is default within one category atomically - a plain
+-- client-side "unset the old one, set the new one" would be two separate
+-- writes, and RLS lets the customer do that anyway since they own every row
+-- here, but a function keeps it one round trip and one indivisible step.
+create or replace function set_default_address(p_address_id text, p_category text)
+returns setof customer_addresses
+language sql
+security definer
+set search_path = public
+as $$
+  with unset as (
+    update customer_addresses set is_default = false
+    where customer_id = auth.uid() and category = p_category and is_default = true
+  )
+  update customer_addresses set is_default = true
+  where id = p_address_id and customer_id = auth.uid() and category = p_category
+  returning *;
+$$;
+grant execute on function set_default_address(text, text) to authenticated;
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
-const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons', proRequests:'pro_upgrade_requests', auctions:'auction_listings', bookings:'rental_bookings', bids:'auction_bids', categoryRequests:'category_requests' };
-let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[], auctions:[], bookings:[], bids:[], categoryRequests:[], customCategories:[] };
+const TABLES = { businesses:'businesses', items:'items', orders:'orders', delivery:'delivery_persons', proRequests:'pro_upgrade_requests', auctions:'auction_listings', bookings:'rental_bookings', bids:'auction_bids', categoryRequests:'category_requests', addresses:'customer_addresses' };
+let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[], auctions:[], bookings:[], bids:[], categoryRequests:[], customCategories:[], addresses:[] };
 let storageReady = false;
 
 function toDbRow(part, o){
@@ -1563,6 +1607,7 @@ function toDbRow(part, o){
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
   if(part==='bids') return { id:o.id, auction_id:o.auctionId, bidder_id:o.bidderId, bid_amount:o.bidAmount, created_at:new Date(o.createdAt).toISOString() };
   if(part==='categoryRequests') return { id:o.id, business_id:o.businessId, business_name:o.businessName, category_name:o.categoryName, status:o.status, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
+  if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
@@ -1574,6 +1619,7 @@ function fromDbRow(part, r){
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
   if(part==='bids') return { id:r.id, auctionId:r.auction_id, bidderId:r.bidder_id, bidAmount:Number(r.bid_amount), createdAt:new Date(r.created_at).getTime() };
   if(part==='categoryRequests') return { id:r.id, businessId:r.business_id, businessName:r.business_name, categoryName:r.category_name, status:r.status, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
+  if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
 }
 
 async function loadDB(){
@@ -1583,7 +1629,7 @@ async function loadDB(){
     return;
   }
   try{
-    const [b,i,o,d,pr,au,bk,bd,cr,cc] = await Promise.all([
+    const [b,i,o,d,pr,au,bk,bd,cr,cc,ad] = await Promise.all([
       sb.from('businesses').select('*'),
       sb.from('items').select('*'),
       sb.from('orders').select('*'),
@@ -1593,14 +1639,15 @@ async function loadDB(){
       sb.from('rental_bookings').select('*'),
       sb.from('auction_bids').select('*'),
       sb.from('category_requests').select('*'),
-      sb.from('custom_categories').select('*')
+      sb.from('custom_categories').select('*'),
+      sb.from('customer_addresses').select('*')
     ]);
     // Promise.all only rejects on a thrown/network-level failure - a query that
     // completes but fails server-side (e.g. an RLS policy error) resolves normally
     // with a populated .error field instead, which was previously never checked,
     // so a broken policy on just one table silently looked like "this store has no
     // items" rather than surfacing anything was wrong.
-    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr],['auctions',au],['rental bookings',bk],['auction bids',bd],['category requests',cr],['custom categories',cc]]
+    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr],['auctions',au],['rental bookings',bk],['auction bids',bd],['category requests',cr],['custom categories',cc],['addresses',ad]]
       .filter(([,res])=>res.error);
     if(failed.length){
       failed.forEach(([label,res])=>console.error(`loadDB: ${label} query failed:`, res.error));
@@ -1616,6 +1663,7 @@ async function loadDB(){
     DB.bids = (bd.data||[]).map(r=>fromDbRow('bids',r));
     DB.categoryRequests = (cr.data||[]).map(r=>fromDbRow('categoryRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
+    DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
     mergeCustomCategories();
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
@@ -2662,6 +2710,8 @@ function sheetHTML(){
   else if(state.sheet==='bizUploadPhotos') body = sheetBizUploadPhotos();
   else if(state.sheet==='delSettings') body = sheetDelSettings();
   else if(state.sheet==='custSettings') body = sheetCustSettings();
+  else if(state.sheet==='addressBook') body = sheetAddressBook();
+  else if(state.sheet==='addAddress') body = sheetAddAddress();
   else if(state.sheet==='addItem') body = sheetAddItem();
   else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
@@ -4310,6 +4360,7 @@ function sheetCustSettings(){
   ${sb && state.authed ? `<div class="field"><label>Email</label><input value="${escapeAttr(state.customerEmail)}" disabled style="opacity:.65;"></div>` : ''}
   <button class="btn btn-primary" onclick="saveCustSettings()">Save changes</button>
   <div class="divider"></div>
+  ${sb && state.authed ? `<button class="btn btn-outline" onclick="closeSheet(); openAddressBook();">📍 Delivery addresses</button><div class="divider"></div>` : ''}
   ${fontSizeControl()}
   ${sb && state.authed ? `<div class="divider"></div><button class="btn btn-outline" onclick="signOutCustomer()">Sign out</button>` : ''}
   `;
@@ -4319,6 +4370,114 @@ function saveCustSettings(){
   if(!name){ toast('Enter a name','bad'); return; }
   state.customerName = name;
   closeSheet(); toast('Settings saved'); render();
+}
+
+/* ---- Saved delivery addresses: three independent categories (own/other/
+   boat), each with its own default - see set_default_address() in the
+   schema. A customer's "own" addresses are places they get things delivered
+   to themselves; "other" addresses are people they've had things delivered
+   to on their behalf; "boat" entries are harbours/vessels. Checkout
+   (submitOrder()/sheetCheckout()) reads and writes these same rows - see
+   the checkout rebuild - this is just the management UI in Settings. ---- */
+function myAddresses(category){ return DB.addresses.filter(a=>a.customerId===state.customerId && a.category===category).sort((a,b)=>(b.isDefault?1:0)-(a.isDefault?1:0) || b.createdAt-a.createdAt); }
+function defaultAddress(category){ return DB.addresses.find(a=>a.customerId===state.customerId && a.category===category && a.isDefault) || null; }
+function openAddressBook(){ openSheet('addressBook'); }
+function addressCardHTML(a){
+  const isBoat = a.category==='boat';
+  const line1 = isBoat ? a.name : a.name;
+  const line2 = isBoat ? [a.phone, a.harbour].filter(Boolean).join(' · ') : [a.phone, a.address, a.zone?ZONES[a.zone].label:null].filter(Boolean).join(' · ');
+  return `
+  <div class="glass card tight" style="margin-bottom:10px;">
+    <div class="row between" style="align-items:flex-start;">
+      <div style="min-width:0;">
+        <div class="row" style="gap:6px; align-items:center;"><h3 style="font-size:.95em;">${escapeAttr(line1||'Untitled')}</h3>${a.isDefault?'<span class="badge pro">Default</span>':''}</div>
+        <p class="muted" style="font-size:.8em; margin-top:2px;">${line2||'—'}</p>
+      </div>
+      <button class="iconbtn" style="width:32px; height:32px; font-size:.9em; flex-shrink:0;" onclick="deleteAddressEntry('${a.id}','${a.category}')" title="Remove">🗑️</button>
+    </div>
+    ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
+  </div>`;
+}
+function addressSectionHTML(category, title){
+  const list = myAddresses(category);
+  return `
+  <div class="section" style="margin-bottom:18px;">
+    <div class="section-head"><h2>${title}</h2><button class="link-btn" onclick="openAddAddress('${category}')">+ Add</button></div>
+    ${list.length ? list.map(addressCardHTML).join('') : `<p class="muted" style="font-size:.85em;">None saved yet.</p>`}
+  </div>`;
+}
+function sheetAddressBook(){
+  return `
+  <h2 style="margin-bottom:14px;">Delivery addresses</h2>
+  ${addressSectionHTML('own', 'Your addresses')}
+  ${addressSectionHTML('other', "Other receivers' addresses")}
+  ${addressSectionHTML('boat', 'Boats')}
+  `;
+}
+let _addAddressCategory = 'own';
+function openAddAddress(category){ _addAddressCategory = category; openSheet('addAddress'); }
+function sheetAddAddress(){
+  const cat = _addAddressCategory;
+  const isBoat = cat==='boat';
+  const title = cat==='own' ? 'Add your address' : cat==='other' ? "Add a receiver's address" : 'Add a boat';
+  return `
+  <h2 style="margin-bottom:14px;">${title}</h2>
+  <div class="field"><label>${isBoat?'Boat / vessel name':'Name'}</label><input id="aa_name" placeholder="${isBoat?'e.g. Dhoni Safari 2':'Full name'}"></div>
+  <div class="field"><label>Phone</label><input id="aa_phone" placeholder="7XXXXXX"></div>
+  ${isBoat ? `
+  <div class="field"><label>Harbour / mooring location</label><input id="aa_harbour" placeholder="Where does the boat depart from?"></div>
+  ` : `
+  <div class="field"><label>Address</label><input id="aa_address" placeholder="House, street, island"></div>
+  <div class="field"><label>Zone</label>
+    <select id="aa_zone">
+      <option value="male">Malé (MVR 15)</option>
+      <option value="hulhumale1">Hulhumalé Phase 1 (MVR 20)</option>
+      <option value="hulhumale2">Hulhumalé Phase 2 (MVR 25)</option>
+    </select>
+  </div>`}
+  <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">Save address</button>`;
+}
+async function submitAddAddress(){
+  const cat = _addAddressCategory;
+  const isBoat = cat==='boat';
+  const name = val('aa_name'), phone = val('aa_phone');
+  const address = isBoat ? null : val('aa_address');
+  const harbour = isBoat ? val('aa_harbour') : null;
+  const zone = isBoat ? null : (val('aa_zone')||'male');
+  if(!name || !phone || (isBoat ? !harbour : !address)){ toast(isBoat?'Enter the boat name, phone, and harbour':'Enter the name, phone, and address','bad'); return; }
+  const makeDefault = myAddresses(cat).length===0;
+  const row = { id: uid('addr'), customerId: state.customerId, category: cat, name, phone, address, zone, harbour, isDefault: makeDefault, createdAt: Date.now() };
+  const { data, error } = await sb.from('customer_addresses').insert(toDbRow('addresses', row)).select();
+  if(error){ toast('Could not save address: '+error.message, 'bad'); return; }
+  DB.addresses.push(fromDbRow('addresses', data[0]));
+  toast('Address saved'); openSheet('addressBook');
+}
+async function setAddressDefault(id, category){
+  const { data, error } = await sb.rpc('set_default_address', { p_address_id: id, p_category: category });
+  if(error){ toast('Could not set default: '+error.message, 'bad'); return; }
+  if(!data || !data.length){ toast("Couldn't set that as default — it may have been removed", 'bad'); return; }
+  // The RPC's final statement only returns the address that became default,
+  // not the ones it unset along the way - flip those locally rather than
+  // doing a full reload for a single-field change.
+  DB.addresses.forEach(a=>{ if(a.category===category && a.customerId===state.customerId) a.isDefault = (a.id===id); });
+  render();
+}
+async function deleteAddressEntry(id, category){
+  const { error } = await sb.from('customer_addresses').delete().eq('id', id);
+  if(error){ toast('Could not remove address: '+error.message, 'bad'); return; }
+  const removed = DB.addresses.find(a=>a.id===id);
+  DB.addresses = DB.addresses.filter(a=>a.id!==id);
+  // If the default was just removed and others remain in this category, make
+  // the most recently added one the new default so checkout never has to
+  // fall back to "nothing set" while addresses still exist.
+  if(removed && removed.isDefault){
+    const remaining = myAddresses(category);
+    if(remaining.length){
+      const { data } = await sb.rpc('set_default_address', { p_address_id: remaining[0].id, p_category: category });
+      if(data && data.length) remaining[0].isDefault = true;
+    }
+  }
+  render();
 }
 function fontSizeControl(){
   return `

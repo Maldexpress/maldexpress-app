@@ -457,6 +457,16 @@
   .notif-row.empty-row{cursor:default;}
   .notif-ic{font-size:1.05em; flex-shrink:0;}
   .notif-txt{font-size:.82em; line-height:1.35;}
+  /* The dropdown's two sub-sections - unread always visible on top, already-
+     read notifications tucked under a collapsed "Closed" heading (chevron
+     rotates open/closed) so a long history doesn't bury what's actually new. */
+  .notif-section-head{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    padding:8px 10px 4px; font-size:.72em; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--ink-dim); cursor:pointer;
+  }
+  .notif-section-head .chev{display:flex; transition:transform .18s ease;}
+  .notif-section-head.open .chev{transform:rotate(180deg);}
 
   .home-search-wrap{
     flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:0 14px;
@@ -2162,7 +2172,9 @@ let state = {
   homeSwitcherOpen: false,  // whether the home feed's Buy now/Auctions dropdown pill is open
   homeCategory: 'All',      // item category filter on the home feed
   homeSearch: '',           // free-text search on the home feed (matches item name or store name)
-  notifOpen: false          // whether the home header's notification dropdown is open
+  notifOpen: false,         // whether the home header's notification dropdown is open
+  notifSeenIds: {},         // order ids whose notification has already been shown once - read, not unread
+  notifClosedOpen: false    // whether the dropdown's collapsed "Closed" (already-read) section is expanded
 };
 
 function applySession(session){
@@ -2298,7 +2310,7 @@ function go(screen, extra={}){
 // closing something the anywhere-swipe already handled.
 function closeTopmostOverlay(){
   if(state.sheet){ closeSheet(); return true; }
-  if(state.notifOpen){ state.notifOpen = false; render(); return true; }
+  if(state.notifOpen){ closeNotifDropdown(); render(); return true; }
   if(state.drawerOpen){ toggleDrawer(false); return true; }
   return false;
 }
@@ -2601,6 +2613,7 @@ function chooseDel(id){ state.role='delivery'; go('delHome', {activeDelId:id}); 
 const ICON_HAMBURGER = `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>`;
 const ICON_BELL = `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a5 5 0 0 0-5 5v3c0 1.3-1 3-2 4h14c-1-1-2-2.7-2-4V8a5 5 0 0 0-5-5z"/><path d="M9 19a3 3 0 0 0 6 0"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+const ICON_CHEVRON_DOWN = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 // Cart line select/deselect circle - a thin white outline circle always, with a
 // thin white checkmark added inside only when selected (not a filled dot).
 function iconCheckCircle(checked){
@@ -5180,22 +5193,75 @@ function customerNotifications(){
   });
   return notifs.sort((a,b)=>b.ts-a.ts).slice(0,8);
 }
-function toggleNotifDropdown(){ state.notifOpen = !state.notifOpen; render(); }
-function openNotif(orderId){ state.notifOpen = false; go('custOrders'); }
+// Closing the dropdown (any way - re-tapping the bell, tapping a
+// notification, tapping/scrolling outside it, or the app's own back
+// gesture) marks whatever it was currently showing as "seen" - so a
+// notification shows once under Unread, then moves to the collapsed
+// Closed section from the next open onward, rather than staying flagged
+// forever (there's no real read/unread column on the order itself; this is
+// purely dropdown-session UI state, same as notifOpen itself).
+function closeNotifDropdown(){
+  if(!state.notifOpen) return;
+  customerNotifications().forEach(n=>{ state.notifSeenIds[n.id] = true; });
+  state.notifOpen = false;
+}
+function toggleNotifDropdown(){
+  if(state.notifOpen) closeNotifDropdown();
+  else state.notifOpen = true;
+  render();
+}
+function toggleNotifClosedSection(){ state.notifClosedOpen = !state.notifClosedOpen; render(); }
+function openNotif(orderId){ closeNotifDropdown(); go('custOrders'); }
+function notifRowHTML(n){
+  return `
+  <div class="notif-row" onclick="openNotif('${n.id}')">
+    <span class="notif-ic">${n.icon}</span>
+    <span class="notif-txt">${n.text}</span>
+  </div>`;
+}
 function notifDropdownHTML(notifs){
+  const unread = notifs.filter(n=>!state.notifSeenIds[n.id]);
+  const read = notifs.filter(n=>state.notifSeenIds[n.id]);
   return `
   <div class="notif-dropdown glass">
     <div class="notif-dropdown-head">Notifications</div>
-    ${notifs.length ? notifs.map(n=>`
-      <div class="notif-row" onclick="openNotif('${n.id}')">
-        <span class="notif-ic">${n.icon}</span>
-        <span class="notif-txt">${n.text}</span>
-      </div>`).join('') : `<div class="notif-row empty-row"><span class="muted" style="font-size:.85em;">No notifications yet</span></div>`}
+    ${notifs.length ? `
+      ${unread.length ? unread.map(notifRowHTML).join('') : `<div class="notif-row empty-row"><span class="muted" style="font-size:.85em;">Nothing new</span></div>`}
+      ${read.length ? `
+        <div class="notif-section-head ${state.notifClosedOpen?'open':''}" onclick="event.stopPropagation(); toggleNotifClosedSection();">
+          <span>Closed (${read.length})</span>
+          <span class="chev">${ICON_CHEVRON_DOWN}</span>
+        </div>
+        ${state.notifClosedOpen ? read.map(notifRowHTML).join('') : ''}
+      ` : ''}
+    ` : `<div class="notif-row empty-row"><span class="muted" style="font-size:.85em;">No notifications yet</span></div>`}
   </div>`;
 }
+// Dismiss the dropdown on a tap outside it, or on scrolling the page itself
+// - the bell button's own onclick already stops propagation, so it never
+// reaches this listener and double-toggle isn't a risk. Scroll is
+// deliberately scoped to document.body (the app's real scroll container -
+// see the note above dismissKeyboardOnScroll()) rather than any scroll
+// target: a nested horizontally-scrolling strip (Featured, Categories) fires
+// its own native 'scroll' event too, including when restoreHomeScrollPositions()
+// programmatically restores it after a re-render - reacting to those would
+// close the dropdown the instant it opened, since renderCustHome() always
+// calls that restore right after building the page (which is what a plain
+// e.target-based "is this inside .notif-dropdown" check doesn't catch, since
+// those strips aren't inside the dropdown either).
+document.addEventListener('click', (e)=>{
+  if(!state.notifOpen) return;
+  if(e.target.closest && e.target.closest('.notif-dropdown')) return;
+  closeNotifDropdown(); render();
+});
+document.addEventListener('scroll', (e)=>{
+  if(!state.notifOpen) return;
+  if(e.target !== document.body) return;
+  closeNotifDropdown(); render();
+}, { passive:true, capture:true });
 function homeHeaderHTML(){
   const notifs = customerNotifications();
-  const hasUnread = notifs.length > 0;
+  const hasUnread = notifs.some(n=>!state.notifSeenIds[n.id]);
   return `
   <div class="topbar home-header">
     <button class="iconbtn" style="margin-left:-14px;" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
@@ -5403,13 +5469,33 @@ function updateHomeSearch(v){
 function featuredCardHTML(item){
   return topSellingCardHTML(item, false);
 }
+// Home's Featured carousel and Categories strip both reset to scrollLeft:0
+// on every re-render (renderCustHome() fully rebuilds the DOM, which fully
+// rebuilds the scroll containers too) - these two module-level vars remember
+// where each one was scrolled to, updated live via their onscroll handlers,
+// and restoreHomeScrollPositions() reapplies them right after every
+// renderCustHome() so leaving Home (or just triggering a re-render, e.g. an
+// ensureLiveRefresh() tick) and coming back doesn't silently snap either
+// strip back to the start.
+let _homeFeaturedScrollLeft = 0, _homeCatScrollLeft = 0;
 function syncFeaturedDots(){
   const wrap = document.getElementById('featuredScroll');
+  _homeFeaturedScrollLeft = wrap ? wrap.scrollLeft : 0;
   const dotsWrap = document.getElementById('featuredDots');
   if(!wrap || !dotsWrap || !wrap.children.length) return;
   const cardWidth = wrap.children[0].getBoundingClientRect().width + 14;
   const idx = Math.round(wrap.scrollLeft / cardWidth);
   [...dotsWrap.children].forEach((d,i)=>d.classList.toggle('active', i===idx));
+}
+function saveHomeCatScroll(){
+  const wrap = document.getElementById('catScroll');
+  if(wrap) _homeCatScrollLeft = wrap.scrollLeft;
+}
+function restoreHomeScrollPositions(){
+  const cat = document.getElementById('catScroll');
+  if(cat) cat.scrollLeft = _homeCatScrollLeft;
+  const featured = document.getElementById('featuredScroll');
+  if(featured) featured.scrollLeft = _homeFeaturedScrollLeft;
 }
 // Deliberately no seller/store name on this card - just the item name and
 // price (plus a discount badge on the price's other side, when the seller set
@@ -5583,7 +5669,7 @@ function renderCustHome(){
       ${homeSearchRowHTML()}
       <div class="section">
         <h2 style="margin-bottom:12px;">Categories</h2>
-        <div class="cat-scroll" style="margin:0 -10px; padding:2px 10px 8px;">
+        <div class="cat-scroll" id="catScroll" style="margin:0 -10px; padding:2px 10px 8px;" onscroll="saveHomeCatScroll()">
           ${cats.map(c=>`
             <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="setHomeCategory('${c}')">
               <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
@@ -5611,6 +5697,7 @@ function renderCustHome(){
   `);
   ensureCountdownTimer();
   updateHomeLogoScroll();
+  restoreHomeScrollPositions();
 }
 // The category dropdown under a store's listing-type tabs (see
 // renderCustStore()) - only the categories that actually have an item of

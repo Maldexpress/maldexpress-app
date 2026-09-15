@@ -3608,6 +3608,7 @@ async function markBookingChargeCollected(id){
   toast('Marked as collected'); render();
 }
 function openOrderDetailBiz(id){
+  _boatDeliveryPaid = true;
   openSheet('orderDetailBiz', id);
 }
 // custom sheet content injected directly (handled in sheetHTML switch below via generic fallback)
@@ -3750,7 +3751,7 @@ function orderDetailBizBody(o){
     } else if(o.status==='out_for_delivery'){
       actionArea += `<div class="card tight" style="background:rgba(34,184,200,.12); margin-top:10px;"><p style="font-size:.85em;">Out for delivery — you're delivering this yourself.</p></div>`;
       actionArea += o.deliveryTargetType==='boat'
-        ? handoffPhotoHTML(o, `Take a photo handing the package to the boat before marking it delivered:`, 'Mark as delivered', 'markOrderDeliveredByBusiness')
+        ? boatPaymentChoiceHTML(o) + handoffPhotoHTML(o, `Take a photo handing the package to the boat before marking it delivered:`, 'Mark as delivered', 'markOrderDeliveredByBusiness')
         : `<button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="markOrderDeliveredByBusiness('${o.id}')">Mark as delivered</button>`;
     } else {
       actionArea += handoffPhotoHTML(o, `Take a photo of the package before you head out:`, 'Mark out for delivery')
@@ -3875,6 +3876,14 @@ async function markOrderDeliveredByBusiness(id){
   const isBoat = o && o.deliveryTargetType==='boat';
   if(isBoat && !_handoffPhotoData){ toast('Take a photo of the handover to the boat first','bad'); return; }
   if(o && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
+    if(isBoat && !_boatDeliveryPaid){
+      const updated = await callOrderRpc('mark_order_delivered_by_business', { p_order_id: id, p_boat_photo_url: _handoffPhotoData }, id,
+        "Couldn't update this order — it may have changed");
+      _handoffPhotoData = null; _boatDeliveryPaid = true;
+      if(!updated) return;
+      toast('Marked as delivered — payment still pending'); render();
+      return;
+    }
     openSheet('markCash', id);
     return;
   }
@@ -3900,6 +3909,37 @@ function handoffPhotoHTML(o, label, buttonText, onclickFn='markOrderOutForDelive
       <img id="handoffPhotoPreview_${o.id}" style="width:100%; border-radius:14px; display:block; max-height:200px; object-fit:cover;">
     </div>
     <button class="btn btn-primary" style="width:100%; margin-top:10px;" id="handoffConfirmBtn_${o.id}" disabled onclick="${onclickFn}('${o.id}')">${buttonText}</button>
+  </div>`;
+}
+// Boat deliveries are commonly settled by a bank transfer made around the
+// time the parcel reaches the boat, not cash handed to whoever's dropping it
+// off - so unlike a normal cash-on-delivery order (always assumed to be
+// cash, forced straight into sheetMarkCash()), a boat order still on
+// cash_to_delivery/pending_cash gets an explicit choice right before the
+// final "Mark delivered" tap: paid (cash in hand - open the cash-collection
+// popup, same as any other cash order) or not yet (leave payment_status
+// alone and just mark it delivered - the customer's expected to transfer
+// instead, see markDelivered()/markOrderDeliveredByBusiness()). Once the
+// customer switches to transfer themselves (paymentMethod is no longer
+// cash_to_delivery), this never renders at all - nothing left for whoever's
+// delivering it to decide, the business approves that from their own side.
+let _boatDeliveryPaid = true;
+function setBoatDeliveryPaid(id, paid){
+  _boatDeliveryPaid = paid;
+  const yes = document.getElementById('boatPaidTabYes_'+id);
+  const no = document.getElementById('boatPaidTabNo_'+id);
+  if(yes) yes.classList.toggle('active', paid);
+  if(no) no.classList.toggle('active', !paid);
+}
+function boatPaymentChoiceHTML(o){
+  if(o.paymentMethod!=='cash_to_delivery' || o.paymentStatus!=='pending_cash') return '';
+  return `
+  <div class="glass card tight" style="margin-top:10px;">
+    <p class="muted" style="font-size:.82em; margin-bottom:8px;">Has the customer paid?</p>
+    <div class="tabs">
+      <button type="button" class="tab active" id="boatPaidTabYes_${o.id}" style="flex:1; text-align:center;" onclick="setBoatDeliveryPaid('${o.id}', true)">Paid (cash)</button>
+      <button type="button" class="tab" id="boatPaidTabNo_${o.id}" style="flex:1; text-align:center;" onclick="setBoatDeliveryPaid('${o.id}', false)">Not yet (transfer)</button>
+    </div>
   </div>`;
 }
 let _handoffPhotoData = null;
@@ -4400,9 +4440,9 @@ function delJobCard(o){
     <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.receiverName||o.customerName} · ${pm}</p>
     ${o.receiverName ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤':'📍'} ${[o.receiverPhone,o.receiverAddress].filter(Boolean).join(' · ')}</p>` : ''}
     <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
-    ${o.paymentMethod==='transfer' && o.paymentStatus!=='paid' ? `
+    ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
-      <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the business marks payment received.</p>
+      <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the customer transfers and uploads their slip - the business takes it from there.</p>
     ` : ''}
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
       <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${cashCut>0 ? `You owe the store ${money(o.total-Math.round(cashCut))} after your ${money(Math.round(cashCut))} cut.` : `No delivery fee was collected, so you owe the store the full ${money(o.total)} — the store pays your ${money(Math.round(payoutAmt))} payout separately.`}</p></div>
@@ -4412,7 +4452,7 @@ function delJobCard(o){
       : `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); markDelivered('${o.id}')">Mark delivered</button>`}
   </div>`;
 }
-function openDelOrderDetail(orderId){ openSheet('delOrderDetail', orderId); }
+function openDelOrderDetail(orderId){ _boatDeliveryPaid = true; openSheet('delOrderDetail', orderId); }
 function sheetDelOrderDetail(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
   if(!o) return `<p class="muted">Order not found.</p>`;
@@ -4462,13 +4502,13 @@ function sheetDelOrderDetail(){
     <div class="row between" style="margin-top:6px;"><span class="muted">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
     <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>
   </div>
-  ${o.paymentMethod==='transfer' && o.paymentStatus!=='paid' ? `
+  ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
   ` : ''}
   ${o.status==='delivered' ? '' : o.status!=='out_for_delivery'
     ? `<div class="card tight" style="margin-top:14px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>`
     : o.deliveryTargetType==='boat'
-      ? handoffPhotoHTML(o, 'Take a photo handing the package to the boat before marking it delivered:', 'Mark delivered', 'markDelivered')
+      ? boatPaymentChoiceHTML(o) + handoffPhotoHTML(o, 'Take a photo handing the package to the boat before marking it delivered:', 'Mark delivered', 'markDelivered')
       : `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="markDelivered('${o.id}')">Mark delivered</button>`}
   `;
 }
@@ -4545,6 +4585,14 @@ async function markDelivered(id){
   const isBoat = o && !o.rentalItemId && o.deliveryTargetType==='boat';
   if(isBoat && !_handoffPhotoData){ toast('Take a photo of the handover to the boat first','bad'); return; }
   if(o && !o.rentalItemId && o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash'){
+    if(isBoat && !_boatDeliveryPaid){
+      const updated = await callOrderRpc('mark_delivered', { p_order_id: id, p_boat_photo_url: _handoffPhotoData }, id,
+        "Couldn't mark this delivered — it may already be marked delivered");
+      _handoffPhotoData = null; _boatDeliveryPaid = true;
+      if(!updated) return;
+      closeSheet(); toast('Marked delivered — payment still pending'); render();
+      return;
+    }
     openSheet('markCash', id);
     return;
   }

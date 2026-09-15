@@ -1240,6 +1240,43 @@ as $$
   returning o.*;
 $$;
 
+-- Order-time discount: while reviewing a freshly-placed order, before the
+-- customer has actually paid (payment_status still 'pending_transfer' or
+-- 'pending_cash' - not once a slip's uploaded or cash is collected, since by
+-- then a specific amount has already changed hands), the business can knock
+-- a flat MVR amount off the items subtotal. Separate from item.discountPercent
+-- (a standing listing-level discount set on the item itself) - this one is
+-- per-order and capped at the items subtotal so total can't go negative.
+-- Left out of rentals: their total already means something narrower (just
+-- the advance/deposit due now, not the full rental cost - see submitRentItem()),
+-- so a flat items-subtotal discount doesn't translate cleanly there.
+alter table orders add column if not exists discount_amount numeric default 0;
+
+create or replace function apply_order_discount(p_order_id text, p_discount numeric)
+returns setof orders
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_capped numeric;
+begin
+  select greatest(0, least(coalesce(p_discount,0), coalesce(o.items_total,0)))
+    into v_capped
+  from orders o where o.id = p_order_id;
+
+  return query
+    update orders o set
+      discount_amount = v_capped,
+      total = greatest(0, coalesce(o.items_total,0) - v_capped) + coalesce(o.delivery_fee,0) + coalesce(o.extra_delivery_fee,0)
+    where o.id = p_order_id
+      and o.rental_item_id is null
+      and o.payment_status in ('pending_transfer','pending_cash')
+      and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    returning o.*;
+end;
+$$;
+
 grant execute on function submit_transfer_slip(text, text) to authenticated;
 grant execute on function approve_order_payment(text) to authenticated;
 grant execute on function complete_auction_order(text, text, text, text, text, text, text) to authenticated;
@@ -1259,6 +1296,7 @@ grant execute on function mark_order_out_for_delivery(text, text) to authenticat
 grant execute on function offer_order_to_rider(text, text) to authenticated;
 grant execute on function accept_delivery_offer(text) to authenticated;
 grant execute on function decline_delivery_offer(text) to authenticated;
+grant execute on function apply_order_discount(text, numeric) to authenticated;
 
 -- The ten functions above are now the only way total/payment_status/
 -- payout_status/delivery_partner_payout/status/needs_delivery_partner/
@@ -1751,7 +1789,7 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0) };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -4006,6 +4044,28 @@ function orderDetailBizBody(o){
       ${inFlight.map(r=>`<button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="offerOrderToRider('${o.id}','${r.id}')">🛵 Add to ${escapeAttr(r.name)}'s pickup</button>`).join('')}
     </div>`;
   }
+  // Order-time discount: only while the customer genuinely hasn't paid yet -
+  // once a transfer slip's uploaded or cash is collected, a specific amount's
+  // already changed hands, so the window to adjust the total closes. See
+  // apply_order_discount() in the schema above for the actual enforcement;
+  // this is just the affordance to use it.
+  const canDiscount = !o.rentalItemId && (o.paymentStatus==='pending_transfer' || o.paymentStatus==='pending_cash');
+  if(canDiscount){
+    actionArea += o.discountAmount>0 ? `
+    <div class="glass card tight" style="margin-top:10px;">
+      <div class="row between"><span class="muted">Discount applied</span><strong>-${money(o.discountAmount)}</strong></div>
+      <div class="field" style="margin:8px 0 0;"><input type="number" min="0" id="orderDiscount_${o.id}" placeholder="Change amount (MVR)"></div>
+      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:6px;" onclick="applyOrderDiscount('${o.id}')">Update discount</button>
+    </div>` : `
+    <div class="glass card tight" style="margin-top:10px;">
+      <p class="muted" style="font-size:.82em; margin-bottom:8px;">Want to knock something off before the customer pays?</p>
+      <div class="row" style="gap:8px; align-items:center;">
+        <div class="field" style="margin:0; flex:1;"><input type="number" min="0" id="orderDiscount_${o.id}" placeholder="Discount (MVR)"></div>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0;" onclick="applyOrderDiscount('${o.id}')">Apply</button>
+      </div>
+    </div>`;
+  }
+  const discountLine = o.discountAmount>0 ? `<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>` : '';
   const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
   // An 'on_return' rental's own o.total only ever holds the advance due at
   // checkout (see submitRentItem()) - the rental fee itself lives separately
@@ -4029,6 +4089,7 @@ function orderDetailBizBody(o){
     </div>` : ''}
     <div class="glass card tight">${itemsList}<div class="divider"></div>
       <div class="row between"><span class="muted">Items subtotal</span><span>${money(o.itemsTotal!=null?o.itemsTotal:o.total-(buyerPaidFee?payoutAmt:0))}</span></div>
+      ${discountLine}
       ${deliveryLine}
       ${rentalFeeLine}
       <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return'?'Due now':'Total'}</strong><strong class="price">${money(o.total)}</strong></div>
@@ -4137,6 +4198,18 @@ async function declineDeliveryOffer(orderId){
     "Couldn't decline this — it may have already changed");
   if(!updated) return;
   toast('Declined — the store can reassign it'); render();
+}
+// Order-time discount: only offered while the customer hasn't paid yet
+// (payment_status still pending_transfer/pending_cash - see apply_order_discount()
+// in the schema above) - a flat MVR amount off the items subtotal, separate from
+// any standing item.discountPercent already baked into the item's own price.
+async function applyOrderDiscount(orderId){
+  const amount = Number(val('orderDiscount_'+orderId));
+  if(!(amount>0)){ toast('Enter a discount amount first', 'bad'); return; }
+  const updated = await callOrderRpc('apply_order_discount', { p_order_id: orderId, p_discount: amount }, orderId,
+    "Couldn't apply a discount — the customer may have already paid");
+  if(!updated) return;
+  toast(`Discount applied — new total ${money(updated.total)}`); render();
 }
 async function markOrderDeliveredByBusiness(id){
   const o = DB.orders.find(x=>x.id===id);
@@ -7616,6 +7689,7 @@ function sheetCustOrderDetail(){
   </div>` : ''}
   <div class="card tight">
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}
+    ${o.discountAmount>0?`<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>`:''}
     ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${o.deliveryType==='free'?'Free':money(o.deliveryFee)}</span></div>`}
     ${o.extraDeliveryFee?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra delivery fee</span><span>${money(o.extraDeliveryFee)}</span></div>`:''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : ''}

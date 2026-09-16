@@ -639,8 +639,8 @@
    2. Run the SQL in the schema comment near the bottom of this file (Supabase SQL editor)
    3. In Authentication → Providers, make sure Email is on (magic link is enabled by default)
    4. Paste your project URL + anon public key below (Settings → API) */
-const SUPABASE_URL = "https://ngoykqdzjpkrdqwhaqjy.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5nb3lrcWR6anBrcmRxd2hhcWp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1Mjc1MTQsImV4cCI6MjEwNDEwMzUxNH0.0b9P4ZLPbQTkqge99pjF8bya2FAELtDiCoECaF3PI8I";
+const SUPABASE_URL = "https://jbzyphtrcgrfnleocusp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpienlwaHRyY2dyZm5sZW9jdXNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1Nzk4NTEsImV4cCI6MjEwNTE1NTg1MX0.2J0ImInDy6vYYM4HkWvJwn1EeLk2738KHF_S2wt6hYA";
 const sb = (SUPABASE_URL.startsWith('http'))
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;

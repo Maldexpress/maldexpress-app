@@ -660,7 +660,12 @@ create table businesses (
   paid_at timestamptz,
   category text,
   category_other_name text,
-  rating numeric(2,1) default 4.5
+  rating numeric(2,1) default 4.5,
+  -- Where a delivery partner picks the package up from - shown on their job
+  -- card/detail once they've accepted (see delJobCard()/sheetDelOrderDetail()).
+  -- Optional so an existing store isn't blocked from anything by not having
+  -- filled it in yet; the pickup note just falls back to the store's name.
+  address text
 );
 
 create table items (
@@ -1702,9 +1707,10 @@ create table rental_bookings (
   requested_date date not null,
   days int not null default 1,
   note text,
-  status text not null default 'pending' check (status in ('pending','accepted','declined')),
+  status text not null default 'pending' check (status in ('pending','accepted','declined','cancelled')),
   booking_charge numeric,
-  charge_status text check (charge_status is null or charge_status in ('pending','collected')),
+  charge_status text check (charge_status is null or charge_status in ('pending','slip_uploaded','collected')),
+  slip_url text,
   created_at timestamptz default now(),
   decided_at timestamptz
 );
@@ -1715,13 +1721,52 @@ create policy "customer read own bookings" on rental_bookings for select
   using (auth.uid() = customer_id);
 create policy "business read own bookings" on rental_bookings for select
   using (exists (select 1 from businesses b where b.id = rental_bookings.business_id and b.owner_id = auth.uid()));
--- The business decides status/booking_charge/charge_status - no separate
--- SECURITY DEFINER function needed here (unlike orders' payment/payout columns)
--- since there's only one other party's money involved (the customer's, held
--- outside the app until the business marks it collected) and no delivery
--- partner whose column-level lockdown this would need to defend against.
+-- The business decides status/booking_charge/charge_status directly (no
+-- SECURITY DEFINER function needed there, unlike orders' payment/payout
+-- columns) since there's only one other party's money involved (the
+-- customer's) and no delivery partner whose column-level lockdown this would
+-- need to defend against. The customer's own two actions below DO need their
+-- own functions though, since - unlike the business - a customer has no
+-- update policy on this table at all: cancelling only ever needs to flip
+-- 'pending' to 'cancelled', and submitting a slip only ever needs to set
+-- charge_status/slip_url, so a function scoped to exactly that beats opening
+-- a whole update policy a customer could otherwise use to rewrite any column
+-- on their own booking, including the ones the business is supposed to own.
 create policy "business update own bookings" on rental_bookings for update
   using (exists (select 1 from businesses b where b.id = rental_bookings.business_id and b.owner_id = auth.uid()));
+
+create or replace function cancel_booking_request(p_booking_id text)
+returns setof rental_bookings
+language sql
+security definer
+set search_path = public
+as $$
+  update rental_bookings
+  set status = 'cancelled'
+  where id = p_booking_id and customer_id = auth.uid() and status = 'pending'
+  returning *;
+$$;
+
+-- Only reachable once the business has accepted with a charge (see
+-- bookingCardCust()/sheetBookingDetailCust()) - the account details shown
+-- alongside this are the store's real ones, same acctValHTML() used for a
+-- regular order's transfer, so there's nothing extra to validate about the
+-- destination account here, only that this booking is this customer's own,
+-- accepted, and actually has a charge to transfer.
+create or replace function submit_booking_slip(p_booking_id text, p_slip_url text)
+returns setof rental_bookings
+language sql
+security definer
+set search_path = public
+as $$
+  update rental_bookings
+  set charge_status = 'slip_uploaded', slip_url = p_slip_url
+  where id = p_booking_id and customer_id = auth.uid() and status = 'accepted' and booking_charge is not null
+  returning *;
+$$;
+
+grant execute on function cancel_booking_request(text) to authenticated;
+grant execute on function submit_booking_slip(text, text) to authenticated;
 
 -- A customer's saved delivery addresses - three independent categories, each
 -- with its own default: 'own' (places the customer themselves gets things
@@ -1774,7 +1819,7 @@ let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[], auct
 let storageReady = false;
 
 function toDbRow(part, o){
-  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null };
+  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null };
@@ -1786,13 +1831,13 @@ function toDbRow(part, o){
   if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
-  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null };
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'' };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0) };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
-  if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
+  if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
   if(part==='bids') return { id:r.id, auctionId:r.auction_id, bidderId:r.bidder_id, bidAmount:Number(r.bid_amount), createdAt:new Date(r.created_at).getTime() };
   if(part==='categoryRequests') return { id:r.id, businessId:r.business_id, businessName:r.business_name, categoryName:r.category_name, status:r.status, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
@@ -2930,6 +2975,7 @@ function sheetHTML(){
   else if(state.sheet==='bookRentalItem') body = sheetBookRentalItem();
   else if(state.sheet==='acceptBooking') body = sheetAcceptBooking();
   else if(state.sheet==='bookingDetailCust') body = sheetBookingDetailCust();
+  else if(state.sheet==='uploadBookingSlip') body = sheetUploadBookingSlip();
   const dismissable = state.sheet!=='verifyEmail' && state.sheet!=='setupMobile';
   return `
   <div class="sheet-wrap${state.sheetClosing?'':' show'}" id="sheetWrap">
@@ -2952,6 +2998,7 @@ function sheetBizSignup(){
   <div class="field"><label>Phone</label><input id="f_phone" placeholder="7XXXXXX"></div>
   <div class="field"><label>Bank account number</label><input id="f_acc" placeholder="77700001234567"></div>
   <div class="field"><label>Account holder name</label><input id="f_accname" placeholder="Same as owner or business name"></div>
+  <div class="field"><label>Store address / pickup location (optional)</label><input id="f_address" placeholder="e.g. H. Sample Building, Malé"></div>
   <div class="field"><label>Category (mark all that fit)</label>
     ${catChecklistHTML('f_cat', '')}
   </div>
@@ -2999,7 +3046,7 @@ function submitBizSignup(){
   // so "Other" items added later default to the same written-in name instead
   // of the seller retyping it every time - see itemCatFieldHTML().
   const catOtherName = cat.split(',').map(s=>s.trim()).includes('Other') ? getCatOtherName('f_cat') : '';
-  const biz = {id:uid('biz'), ownerId:state.customerId, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName};
+  const biz = {id:uid('biz'), ownerId:state.customerId, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
   DB.businesses.push(biz); saveDB('businesses');
   maybeSubmitCategoryRequest('f_cat', biz);
   closeSheet();
@@ -3772,6 +3819,12 @@ function pendingBookingsCount(bizId){
 function renderBizOrders(biz){
   const myOrders = DB.orders.filter(o=>o.businessId===biz.id).sort((a,b)=>b.createdAt-a.createdAt);
   const myBookings = DB.bookings.filter(bk=>bk.businessId===biz.id).sort((a,b)=>b.createdAt-a.createdAt);
+  // A card stays in Active for as long as either half of the deal is still
+  // open (payment not yet confirmed, or the item not yet in the customer's
+  // hands) - see isOrderFullyFulfilled() - and only moves down into the
+  // completed Orders list once both are actually done.
+  const activeOrders = myOrders.filter(o=>!isOrderFullyFulfilled(o));
+  const completedOrders = myOrders.filter(o=>isOrderFullyFulfilled(o));
   document.getElementById('app').innerHTML = wrapShell('business','bizOrders', `
     ${topbar('Orders & payments')}
     <div style="padding:4px 16px 0;">
@@ -3780,18 +3833,26 @@ function renderBizOrders(biz){
         <div class="section-head"><h2>Rental bookings</h2></div>
         ${myBookings.map(bk=>bookingCardBiz(bk)).join('')}
       </div>` : ''}
-      ${myBookings.length? `<div class="section-head"><h2>Orders</h2></div>` : ''}
-      ${myOrders.length? myOrders.map(o=>orderCardBiz(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No orders yet</div>`}
+      <div class="section-head"><h2>Active</h2></div>
+      ${activeOrders.length? activeOrders.map(o=>orderCardBiz(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No active orders</div>`}
+      ${completedOrders.length? `
+      <div class="section-head" style="margin-top:18px;"><h2>Orders</h2></div>
+      ${completedOrders.map(o=>orderCardBiz(o)).join('')}` : ''}
     </div>
   `);
 }
 // A pending request the renter has to Accept (optionally setting a booking
-// charge to hold it) or Decline - once accepted, this card is the renter's
-// own view that the item is booked, and for whom/when; a set charge shows a
-// "Mark charge collected" action until they say they actually have it.
+// charge to hold it) or Decline - the customer can still withdraw it up to
+// that point (see cancelBookingRequest()), which lands here as 'cancelled'.
+// Once accepted with a charge, the customer transfers it and uploads a slip
+// (same shape as an order's transfer - see sheetUploadBookingSlip()) before
+// this shows anything to approve; "Mark charge collected" only appears once
+// that slip is actually in.
 function bookingCardBiz(bk){
   const pill = bk.status==='pending' ? `<span class="status-pill wait">Pending</span>`
     : bk.status==='declined' ? `<span class="status-pill bad">Declined</span>`
+    : bk.status==='cancelled' ? `<span class="status-pill bad">Cancelled by customer</span>`
+    : bk.bookingCharge!=null && bk.chargeStatus==='slip_uploaded' ? `<span class="status-pill mid">Booked · slip uploaded</span>`
     : bk.bookingCharge!=null && bk.chargeStatus!=='collected' ? `<span class="status-pill mid">Booked · charge pending</span>`
     : `<span class="status-pill ok">Booked ✓</span>`;
   return `
@@ -3806,7 +3867,13 @@ function bookingCardBiz(bk){
         <button class="btn btn-good btn-sm" style="flex:1;" onclick="openSheet('acceptBooking','${bk.id}')">Accept</button>
         <button class="btn btn-outline btn-sm" style="flex:1;" onclick="declineBooking('${bk.id}')">Decline</button>
       </div>` : ''}
-    ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus!=='collected' ? `<button class="btn btn-good btn-sm" style="width:100%;" onclick="markBookingChargeCollected('${bk.id}')">Mark charge collected</button>` : ''}
+    ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus==='pending' ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the customer to transfer & upload a slip.</p></div>` : ''}
+    ${bk.status==='accepted' && bk.chargeStatus==='slip_uploaded' ? `
+      <div class="card tight" style="background:rgba(34,184,200,.12);">
+        <p style="font-size:.85em; margin-bottom:8px;">Customer uploaded a transfer slip:</p>
+        ${bk.slipDataUrl ? `<img src="${bk.slipDataUrl}" style="width:100%; border-radius:12px; max-height:220px; object-fit:contain; background:rgba(255,255,255,.05);">` : `<p class="muted" style="font-size:.8em;">(slip image not available)</p>`}
+      </div>
+      <button class="btn btn-good btn-sm" style="width:100%; margin-top:10px;" onclick="markBookingChargeCollected('${bk.id}')">Mark charge collected</button>` : ''}
   </div>`;
 }
 function sheetAcceptBooking(){
@@ -3853,6 +3920,30 @@ async function markBookingChargeCollected(id){
   const idx = DB.bookings.findIndex(bk=>bk.id===id);
   if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
   toast('Marked as collected'); render();
+}
+// The two customer-side booking actions (cancel, submit-slip) go through
+// cancel_booking_request()/submit_booking_slip() - see the schema comment
+// above explaining why those needed their own SECURITY DEFINER functions
+// rather than a customer update policy like the business gets.
+async function callBookingRpc(rpcName, args, bookingId, failMsg){
+  const { data, error } = await sb.rpc(rpcName, args);
+  if(error){ toast('Could not update booking: '+error.message, 'bad'); return null; }
+  if(!data || !data.length){ toast(failMsg || "Couldn't update this booking — it may have changed", 'bad'); return null; }
+  const updated = fromDbRow('bookings', data[0]);
+  const idx = DB.bookings.findIndex(bk=>bk.id===bookingId);
+  if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
+  return updated;
+}
+// Only reachable while the store hasn't responded yet (see bookingCardCust()/
+// sheetBookingDetailCust()) - once accepted, the item's dates are held for
+// this booking and the store may already be expecting payment, so the
+// request no longer cancels; the RPC's own WHERE clause enforces the same
+// cutoff server-side.
+async function cancelBookingRequest(id){
+  const updated = await callBookingRpc('cancel_booking_request', { p_booking_id: id }, id,
+    "Couldn't cancel — the store may have already responded to this request");
+  if(!updated) return;
+  toast('Booking request cancelled'); render();
 }
 function openOrderDetailBiz(id){
   _boatDeliveryPaid = true;
@@ -4409,6 +4500,7 @@ function sheetBizSettings(){
   <div class="field"><label>Store name</label><input id="s_name" value="${biz.name}"></div>
   <div class="field"><label>Owner name</label><input id="s_owner" value="${biz.ownerName||''}"></div>
   <div class="field"><label>Phone</label><input id="s_phone" value="${biz.phone||''}"></div>
+  <div class="field"><label>Store address / pickup location</label><input id="s_address" value="${escapeAttr(biz.address||'')}" placeholder="e.g. H. Sample Building, Malé"></div>
   ${settingsSectionLabel('Category')}
   <div class="field"><label>Category (mark all that fit)</label>
     ${catChecklistHTML('s_cat', biz.category)}
@@ -4437,6 +4529,7 @@ function saveBizSettings(){
   biz.name = val('s_name')||biz.name;
   biz.ownerName = val('s_owner')||biz.ownerName;
   biz.phone = val('s_phone');
+  biz.address = val('s_address');
   biz.category = getCatChecklistValue('s_cat')||biz.category;
   biz.categoryOtherName = biz.category.split(',').map(s=>s.trim()).includes('Other') ? (getCatOtherName('s_cat')||'') : '';
   biz.accountName = val('s_accname')||biz.accountName;
@@ -4824,6 +4917,11 @@ function renderDelHome(d){
       ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
       <div class="section" style="margin-top:22px;">
         <div class="section-head"><h2>Unassigned orders nearby</h2></div>
+        <!-- No customer name/contact/items/total here - nobody's committed to this
+             job yet, so there's nothing to hand over the customer's details for.
+             Same redaction carries into delOfferCard() and delJobCard() below,
+             lifting only once a job's actually handed to the rider (see
+             delJobCard()'s handedOff). -->
         <!-- Most rentals (rentalItemId set) never show up here - the renter handles
              their own pickup/delivery. The exception: a "deliver"-fulfillment rental
              the store has explicitly posted (needsDeliveryPartner) for a fee it's
@@ -4835,7 +4933,7 @@ function renderDelHome(d){
         ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion' && (o.rentalItemId ? o.needsDeliveryPartner : o.readyForPickup)).map(o=>`
           <div class="glass card">
             <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
-            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} → ${o.customerName} · ${o.rentalItemId ? 'Rental delivery' : (ZONES[o.zone]?ZONES[o.zone].label:'—')}</p>
+            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} · ${o.rentalItemId ? 'Rental delivery' : (ZONES[o.zone]?ZONES[o.zone].label:'—')}</p>
             ${o.rentalItemId?`<p class="muted" style="font-size:.78em; margin-top:2px;">${o.rentalPayoutTiming==='upfront'?'Paid upfront when you accept':'Paid once you mark it delivered'}</p>`:''}
             <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="claimJob('${o.id}')">Accept job</button>
           </div>`).join('') || `<div class="empty"><span class="ic">📭</span>No open jobs right now</div>`}
@@ -4882,7 +4980,7 @@ function delOfferCard(o){
   return `
   <div class="glass card">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
-    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.receiverName||o.customerName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
+    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
     <p class="muted" style="font-size:.8em; margin-bottom:10px;">You're already picking up another order from ${o.businessName} - they'd like you to take this one too.</p>
     <div class="row" style="gap:8px;">
       <button class="btn btn-outline btn-sm" style="flex:1;" onclick="declineDeliveryOffer('${o.id}')">Decline</button>
@@ -4912,11 +5010,23 @@ function delJobCard(o){
   const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
   const payoutAmt = payoutAmountFor(o);
   const cashCut = cashCutAmount(o);
+  // The customer's name, phone, items, and the order's own total are all
+  // withheld until the store's actually handed the package over
+  // (out_for_delivery/delivered) - before that this is still just an
+  // accepted job, not something in the rider's hands yet. The pickup address
+  // (this business's own, not the customer's) is exactly what a rider needs
+  // in the meantime, so that's shown instead - see biz.address in
+  // sheetBizSettings(). The drop-off address stays visible throughout since a
+  // rider reasonably needs it to judge/plan the trip; only the *identity*
+  // (name/phone) and the money figures are what's gated on handoff.
+  const handedOff = o.status==='out_for_delivery' || o.status==='delivered';
   return `
   <div class="glass card" onclick="openDelOrderDetail('${o.id}')">
-    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">${money(o.total)}</span></div>
-    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} → ${o.receiverName||o.customerName} · ${pm}</p>
-    ${o.receiverName ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤':'📍'} ${[o.receiverPhone,o.receiverAddress].filter(Boolean).join(' · ')}</p>` : ''}
+    <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">${handedOff?money(o.total):money(payoutAmt)}</span></div>
+    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName}${handedOff?` → ${o.receiverName||o.customerName}`:''} · ${pm}</p>
+    ${!handedOff ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">📍 Pickup from ${biz && biz.address ? biz.address : (biz?biz.name:'the store')}</p>` : ''}
+    ${handedOff && o.receiverName ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤':'📍'} ${[o.receiverPhone,o.receiverAddress].filter(Boolean).join(' · ')}</p>` : ''}
+    ${!handedOff && o.receiverAddress ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤 Drop-off':'📍 Drop-off'}: ${o.receiverAddress}</p>` : ''}
     <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
     ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
@@ -4963,13 +5073,28 @@ function sheetDelOrderDetail(){
     `;
   }
   const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  // Same handoff-gated redaction as delJobCard() above - see the comment
+  // there for why the pickup address substitutes for customer identity/items/
+  // total until the store's actually handed this over.
+  const handedOff = o.status==='out_for_delivery' || o.status==='delivered';
   return `
   <div class="row between" style="align-items:flex-start; padding-right:40px;">
     <h2 style="margin:0;">Order #${o.id.slice(-5).toUpperCase()}</h2>
     ${riderPayoutPill(o)}
   </div>
-  <p class="muted" style="font-size:.85em; margin:4px 0 12px;">${o.businessName} → ${o.receiverName||o.customerName} · ${pm}</p>
-  ${o.receiverName ? `
+  <p class="muted" style="font-size:.85em; margin:4px 0 12px;">${o.businessName}${handedOff?` → ${o.receiverName||o.customerName}`:''} · ${pm}</p>
+  ${!handedOff ? `
+  <div class="glass card tight" style="margin-bottom:12px;">
+    <p class="muted" style="font-size:.78em; margin-bottom:4px;">📍 Pickup from</p>
+    <p style="font-weight:700;">${biz && biz.address ? biz.address : (biz?biz.name:'the store')}</p>
+  </div>` : ''}
+  ${!handedOff && o.receiverAddress ? `
+  <div class="glass card tight" style="margin-bottom:12px;">
+    <p class="muted" style="font-size:.78em; margin-bottom:4px;">${o.deliveryTargetType==='boat'?'🚤 Drop-off':'📍 Drop-off'}</p>
+    <p style="font-weight:700;">${o.receiverAddress}</p>
+    ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
+  </div>` : ''}
+  ${handedOff && o.receiverName ? `
   <div class="glass card tight" style="margin-bottom:12px;">
     <p class="muted" style="font-size:.78em; margin-bottom:4px;">${o.deliveryTargetType==='boat'?'🚤 Boat delivery':'📍 Receiver'}</p>
     <p style="font-weight:700;">${o.receiverName}</p>
@@ -4978,9 +5103,9 @@ function sheetDelOrderDetail(){
     ${o.deliveryTargetType==='boat' && o.boatDepartureAt?`<p class="muted" style="font-size:.85em; margin-top:2px;">🕐 Departs ${fmtBoatDeparture(o.boatDepartureAt)}</p>`:''}
   </div>` : ''}
   <div class="card tight">
-    ${itemsList}
+    ${handedOff ? itemsList : `<p class="muted" style="font-size:.85em;">Item details show once the store hands this over to you.</p>`}
     <div class="row between" style="margin-top:6px;"><span class="muted">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
-    <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>
+    ${handedOff ? `<div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>` : ''}
   </div>
   ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
@@ -7543,24 +7668,36 @@ function bidCardCust(auction){
   </div>`;
 }
 function bookingCardCust(bk){
+  const biz = DB.businesses.find(b=>b.id===bk.businessId);
   const pill = bk.status==='pending' ? `<span class="status-pill wait">Waiting on store</span>`
     : bk.status==='declined' ? `<span class="status-pill bad">Declined</span>`
+    : bk.status==='cancelled' ? `<span class="status-pill bad">Cancelled</span>`
+    : bk.bookingCharge!=null && bk.chargeStatus==='slip_uploaded' ? `<span class="status-pill mid">Slip uploaded</span>`
     : bk.bookingCharge!=null && bk.chargeStatus!=='collected' ? `<span class="status-pill mid">Booked · charge due</span>`
     : `<span class="status-pill ok">Booked ✓</span>`;
   return `
   <div class="glass card" onclick="openBookingDetailCust('${bk.id}')">
     <div class="row between"><h3>${bk.itemName}</h3>${pill}</div>
     <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${bk.businessName} · ${bk.days} day${bk.days>1?'s':''} from ${fmtDateShort(bk.requestedDate)}</p>
-    ${bk.status==='accepted' && bk.bookingCharge!=null ? `<p class="muted" style="font-size:.82em;">${bk.chargeStatus==='collected'?`Booking charge of ${money(bk.bookingCharge)} collected.`:`Have ${money(bk.bookingCharge)} ready as a booking charge — ${bk.businessName} will collect it directly.`}</p>` : ''}
+    ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus==='pending' ? `
+      <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
+      <button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="event.stopPropagation(); openSheet('uploadBookingSlip','${bk.id}')">Upload transfer slip</button>
+    ` : ''}
+    ${bk.status==='accepted' && bk.chargeStatus==='slip_uploaded' ? `<p class="muted" style="font-size:.82em;">Slip uploaded — waiting on store to confirm.</p>` : ''}
+    ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus==='collected' ? `<p class="muted" style="font-size:.82em;">Booking charge of ${money(bk.bookingCharge)} collected.</p>` : ''}
     ${bk.status==='accepted' && bk.bookingCharge==null ? `<p class="muted" style="font-size:.82em;">Confirmed — no booking charge.</p>` : ''}
+    ${bk.status==='pending' ? `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); cancelBookingRequest('${bk.id}')">Cancel request</button>` : ''}
   </div>`;
 }
 function openBookingDetailCust(id){ openSheet('bookingDetailCust', id); }
 function sheetBookingDetailCust(){
   const bk = DB.bookings.find(x=>x.id===state.sheetData);
   if(!bk) return `<p class="muted">Booking request not found.</p>`;
+  const biz = DB.businesses.find(b=>b.id===bk.businessId);
   const pill = bk.status==='pending' ? `<span class="status-pill wait">Waiting on store</span>`
     : bk.status==='declined' ? `<span class="status-pill bad">Declined</span>`
+    : bk.status==='cancelled' ? `<span class="status-pill bad">Cancelled</span>`
+    : bk.bookingCharge!=null && bk.chargeStatus==='slip_uploaded' ? `<span class="status-pill mid">Slip uploaded</span>`
     : bk.bookingCharge!=null && bk.chargeStatus!=='collected' ? `<span class="status-pill mid">Booked · charge due</span>`
     : `<span class="status-pill ok">Booked ✓</span>`;
   const range = bookingDateRange(bk);
@@ -7578,9 +7715,19 @@ function sheetBookingDetailCust(){
   </div>
   ${bk.note?`<div class="glass card tight" style="margin-bottom:12px;"><div class="muted" style="font-size:.8em; margin-bottom:4px;">Your note to the store</div><p style="margin:0;">"${bk.note}"</p></div>`:''}
   ${bk.status==='declined' ? `<p class="muted" style="font-size:.85em;">The store declined this request.</p>` : ''}
-  ${bk.status==='accepted' && bk.bookingCharge!=null ? `<p class="muted" style="font-size:.85em;">${bk.chargeStatus==='collected'?`Booking charge of ${money(bk.bookingCharge)} collected.`:`Have ${money(bk.bookingCharge)} ready as a booking charge — ${bk.businessName} will collect it directly.`}</p>` : ''}
+  ${bk.status==='cancelled' ? `<p class="muted" style="font-size:.85em;">You cancelled this request.</p>` : ''}
+  ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus==='pending' ? `
+    <div class="acct-box" style="margin-top:12px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
+    <p class="muted" style="font-size:.82em; margin-top:8px;">Transfer the ${money(bk.bookingCharge)} booking charge, then upload the slip to process your booking.</p>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadBookingSlip','${bk.id}')">Upload transfer slip</button>
+  ` : ''}
+  ${bk.status==='accepted' && bk.chargeStatus==='slip_uploaded' ? `<p class="muted" style="font-size:.85em;">Slip uploaded — waiting on ${bk.businessName} to confirm.</p>` : ''}
+  ${bk.status==='accepted' && bk.bookingCharge!=null && bk.chargeStatus==='collected' ? `<p class="muted" style="font-size:.85em;">Booking charge of ${money(bk.bookingCharge)} collected.</p>` : ''}
   ${bk.status==='accepted' && bk.bookingCharge==null ? `<p class="muted" style="font-size:.85em;">Confirmed — no booking charge.</p>` : ''}
-  ${bk.status==='pending' ? `<p class="muted" style="font-size:.85em;">Waiting for ${bk.businessName} to accept or decline.</p>` : ''}
+  ${bk.status==='pending' ? `
+    <p class="muted" style="font-size:.85em; margin-bottom:10px;">Waiting for ${bk.businessName} to accept or decline.</p>
+    <button class="btn btn-outline" style="width:100%;" onclick="cancelBookingRequest('${bk.id}')">Cancel request</button>
+  ` : ''}
   `;
 }
 const ORDERS_TABS = [
@@ -7601,6 +7748,18 @@ function orderListingType(o){
 function isOrderCompleted(o){
   if(o.rentalItemId) return !!o.rentalReturnedAt;
   return o.status==='delivered';
+}
+// Business side only: a card doesn't move into the completed "Orders" list
+// (see renderBizOrders()) just because it's been delivered - it also needs
+// the customer's payment actually confirmed received (paid/settled, not
+// merely placed/pending), so a business can't lose track of one it's still
+// owed money on. A rental's own isOrderCompleted() already implies this -
+// mark_rental_returned() only ever runs once any on-return fee is collected
+// (or wasn't needed, for an upfront one) - so there's nothing extra to check there.
+function isOrderFullyFulfilled(o){
+  if(!isOrderCompleted(o)) return false;
+  if(o.rentalItemId) return true;
+  return o.paymentStatus==='paid' || o.paymentStatus==='settled';
 }
 // A single product photo for a one-line order, or a two-photo stack for a
 // multi-line one - the highest-quantity line's photo goes front and center
@@ -7768,6 +7927,51 @@ async function submitSlip(id){
   if(o && Math.abs(enteredAmount - o.total) > 0.01){ toast(`That amount doesn't match this order's total (${money(o.total)})`, 'bad'); return; }
   if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
   const updated = await callOrderRpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData }, id);
+  _slipData = null;
+  if(!updated) return;
+  closeSheet(); toast('Slip submitted — waiting for store approval'); render();
+}
+// Same shape as sheetUploadSlip()/submitSlip() above, for a rental booking's
+// charge instead of an order's total - reuses the same slip file input/
+// preview ids and _slipData, since only one upload sheet is ever open at once.
+function sheetUploadBookingSlip(){
+  const bk = DB.bookings.find(x=>x.id===state.sheetData);
+  const biz = bk ? DB.businesses.find(b=>b.id===bk.businessId) : null;
+  return `
+  <h2>Upload transfer slip</h2>
+  <p class="muted">${bk.itemName} · booking charge ${money(bk.bookingCharge)}</p>
+  ${biz?`<div class="acct-box" style="margin-top:10px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>`:''}
+  <div class="field" style="margin-top:14px;">
+    <label>Amount to be paid</label>
+    <input type="number" step="0.01" inputmode="decimal" id="slipAmountUpload" placeholder="${bk.bookingCharge.toFixed(2)}">
+  </div>
+  <div class="field" style="margin-top:10px;">
+    <label>Account number to be transferred</label>
+    <input id="slipAccountUpload" placeholder="${biz?biz.accountNumber:''}">
+  </div>
+  <div class="field" style="margin-top:14px;">
+    <label>Slip / screenshot</label>
+    <input type="file" accept="image/*" id="slipFile" style="display:none;" onchange="previewSlip(event)">
+    <label for="slipFile" class="filebtn">📎 Tap to choose an image</label>
+    <div class="slip-preview-wrap" id="slipPreviewWrap" style="display:none; margin-top:10px;">
+      <img id="slipPreview" style="width:100%; border-radius:14px; display:block; max-height:200px; object-fit:contain; background:rgba(255,255,255,.05);">
+      <button type="button" class="slip-remove-btn" onclick="removeSlip()" title="Remove image">✕</button>
+    </div>
+  </div>
+  <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number above must match the booking charge and the "Pay to" details, or the slip can't be submitted.</p>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitBookingSlip('${bk.id}')">Submit for approval</button>`;
+}
+async function submitBookingSlip(id){
+  const bk = DB.bookings.find(x=>x.id===id);
+  const biz = bk ? DB.businesses.find(b=>b.id===bk.businessId) : null;
+  const slipData = _slipData;
+  if(!slipData){ toast('Choose a slip image first','bad'); return; }
+  const enteredAmount = Number(val('slipAmountUpload'));
+  const enteredAccount = val('slipAccountUpload');
+  if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
+  if(bk && Math.abs(enteredAmount - bk.bookingCharge) > 0.01){ toast(`That amount doesn't match the booking charge (${money(bk.bookingCharge)})`, 'bad'); return; }
+  if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
+  const updated = await callBookingRpc('submit_booking_slip', { p_booking_id: id, p_slip_url: slipData }, id);
   _slipData = null;
   if(!updated) return;
   closeSheet(); toast('Slip submitted — waiting for store approval'); render();

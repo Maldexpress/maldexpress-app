@@ -1928,8 +1928,8 @@ async function getPoolPrivateKey(){
 }
 
 async function lookupPublicKey(userId){
-  const { data } = await sb.from('user_profiles').select('public_key').eq('user_id', userId).maybeSingle();
-  return data && data.public_key || null;
+  const { data } = await sb.rpc('get_user_public_key', { target_user_id: userId });
+  return data || null;
 }
 
 async function businessOwnerPublicKeyB64(businessId){

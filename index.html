@@ -1818,6 +1818,220 @@ const TABLES = { businesses:'businesses', items:'items', orders:'orders', delive
 let DB = { businesses:[], items:[], orders:[], delivery:[], proRequests:[], auctions:[], bookings:[], bids:[], categoryRequests:[], customCategories:[], addresses:[] };
 let storageReady = false;
 
+// ============================================================
+// END-TO-END ENCRYPTION HELPERS
+// ============================================================
+// Every user gets an RSA-OAEP keypair generated in their browser at
+// signup. The public half is stored in user_profiles (safe -- it's
+// public by definition). The private half is encrypted with a key
+// derived from the user's own password (PBKDF2) before it's ever sent
+// to Supabase, so Supabase never has a usable copy of it.
+//
+// Order shipping details (receiver name/phone/address) and payment
+// slips are AES-GCM encrypted client-side. The AES key itself is then
+// wrapped (RSA-OAEP) once per person who legitimately needs to read
+// that field -- the customer, the business owner, and (for shipping
+// only) a shared delivery-partner key, since the specific rider who'll
+// claim an open job isn't known yet at order-creation time. See
+// get_delivery_pool_private_key() in the database -- it's the only way
+// to ever retrieve that key, and it checks the caller is a real
+// delivery partner first.
+//
+// Known limitation, disclosed on purpose: the private key is only ever
+// held in memory, derived from the password at sign-in/sign-up time.
+// A page reload with an existing session will show blank shipping
+// fields until the next sign-in re-derives the key -- the same
+// trade-off password-manager apps make between convenience and never
+// letting the server hold a usable private key.
+
+const DELIVERY_POOL_PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuQHPzCTc4smV/lTejQn+3HoY3n4cS6r368A/sMB+ILY+zmijDC1XCp4KgYvjrREUN/U3XVKab8Euk4r9vcF5G3EYYATChpwINM9+deMFNVrIKAi87zOgsMwJUbDvT5ep97oxuASQ623axjDHlvZExlLBPORIboPX6ErKMOzvQf+LeWn/PC6RD9iNN9v7dAvnawDFVrsP464hkrXL8UTN5ugUnfCCiCJbPSV0xflMHNBOsCezrKFunYTV0+DK063et6dpkbg8r0wjzyYqYThRcKq6IXYf+0lG5iobdgbuxxO6eFVI3yMJzEEgIz6O7X52mWdH3W6eE3opHf2o2nJ7UwIDAQAB";
+
+let __myPrivateKey = null;   // this session's own CryptoKey (RSA-OAEP), once unlocked
+let __myPublicKeyB64 = null;
+let __poolPrivateKeyPromise = null; // lazily fetched + imported once per session
+// Set whenever a keypair is generated but hasn't been saved to user_profiles
+// yet -- e.g. at signup, before a phone number (required by that table) is
+// known, so there's no row to save it into. submitMobileNumber() merges this
+// in once a row finally gets created, so a keypair generated at signup time
+// is never silently thrown away.
+let __myPendingKeyCols = null;
+
+function b64FromBuf(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function bufFromB64(b64){ const bin = atob(b64); const arr = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return arr.buffer; }
+
+async function deriveWrapKey(password, salt){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+
+// Called from submitSignUp() right after a successful sb.auth.signUp(),
+// while the plaintext password is still in local scope. Returns the
+// columns to include in the same user_profiles insert signup already does.
+async function genKeypairAndWrap(password){
+  const kp = await crypto.subtle.generateKey({ name:'RSA-OAEP', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256' }, true, ['encrypt','decrypt']);
+  const pubRaw = await crypto.subtle.exportKey('spki', kp.publicKey);
+  const privRaw = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const wrapKey = await deriveWrapKey(password, salt);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encPriv = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, wrapKey, privRaw);
+  __myPrivateKey = kp.privateKey;
+  __myPublicKeyB64 = b64FromBuf(pubRaw);
+  __myPendingKeyCols = {
+    public_key: __myPublicKeyB64,
+    private_key_enc: b64FromBuf(encPriv),
+    private_key_iv: b64FromBuf(iv),
+    private_key_salt: b64FromBuf(salt)
+  };
+  return __myPendingKeyCols;
+}
+
+// Called from signInWithIdentifierPassword() right after a successful
+// sb.auth.signInWithPassword(), while the plaintext password is still
+// in local scope. Self-heals accounts that predate this feature (e.g.
+// the seeded test accounts, or any real account created before this
+// shipped) by generating and saving a keypair for them on the spot,
+// using the password they just signed in with -- so nobody is ever
+// stuck with encrypted orders they can never open.
+async function unlockMyPrivateKey(userId, password){
+  try{
+    const { data, error } = await sb.from('user_profiles').select('public_key,private_key_enc,private_key_iv,private_key_salt').eq('user_id', userId).maybeSingle();
+    if(error) return false;
+    if(!data || !data.private_key_enc){
+      const cols = await genKeypairAndWrap(password);
+      const { error: upErr } = await sb.from('user_profiles').update(cols).eq('user_id', userId);
+      if(upErr){ console.error('could not save new keypair for existing account', upErr); return false; }
+      return true; // genKeypairAndWrap already set __myPrivateKey/__myPublicKeyB64
+    }
+    const salt = new Uint8Array(bufFromB64(data.private_key_salt));
+    const wrapKey = await deriveWrapKey(password, salt);
+    const iv = new Uint8Array(bufFromB64(data.private_key_iv));
+    const privRaw = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, wrapKey, bufFromB64(data.private_key_enc));
+    __myPrivateKey = await crypto.subtle.importKey('pkcs8', privRaw, { name:'RSA-OAEP', hash:'SHA-256' }, true, ['decrypt']);
+    __myPublicKeyB64 = data.public_key;
+    return true;
+  } catch(e){ console.error('unlockMyPrivateKey failed', e); return false; }
+}
+
+async function importPublicKeyB64(b64){
+  return crypto.subtle.importKey('spki', bufFromB64(b64), { name:'RSA-OAEP', hash:'SHA-256' }, true, ['encrypt']);
+}
+
+async function getPoolPrivateKey(){
+  if(__poolPrivateKeyPromise) return __poolPrivateKeyPromise;
+  __poolPrivateKeyPromise = (async ()=>{
+    const { data, error } = await sb.rpc('get_delivery_pool_private_key');
+    if(error || !data) return null;
+    return crypto.subtle.importKey('pkcs8', bufFromB64(data), { name:'RSA-OAEP', hash:'SHA-256' }, true, ['decrypt']);
+  })();
+  return __poolPrivateKeyPromise;
+}
+
+async function lookupPublicKey(userId){
+  const { data } = await sb.from('user_profiles').select('public_key').eq('user_id', userId).maybeSingle();
+  return data && data.public_key || null;
+}
+
+async function businessOwnerPublicKeyB64(businessId){
+  const biz = DB.businesses.find(b=>b.id===businessId);
+  const ownerId = biz && biz.ownerId;
+  if(!ownerId) return null;
+  return lookupPublicKey(ownerId);
+}
+
+// Encrypts one JSON-able payload with a fresh AES key, wraps that key
+// once per recipient public key given ({label: pubKeyB64}). Returns
+// {enc, iv, keys} ready to store in the encrypted columns.
+async function encryptForRecipients(payload, recipients){
+  const aesKey = await crypto.subtle.generateKey({ name:'AES-GCM', length:256 }, true, ['encrypt','decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plaintext = new TextEncoder().encode(JSON.stringify(payload));
+  const ciphertext = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, aesKey, plaintext);
+  const rawAesKey = await crypto.subtle.exportKey('raw', aesKey);
+  const keys = {};
+  for(const label in recipients){
+    const pubB64 = recipients[label];
+    if(!pubB64) continue;
+    const pubKey = await importPublicKeyB64(pubB64);
+    const wrapped = await crypto.subtle.encrypt({ name:'RSA-OAEP' }, pubKey, rawAesKey);
+    keys[label] = b64FromBuf(wrapped);
+  }
+  return { enc: b64FromBuf(ciphertext), iv: b64FromBuf(iv), keys };
+}
+
+// Tries to decrypt using whichever wrapped key entry applies to the
+// current session -- own user id first, then (if this account is a
+// delivery partner) the shared pool key. Returns null on no access.
+async function decryptForMe(enc, iv, keys){
+  if(!enc || !keys) return null;
+  try{
+    let myLabel = state.customerId;
+    let privateKey = null;
+    if(myLabel && keys[myLabel] && __myPrivateKey){
+      privateKey = __myPrivateKey;
+    } else if(keys.pool){
+      privateKey = await getPoolPrivateKey();
+      myLabel = 'pool';
+    }
+    if(!privateKey || !keys[myLabel]) return null;
+    const rawAesKey = await crypto.subtle.decrypt({ name:'RSA-OAEP' }, privateKey, bufFromB64(keys[myLabel]));
+    const aesKey = await crypto.subtle.importKey('raw', rawAesKey, 'AES-GCM', false, ['decrypt']);
+    const plaintext = await crypto.subtle.decrypt({ name:'AES-GCM', iv: new Uint8Array(bufFromB64(iv)) }, aesKey, bufFromB64(enc));
+    return JSON.parse(new TextDecoder().decode(plaintext));
+  } catch(e){ return null; }
+}
+
+// Mutates dbRow in place (the object about to be sent to Supabase):
+// encrypts shipping + slip fields, blanks the plaintext columns so
+// Supabase only ever stores ciphertext for them.
+async function encryptOrderRow(dbRow, order){
+  try{
+    if(dbRow.receiver_name || dbRow.receiver_phone || dbRow.receiver_address){
+      const recipients = {};
+      if(order.customerId){
+        const custKey = (order.customerId===state.customerId && __myPublicKeyB64) ? __myPublicKeyB64 : await lookupPublicKey(order.customerId);
+        if(custKey) recipients[order.customerId] = custKey;
+      }
+      const biz = DB.businesses.find(b=>b.id===order.businessId);
+      if(biz && biz.ownerId){
+        const ownerKey = await businessOwnerPublicKeyB64(order.businessId);
+        if(ownerKey) recipients[biz.ownerId] = ownerKey;
+      }
+      recipients['pool'] = DELIVERY_POOL_PUBLIC_KEY_B64;
+      const { enc, iv, keys } = await encryptForRecipients({ name: dbRow.receiver_name, phone: dbRow.receiver_phone, address: dbRow.receiver_address }, recipients);
+      dbRow.shipping_enc = enc; dbRow.shipping_iv = iv; dbRow.shipping_keys = keys;
+      dbRow.receiver_name = null; dbRow.receiver_phone = null; dbRow.receiver_address = null;
+    }
+    if(dbRow.slip_url){
+      const recipients = {};
+      if(order.customerId && __myPublicKeyB64 && order.customerId===state.customerId) recipients[order.customerId] = __myPublicKeyB64;
+      const biz = DB.businesses.find(b=>b.id===order.businessId);
+      if(biz && biz.ownerId){
+        const ownerKey = await businessOwnerPublicKeyB64(order.businessId);
+        if(ownerKey) recipients[biz.ownerId] = ownerKey;
+      }
+      const { enc, iv, keys } = await encryptForRecipients({ url: dbRow.slip_url }, recipients);
+      dbRow.slip_enc = enc; dbRow.slip_iv = iv; dbRow.slip_keys = keys;
+      dbRow.slip_url = null;
+    }
+  } catch(e){ console.error('encryptOrderRow failed, leaving order unencrypted this write', e); }
+}
+
+// Mutates the JS order object in place: decrypts shipping/slip fields
+// if this session has access, using the raw DB row fields.
+async function decryptOrderRow(order, dbRow){
+  try{
+    if(dbRow.shipping_enc){
+      const out = await decryptForMe(dbRow.shipping_enc, dbRow.shipping_iv, dbRow.shipping_keys);
+      if(out){ order.receiverName = out.name||null; order.receiverPhone = out.phone||null; order.receiverAddress = out.address||null; }
+    }
+    if(dbRow.slip_enc){
+      const out = await decryptForMe(dbRow.slip_enc, dbRow.slip_iv, dbRow.slip_keys);
+      if(out) order.slipDataUrl = out.url||null;
+    }
+  } catch(e){ console.error('decryptOrderRow failed', e); }
+}
+
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
@@ -1876,7 +2090,8 @@ async function loadDB(){
     }
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
-    DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
+    DB.orders.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
     DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
@@ -1914,6 +2129,7 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
   if(error){ toast('Could not update order: '+error.message, 'bad'); return null; }
   if(!data || !data.length){ toast(failMsg || "Couldn't update this order — it may have changed, or you may not have permission", 'bad'); return null; }
   const updated = fromDbRow('orders', data[0]);
+  await decryptOrderRow(updated, data[0]);
   const idx = DB.orders.findIndex(o=>o.id===orderId);
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   return updated;
@@ -2080,7 +2296,7 @@ async function refreshLiveListings(){
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
-    DB.orders = (o.data||[]).map(r=>fromDbRow('orders',r));
+    DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
     // Only auto-render on the screens that actually read this data, and never
     // while a sheet is open or the person is mid-typing (a search box, a sign-in/
     // checkout field) - a surprise full re-render would otherwise blow away focus
@@ -2153,7 +2369,9 @@ async function settleAuctionWin(auction){
     createdAt: Date.now(), slipDataUrl:null
   };
   if(sb){
-    const { error } = await sb.from('orders').insert(toDbRow('orders', order));
+    const dbRow = toDbRow('orders', order);
+    await encryptOrderRow(dbRow, order);
+    const { error } = await sb.from('orders').insert(dbRow);
     if(error){ console.error('Failed to create winning order:', error); toast("You won the auction, but creating your order failed — contact the seller.",'bad'); return; }
     const { error: settleErr } = await sb.from('auction_listings').update({ status:'settled', order_id: order.id }).eq('id', auction.id).eq('status','ended');
     if(settleErr) console.error('Failed to mark auction settled:', settleErr);
@@ -4967,6 +5185,7 @@ async function claimJob(id){
   if(error){ toast('Could not accept job: '+error.message, 'bad'); return; }
   if(!data || !data.length){ toast('This job may have already been accepted by someone else', 'bad'); return; }
   const updated = fromDbRow('orders', data[0]);
+  await decryptOrderRow(updated, data[0]);
   const idx = DB.orders.findIndex(o=>o.id===id);
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   toast('Job accepted'); render();
@@ -6944,7 +7163,9 @@ async function submitRentItem(itemId){
     rentalReturnFeeStatus: isDeferred ? 'pending' : null
   };
   if(sb){
-    const { error } = await sb.from('orders').insert(toDbRow('orders', order));
+    const dbRow = toDbRow('orders', order);
+    await encryptOrderRow(dbRow, order);
+    const { error } = await sb.from('orders').insert(dbRow);
     if(error){ toast('Could not place rental order: '+error.message, 'bad'); return; }
     // Stock lives on the items table, which is locked down to the owning
     // business via RLS - a renting customer can't upsert it directly, so the
@@ -7224,8 +7445,9 @@ async function signInWithIdentifierPassword(){
     if(lookupErr || !resolvedEmail){ toast('No account found for that mobile number','bad'); return; }
     email = resolvedEmail;
   }
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if(error){ toast('Incorrect mobile/email or password — new here? Sign up below.','bad'); return; }
+  if(data && data.user) await unlockMyPrivateKey(data.user.id, pass);
   closeSheet();
   toast('Signed in!');
 }
@@ -7302,7 +7524,7 @@ async function submitSignUp(){
   // over on its own again, no other code changes needed.
   if(data.session){
     toast("You're signed in!");
-    await finishSignupPostAuth(data.session.user.id);
+    await finishSignupPostAuth(data.session.user.id, pass);
     return;
   }
   _signupInFlight = false;
@@ -7313,14 +7535,22 @@ async function submitSignUp(){
 // sign-up form if valid, then resumes whatever the user was signing up to do
 // (business/delivery setup) - falling back to the mobile-number sheet only if no
 // phone was given up front, or it turns out to already be taken.
-async function finishSignupPostAuth(userId){
+async function finishSignupPostAuth(userId, password){
   _pendingSignupUserId = userId;
+  // Generates this account's encryption keypair right away, while the
+  // plaintext password from the signup form is still in scope -- see
+  // encryption_module.js above. `password` is null when this runs from
+  // submitVerifyCode()'s OTP path instead (a separate screen with no
+  // password field); that account just gets its keypair a little later,
+  // via the self-heal in unlockMyPrivateKey() on its first real login.
+  const keyCols = password ? await genKeypairAndWrap(password) : {};
   if(_pendingSignupPhone && /^[79]\d{6}$/.test(_pendingSignupPhone)){
     const email = _pendingVerifyEmail || state.customerEmail;
     const phoneToSave = _pendingSignupPhone;
-    const { error: profileErr } = await sb.from('user_profiles').insert({ user_id: userId, phone: phoneToSave, email });
+    const { error: profileErr } = await sb.from('user_profiles').insert({ user_id: userId, phone: phoneToSave, email, ...keyCols });
     _pendingSignupPhone = null;
     if(!profileErr){
+      __myPendingKeyCols = null;
       state.customerPhone = phoneToSave;
       _pendingVerifyEmail = null; _pendingSignupUserId = null;
       state.sheet = null; state.sheetData = null;
@@ -7426,7 +7656,7 @@ async function submitVerifyCode(){
   if(error){ toast(error.message,'bad'); return; }
   const userId = data.user ? data.user.id : (data.session && data.session.user ? data.session.user.id : null);
   toast("Account verified — you're signed in!");
-  await finishSignupPostAuth(userId);
+  await finishSignupPostAuth(userId, null);
 }
 async function resendVerifyCode(){
   const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
@@ -7446,12 +7676,17 @@ async function submitMobileNumber(){
   if(!/^[79]\d{6}$/.test(phone)){ toast('Enter a valid mobile number','bad'); return; }
   const userId = _pendingSignupUserId || state.customerId;
   const email = _pendingVerifyEmail || state.customerEmail;
-  const { error } = await sb.from('user_profiles').insert({ user_id: userId, phone, email });
+  // Picks up a keypair generated moments ago at signup (before there was a
+  // phone number / row to save it into) so it isn't lost -- see
+  // __myPendingKeyCols in the encryption helpers above.
+  const keyCols = __myPendingKeyCols || {};
+  const { error } = await sb.from('user_profiles').insert({ user_id: userId, phone, email, ...keyCols });
   if(error){
     if(error.code==='23505' || /duplicate/i.test(error.message)) toast('That mobile number is already registered to another account','bad');
     else toast('Could not save: '+error.message,'bad');
     return;
   }
+  __myPendingKeyCols = null;
   state.customerPhone = phone;
   _pendingVerifyEmail = null; _pendingSignupUserId = null;
   state.sheet = null; state.sheetData = null;
@@ -7560,7 +7795,9 @@ async function placeStoreOrder(bizId){
   // fail the privilege check and reject the whole insert. A plain insert only needs
   // INSERT privilege, which every column keeps.
   if(sb){
-    const { error } = await sb.from('orders').insert(toDbRow('orders', order));
+    const dbRow = toDbRow('orders', order);
+    await encryptOrderRow(dbRow, order);
+    const { error } = await sb.from('orders').insert(dbRow);
     if(error){ toast('Could not place order: '+error.message, 'bad'); return; }
     await rememberDeliveryAddress(deliveryTarget);
   }

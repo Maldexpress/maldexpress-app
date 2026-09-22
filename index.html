@@ -2435,13 +2435,14 @@ async function submitCompleteAuctionOrder(orderId){
   if(!o) return;
   const deliveryTarget = readDeliveryTargetFields();
   if(!deliveryTarget) return;
-  // Zone fee, total, and delivery_partner_payout are all computed inside
-  // complete_auction_order() itself now - the RPC's own preconditions (still
-  // awaiting_completion, caller is the auction's winning bidder) are the real guard.
+  // Shipping info is envelope-encrypted client-side (same helper placeStoreOrder uses)
+  // before it ever reaches the RPC - the RPC only accepts ciphertext now.
+  const dbRow = { receiver_name: deliveryTarget.receiverName, receiver_phone: deliveryTarget.receiverPhone, receiver_address: deliveryTarget.receiverAddress };
+  await encryptOrderRow(dbRow, o);
   const updated = await callOrderRpc('complete_auction_order',
     { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: _selectedPay,
-      p_delivery_target_type: deliveryTarget.deliveryTargetType, p_receiver_name: deliveryTarget.receiverName,
-      p_receiver_phone: deliveryTarget.receiverPhone, p_receiver_address: deliveryTarget.receiverAddress }, orderId);
+      p_delivery_target_type: deliveryTarget.deliveryTargetType, p_shipping_enc: dbRow.shipping_enc,
+      p_shipping_keys: dbRow.shipping_keys }, orderId);
   if(!updated) return;
   await rememberDeliveryAddress(deliveryTarget);
   closeSheet();

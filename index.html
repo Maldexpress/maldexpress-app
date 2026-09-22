@@ -2442,7 +2442,7 @@ async function submitCompleteAuctionOrder(orderId){
   const updated = await callOrderRpc('complete_auction_order',
     { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: _selectedPay,
       p_delivery_target_type: deliveryTarget.deliveryTargetType, p_shipping_enc: dbRow.shipping_enc,
-      p_shipping_keys: dbRow.shipping_keys }, orderId);
+      p_shipping_iv: dbRow.shipping_iv, p_shipping_keys: dbRow.shipping_keys }, orderId);
   if(!updated) return;
   await rememberDeliveryAddress(deliveryTarget);
   closeSheet();

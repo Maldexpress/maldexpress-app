@@ -2095,7 +2095,8 @@ async function loadDB(){
     DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
     DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
-    DB.bookings = (bk.data||[]).map(r=>fromDbRow('bookings',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.bookings = await Promise.all((bk.data||[]).map(async r=>{ const bkg=fromDbRow('bookings',r); await decryptBookingRow(bkg, r); return bkg; }));
+DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.bids = (bd.data||[]).map(r=>fromDbRow('bids',r));
     DB.categoryRequests = (cr.data||[]).map(r=>fromDbRow('categoryRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
@@ -4105,54 +4106,108 @@ function sheetAcceptBooking(){
   <p class="muted" style="font-size:.78em; margin-bottom:10px;">An amount to hold the booking - collect it from the customer yourself (cash or your own transfer), then mark it collected from this booking's card.</p>
   <button class="btn btn-primary" onclick="acceptBooking('${bk.id}')">Accept booking</button>`;
 }
+async function encryptBookingRow(dbRow, booking){
+try{
+if(dbRow.customer_phone || dbRow.note){
+const recipients = {};
+if(booking.customerId){
+const custKey = (booking.customerId===state.customerId && __myPublicKeyB64) ? __myPublicKeyB64 : await lookupPublicKey(booking.customerId);
+if(custKey) recipients[booking.customerId] = custKey;
+}
+const biz = DB.businesses.find(b=>b.id===booking.businessId);
+if(biz && biz.ownerId){
+const ownerKey = await businessOwnerPublicKeyB64(booking.businessId);
+if(ownerKey) recipients[biz.ownerId] = ownerKey;
+}
+const { enc, iv, keys } = await encryptForRecipients({ phone: dbRow.customer_phone, note: dbRow.note }, recipients);
+dbRow.contact_enc = enc; dbRow.contact_iv = iv; dbRow.contact_keys = keys;
+dbRow.customer_phone = null; dbRow.note = null;
+}
+if(dbRow.slip_url){
+const recipients = {};
+if(booking.customerId && __myPublicKeyB64 && booking.customerId===state.customerId) recipients[booking.customerId] = __myPublicKeyB64;
+const biz = DB.businesses.find(b=>b.id===booking.businessId);
+if(biz && biz.ownerId){
+const ownerKey = await businessOwnerPublicKeyB64(booking.businessId);
+if(ownerKey) recipients[biz.ownerId] = ownerKey;
+}
+const { enc, iv, keys } = await encryptForRecipients({ url: dbRow.slip_url }, recipients);
+dbRow.slip_enc = enc; dbRow.slip_iv = iv; dbRow.slip_keys = keys;
+dbRow.slip_url = null;
+}
+} catch(e){ console.error('encryptBookingRow failed, leaving booking unencrypted this write', e); }
+}
+
+async function decryptBookingRow(booking, dbRow){
+try{
+if(dbRow.contact_enc){
+const out = await decryptForMe(dbRow.contact_enc, dbRow.contact_iv, dbRow.contact_keys);
+if(out){ booking.customerPhone = out.phone||''; booking.note = out.note||''; }
+}
+if(dbRow.slip_enc){
+const out = await decryptForMe(dbRow.slip_enc, dbRow.slip_iv, dbRow.slip_keys);
+if(out) booking.slipDataUrl = out.url||null;
+}
+} catch(e){ console.error('decryptBookingRow failed', e); }
+}
+
+
 async function acceptBooking(id){
-  const bk = DB.bookings.find(x=>x.id===id);
-  if(bk && bookingOverlapsExisting(bk.itemId, bk.requestedDate, bk.days, bk.id)){
-    toast("Can't accept — those dates overlap a booking you've already accepted for this item", 'bad');
-    return;
-  }
-  const charge = Number(val('booking_charge_amt')||0);
-  const patch = { status:'accepted', booking_charge: charge>0?charge:null, charge_status: charge>0?'pending':null, decided_at:new Date().toISOString() };
-  const { data, error } = await sb.from('rental_bookings').update(patch).eq('id', id).select();
-  if(error){ toast('Could not accept booking: '+error.message, 'bad'); return; }
-  if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
-  const updated = fromDbRow('bookings', data[0]);
-  const idx = DB.bookings.findIndex(bk=>bk.id===id);
-  if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
-  closeSheet(); toast('Booking accepted'); render();
+const bk = DB.bookings.find(x=>x.id===id);
+if(bk && bookingOverlapsExisting(bk.itemId, bk.requestedDate, bk.days, bk.id)){
+toast("Can't accept — those dates overlap a booking you've already accepted for this item", 'bad');
+return;
 }
+const charge = Number(val('booking_charge_amt')||0);
+const patch = { status:'accepted', booking_charge: charge>0?charge:null, charge_status: charge>0?'pending':null, decided_at:new Date().toISOString() };
+const { data, error } = await sb.from('rental_bookings').update(patch).eq('id', id).select();
+if(error){ toast('Could not accept booking: '+error.message, 'bad'); return; }
+if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
+const updated = fromDbRow('bookings', data[0]);
+await decryptBookingRow(updated, data[0]);
+const idx = DB.bookings.findIndex(bk=>bk.id===id);
+if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
+closeSheet(); toast('Booking accepted'); render();
+}
+
 async function declineBooking(id){
-  const patch = { status:'declined', decided_at:new Date().toISOString() };
-  const { data, error } = await sb.from('rental_bookings').update(patch).eq('id', id).select();
-  if(error){ toast('Could not decline booking: '+error.message, 'bad'); return; }
-  if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
-  const updated = fromDbRow('bookings', data[0]);
-  const idx = DB.bookings.findIndex(bk=>bk.id===id);
-  if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
-  toast('Booking declined'); render();
+const patch = { status:'declined', decided_at:new Date().toISOString() };
+const { data, error } = await sb.from('rental_bookings').update(patch).eq('id', id).select();
+if(error){ toast('Could not decline booking: '+error.message, 'bad'); return; }
+if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
+const updated = fromDbRow('bookings', data[0]);
+await decryptBookingRow(updated, data[0]);
+const idx = DB.bookings.findIndex(bk=>bk.id===id);
+if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
+toast('Booking declined'); render();
 }
+
 async function markBookingChargeCollected(id){
-  const { data, error } = await sb.from('rental_bookings').update({ charge_status:'collected' }).eq('id', id).select();
-  if(error){ toast('Could not update booking: '+error.message, 'bad'); return; }
-  if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
-  const updated = fromDbRow('bookings', data[0]);
-  const idx = DB.bookings.findIndex(bk=>bk.id===id);
-  if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
-  toast('Marked as collected'); render();
+const { data, error } = await sb.from('rental_bookings').update({ charge_status:'collected' }).eq('id', id).select();
+if(error){ toast('Could not update booking: '+error.message, 'bad'); return; }
+if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
+const updated = fromDbRow('bookings', data[0]);
+await decryptBookingRow(updated, data[0]);
+const idx = DB.bookings.findIndex(bk=>bk.id===id);
+if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
+toast('Marked as collected'); render();
 }
+
 // The two customer-side booking actions (cancel, submit-slip) go through
 // cancel_booking_request()/submit_booking_slip() - see the schema comment
 // above explaining why those needed their own SECURITY DEFINER functions
 // rather than a customer update policy like the business gets.
 async function callBookingRpc(rpcName, args, bookingId, failMsg){
-  const { data, error } = await sb.rpc(rpcName, args);
-  if(error){ toast('Could not update booking: '+error.message, 'bad'); return null; }
-  if(!data || !data.length){ toast(failMsg || "Couldn't update this booking — it may have changed", 'bad'); return null; }
-  const updated = fromDbRow('bookings', data[0]);
-  const idx = DB.bookings.findIndex(bk=>bk.id===bookingId);
-  if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
-  return updated;
+const { data, error } = await sb.rpc(rpcName, args);
+if(error){ toast('Could not update booking: '+error.message, 'bad'); return null; }
+if(!data || !data.length){ toast(failMsg || "Couldn't update this booking — it may have changed", 'bad'); return null; }
+const updated = fromDbRow('bookings', data[0]);
+await decryptBookingRow(updated, data[0]);
+const idx = DB.bookings.findIndex(bk=>bk.id===bookingId);
+if(idx>=0) DB.bookings[idx] = updated; else DB.bookings.unshift(updated);
+return updated;
 }
+
 // Only reachable while the store hasn't responded yet (see bookingCardCust()/
 // sheetBookingDetailCust()) - once accepted, the item's dates are held for
 // this booking and the store may already be expecting payment, so the
@@ -7340,34 +7395,37 @@ function sheetBookRentalItem(){
   </div>` : ''}`;
 }
 async function submitBookRentalItem(itemId){
-  const item = DB.items.find(i=>i.id===itemId);
-  if(!item) return;
-  if(sb && !state.authed){ openSheet('signIn'); return; }
-  const date = _bookStartDate;
-  if(!date){ toast('Choose a start date','bad'); return; }
-  if(!_bookEndDate){ toast('Tap an end date too (or tap the start date again for a single day)','bad'); return; }
-  const days = bookRangeDays();
-  if(bookingOverlapsExisting(item.id, date, days)){ _bookWarning = `These dates aren't available — part of ${fmtDateShort(date)}${days>1?` – ${fmtDateShort(_bookEndDate)}`:''} is already booked for this item.`; render(); return; }
-  const biz = DB.businesses.find(b=>b.id===item.businessId);
-  if(!biz) return;
-  const booking = {
-    id: uid('bkg'), itemId:item.id, itemName:item.name, businessId:biz.id, businessName:biz.name,
-    customerId: state.customerId, customerEmail: state.customerEmail,
-    customerName: state.customerName, customerPhone: state.customerPhone||'',
-    requestedDate: date, days:days, note: val('book_note'),
-    status:'pending', bookingCharge:null, chargeStatus:null,
-    createdAt: Date.now(), decidedAt: null
-  };
-  if(sb){
-    const { error } = await sb.from('rental_bookings').insert(toDbRow('bookings', booking));
-    if(error){ toast('Could not send booking request: '+error.message, 'bad'); return; }
-  }
-  DB.bookings.unshift(booking);
-  _bookStartDate = null; _bookEndDate = null; _bookWarning = null;
-  closeSheet();
-  go('custOrders');
-  toast('Booking request sent!');
+const item = DB.items.find(i=>i.id===itemId);
+if(!item) return;
+if(sb && !state.authed){ openSheet('signIn'); return; }
+const date = _bookStartDate;
+if(!date){ toast('Choose a start date','bad'); return; }
+if(!_bookEndDate){ toast('Tap an end date too (or tap the start date again for a single day)','bad'); return; }
+const days = bookRangeDays();
+if(bookingOverlapsExisting(item.id, date, days)){ _bookWarning = `These dates aren't available — part of ${fmtDateShort(date)}${days>1?` – ${fmtDateShort(_bookEndDate)}`:''} is already booked for this item.`; render(); return; }
+const biz = DB.businesses.find(b=>b.id===item.businessId);
+if(!biz) return;
+const booking = {
+id: uid('bkg'), itemId:item.id, itemName:item.name, businessId:biz.id, businessName:biz.name,
+customerId: state.customerId, customerEmail: state.customerEmail,
+customerName: state.customerName, customerPhone: state.customerPhone||'',
+requestedDate: date, days:days, note: val('book_note'),
+status:'pending', bookingCharge:null, chargeStatus:null,
+createdAt: Date.now(), decidedAt: null
+};
+if(sb){
+const dbRow = toDbRow('bookings', booking);
+await encryptBookingRow(dbRow, booking);
+const { error } = await sb.from('rental_bookings').insert(dbRow);
+if(error){ toast('Could not send booking request: '+error.message, 'bad'); return; }
 }
+DB.bookings.unshift(booking);
+_bookStartDate = null; _bookEndDate = null; _bookWarning = null;
+closeSheet();
+go('custOrders');
+toast('Booking request sent!');
+}
+
 let _pendingVerifyEmail = null;
 let _pendingSignupUserId = null;
 let _pendingSignupPhone = null;
@@ -8200,20 +8258,23 @@ function sheetUploadBookingSlip(){
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitBookingSlip('${bk.id}')">Submit for approval</button>`;
 }
 async function submitBookingSlip(id){
-  const bk = DB.bookings.find(x=>x.id===id);
-  const biz = bk ? DB.businesses.find(b=>b.id===bk.businessId) : null;
-  const slipData = _slipData;
-  if(!slipData){ toast('Choose a slip image first','bad'); return; }
-  const enteredAmount = Number(val('slipAmountUpload'));
-  const enteredAccount = val('slipAccountUpload');
-  if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
-  if(bk && Math.abs(enteredAmount - bk.bookingCharge) > 0.01){ toast(`That amount doesn't match the booking charge (${money(bk.bookingCharge)})`, 'bad'); return; }
-  if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
-  const updated = await callBookingRpc('submit_booking_slip', { p_booking_id: id, p_slip_url: slipData }, id);
-  _slipData = null;
-  if(!updated) return;
-  closeSheet(); toast('Slip submitted — waiting for store approval'); render();
+const bk = DB.bookings.find(x=>x.id===id);
+const biz = bk ? DB.businesses.find(b=>b.id===bk.businessId) : null;
+const slipData = _slipData;
+if(!slipData){ toast('Choose a slip image first','bad'); return; }
+const enteredAmount = Number(val('slipAmountUpload'));
+const enteredAccount = val('slipAccountUpload');
+if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
+if(bk && Math.abs(enteredAmount - bk.bookingCharge) > 0.01){ toast(`That amount doesn't match the booking charge (${money(bk.bookingCharge)})`, 'bad'); return; }
+if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
+const dbRow = { slip_url: slipData };
+await encryptBookingRow(dbRow, bk);
+const updated = await callBookingRpc('submit_booking_slip', { p_booking_id: id, p_slip_enc: dbRow.slip_enc, p_slip_iv: dbRow.slip_iv, p_slip_keys: dbRow.slip_keys }, id);
+_slipData = null;
+if(!updated) return;
+closeSheet(); toast('Slip submitted — waiting for store approval'); render();
 }
+
 
 /* =================== INIT =================== */
 // Runs after any sign-in (initial load or a later auth state change alike), then

@@ -608,6 +608,16 @@
   .fee-card .row{padding:3px 0; font-size:.9em; gap:16px;}
   .fee-card .row span:last-child, .fee-card .row strong:last-child{white-space:nowrap; font-variant-numeric:tabular-nums;}
 
+  /* Payment choice highlight, Swipe mark, contact buttons */
+  .pay-option.selected{border-color:var(--channel); background:#fff; box-shadow:var(--shadow);}
+  .swipe-ic{background:var(--channel) !important; color:var(--lagoon); font-weight:900;}
+  .contact-row{display:flex; flex-direction:column; gap:8px; margin-bottom:12px; padding:12px 14px; border-radius:18px; background:var(--ground);}
+  .contact-row .muted{font-size:.86em;}
+  .contact-row a{color:var(--ink); font-weight:700;}
+  .contact-btns{display:flex; gap:8px; flex-wrap:wrap;}
+  .contact-btn{flex:1; min-width:84px; text-align:center; padding:9px 12px; border-radius:999px; background:#fff; color:var(--ink) !important; font-weight:800; font-size:.86em; text-decoration:none; box-shadow:var(--shadow);}
+  .contact-btn:active{transform:scale(.96);}
+
   /* ---------- Admin ---------- */
   /* Deep-channel header with the four counts an admin checks first; each
      count jumps to its tab. */
@@ -1998,6 +2008,47 @@ as $$
   returning o.*;
 $$;
 
+-- Auctions and rentals can also be paid by Swipe. A rental is inserted
+-- straight into 'awaiting_swipe'. An auction win is completed by
+-- complete_auction_order (production version lives in 05_encryption.sql)
+-- with payment_method 'swipe', which leaves it 'pending_cash'; this then
+-- opens it for payment.
+create or replace function start_swipe_payment(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set payment_status = 'awaiting_swipe'
+  where o.id = p_order_id
+    and o.customer_id = auth.uid()
+    and o.payment_method = 'swipe' and o.payment_status = 'pending_cash'
+    and exists (select 1 from auction_listings al where al.order_id = o.id)
+    and exists (select 1 from business_swipe_accounts s where s.business_id = o.business_id)
+  returning o.*;
+$$;
+grant execute on function start_swipe_payment(text) to authenticated;
+
+-- Rentals may only start unpaid too (the policy above still let a rental be
+-- inserted with any payment_status, including 'paid').
+drop policy if exists "customer insert own order" on orders;
+create policy "customer insert own order" on orders for insert
+  with check (
+    auth.uid() = customer_id
+    and swipe_reference is null and swipe_payment_link is null and paid_at is null
+    and swipe_fee is null and platform_fee is null and platform_fee_due is null and fee_settled_at is null
+    and (
+      (rental_item_id is not null and (
+        (payment_method = 'transfer' and payment_status = 'pending_transfer')
+        or (payment_method = 'cash_on_pickup' and payment_status = 'pending_cash')
+        or (payment_method = 'swipe' and payment_status = 'awaiting_swipe'
+            and exists (select 1 from business_swipe_accounts s where s.business_id = orders.business_id))
+      ))
+      or (rental_item_id is null and payment_status = 'awaiting_completion')
+      or (rental_item_id is null and payment_method = 'swipe' and payment_status = 'awaiting_approval')
+    )
+  );
+
 -- Swipe orders are prepaid, so the rider never collects anything: the store
 -- always owes the rider their zone fee once delivered.
 create or replace function mark_delivered(p_order_id text, p_boat_photo_url text default null)
@@ -2355,6 +2406,49 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   return updated;
 }
+// Auctions and rentals can be paid by Swipe, bank transfer (slip, which the
+// store approves) or cash (the store marks it received). Swipe shows only
+// when the store has connected it.
+function payChoiceHTML(biz, cash, label){
+  const swipe = biz && biz.swipeConnected;
+  if(!swipe && _selectedPay==='swipe') _selectedPay = 'transfer';
+  const on = m => _selectedPay===m ? ' selected' : '';
+  return `
+  <div class="field">
+    <label>${label||'How will you pay?'}</label>
+    <div class="stack" role="radiogroup">
+      ${swipe ? `<button type="button" class="pay-option${on('swipe')}" role="radio" aria-checked="${_selectedPay==='swipe'}" onclick="selectPay('swipe')" id="pay_swipe">
+        <div class="ic swipe-ic">S</div>
+        <div class="txt"><h3>Swipe</h3><small>Pay now with your Swipe app</small></div>
+      </button>` : ''}
+      <button type="button" class="pay-option${on('transfer')}" role="radio" aria-checked="${_selectedPay==='transfer'}" onclick="selectPay('transfer')" id="pay_transfer">
+        <div class="ic">🏦</div>
+        <div class="txt"><h3>Bank transfer to store</h3><small>Upload your slip after paying. The store checks it</small></div>
+      </button>
+      <button type="button" class="pay-option${on('cash_to_delivery')}" role="radio" aria-checked="${_selectedPay==='cash_to_delivery'}" onclick="selectPay('cash_to_delivery')" id="pay_cash">
+        <div class="ic">💵</div>
+        <div class="txt"><h3>${cash.title}</h3><small>${cash.sub}</small></div>
+      </button>
+    </div>
+  </div>`;
+}
+// Call / WhatsApp / Viber for a Maldives number, so a store and its
+// customer can sort things out before (and after) payment.
+function contactHTML(phone, who){
+  const digits = String(phone||'').replace(/\D/g,'');
+  if(digits.length < 7) return '';
+  const local = digits.length===7 ? digits : digits.replace(/^960/,'');
+  const intl = '960'+local;
+  return `
+  <div class="contact-row" onclick="event.stopPropagation()">
+    <span class="muted">${who} · <a href="tel:+${intl}">${local}</a></span>
+    <div class="contact-btns">
+      <a class="contact-btn" href="tel:+${intl}" aria-label="Call ${who}">Call</a>
+      <a class="contact-btn" href="https://wa.me/${intl}" target="_blank" rel="noopener" aria-label="WhatsApp ${who}">WhatsApp</a>
+      <a class="contact-btn" href="viber://chat?number=%2B${intl}" aria-label="Viber ${who}">Viber</a>
+    </div>
+  </div>`;
+}
 // ---------- Swipe order payments (Buy now orders) ----------
 // Flow: placed (awaiting_approval) -> store approves (awaiting_swipe) or
 // declines -> customer pays on the store's own Swipe link -> paid (set by
@@ -2387,6 +2481,12 @@ async function declineSwipeOrder(id){
   const updated = await callOrderRpc('decline_swipe_order', { p_order_id: id }, id, "Couldn't decline this order. It may already be paid");
   if(!updated) return;
   toast('Order declined'); render();
+}
+async function retryAuctionSwipe(id){
+  const ready = SWIPE_PREVIEW || await callOrderRpc('start_swipe_payment', { p_order_id: id }, id, "Couldn't set up the Swipe payment. Try again in a moment");
+  if(!ready) return;
+  const o = DB.orders.find(x=>x.id===id); if(o && SWIPE_PREVIEW) o.paymentStatus = 'awaiting_swipe';
+  payOrderWithSwipe(id);
 }
 let _swipePayBusy = false;
 async function payOrderWithSwipe(id){
@@ -2463,9 +2563,11 @@ function swipeBizActionHTML(o){
       <button class="btn btn-primary" style="flex:2;" onclick="approveSwipeOrder('${o.id}')">Approve order</button>
       <button class="btn btn-outline" style="flex:1;" onclick="declineSwipeOrder('${o.id}')">Decline</button>
     </div>`;
+  const isBuyNow = !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id);
   if(o.paymentStatus==='awaiting_swipe') return `
-    <div class="card tight notice-info"><p style="font-size:.88em;">Approved. Waiting for ${who} to pay ${money(o.total)} with Swipe. You can send it out once it's paid.</p></div>
-    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineSwipeOrder('${o.id}')">Cancel order</button>`;
+    <div class="card tight notice-info"><p style="font-size:.88em;">${isBuyNow?'Approved. ':''}Waiting for ${who} to pay ${money(o.total)} with Swipe. You can hand it over once it's paid.</p></div>
+    ${isBuyNow ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineSwipeOrder('${o.id}')">Cancel order</button>` : ''}`;
+  if(o.paymentStatus==='pending_cash') return `<div class="card tight notice-warn"><p style="font-size:.88em;">${who} chose Swipe but hasn't started the payment yet.</p></div>`;
   return `<div class="status-pill ok" style="display:inline-block;">Paid with Swipe ✓</div>${swipeFeeRowsHTML(o)}`;
 }
 function custSwipeHTML(o, inCard){
@@ -2475,8 +2577,10 @@ function custSwipeHTML(o, inCard){
   const stop = inCard ? 'event.stopPropagation(); ' : '';
   if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${store} couldn't take this order. You haven't been charged.</p>`;
   if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${store} to confirm your order. You'll pay with Swipe after that.</p>`;
+  if(o.paymentStatus==='pending_cash') return `
+    <button class="btn btn-primary ${inCard?'btn-sm':''}" style="width:100%; margin-top:10px;" onclick="${stop}retryAuctionSwipe('${o.id}')">Pay ${money(o.total)} with Swipe</button>`;
   if(o.paymentStatus==='awaiting_swipe') return `
-    <p class="muted" style="font-size:.85em; margin-top:8px;">${store} confirmed your order. Pay now to send it on its way.</p>
+    <p class="muted" style="font-size:.85em; margin-top:8px;">${o.rentalItemId || DB.auctions.some(a=>a.orderId===o.id) ? 'Pay now so the store can hand it over.' : `${store} confirmed your order. Pay now to send it on its way.`}</p>
     <button class="btn btn-primary ${inCard?'btn-sm':''}" style="width:100%; margin-top:10px;" onclick="${stop}payOrderWithSwipe('${o.id}')">Pay ${money(o.total)} with Swipe</button>`;
   return '';
 }
@@ -2777,19 +2881,7 @@ function sheetCompleteAuctionOrder(){
     <div class="divider"></div>
     <div class="row between"><strong>Total</strong><strong class="price" id="cao_total">${money(o.itemsTotal+shownFee+extraFee)}</strong></div>
   </div>
-  <div class="field">
-    <label>How will you pay?</label>
-    <div class="stack">
-      <button class="pay-option" onclick="selectPay('transfer')" id="pay_transfer">
-        <div class="ic">🏦</div>
-        <div class="txt"><h3>Bank transfer to store</h3><small>Upload your slip after paying</small></div>
-      </button>
-      <button class="pay-option" onclick="selectPay('cash_to_delivery')" id="pay_cash">
-        <div class="ic">💵</div>
-        <div class="txt"><h3>Cash or transfer on delivery</h3><small>Pay when your order arrives</small></div>
-      </button>
-    </div>
-  </div>
+  ${payChoiceHTML(DB.businesses.find(b=>b.id===o.businessId), {title:'Cash on delivery', sub:'Pay the delivery partner when it arrives. The store confirms once it gets the cash'})}
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitCompleteAuctionOrder('${o.id}')">Confirm order</button>`;
 }
 function refreshCompleteOrderTotals(){
@@ -2810,12 +2902,21 @@ async function submitCompleteAuctionOrder(orderId){
   // before it ever reaches the RPC - the RPC only accepts ciphertext now.
   const dbRow = { receiver_name: deliveryTarget.receiverName, receiver_phone: deliveryTarget.receiverPhone, receiver_address: deliveryTarget.receiverAddress };
   await encryptOrderRow(dbRow, o);
+  const payingBySwipe = _selectedPay==='swipe';
   const updated = await callOrderRpc('complete_auction_order',
     { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: _selectedPay,
       p_delivery_target_type: deliveryTarget.deliveryTargetType, p_shipping_enc: dbRow.shipping_enc,
       p_shipping_iv: dbRow.shipping_iv, p_shipping_keys: dbRow.shipping_keys }, orderId);
   if(!updated) return;
   await rememberDeliveryAddress(deliveryTarget);
+  // Swipe: open the order for payment (start_swipe_payment moves it to
+  // awaiting_swipe), then go straight to Swipe.
+  if(payingBySwipe){
+    const ready = await callOrderRpc('start_swipe_payment', { p_order_id: orderId }, orderId, "Couldn't set up the Swipe payment. Try paying from My orders");
+    closeSheet(); render();
+    if(ready) payOrderWithSwipe(orderId);
+    return;
+  }
   closeSheet();
   toast('Order confirmed!');
   render();
@@ -4543,7 +4644,7 @@ function bookingCardBiz(bk){
   <div class="glass card">
     <div class="row between"><h3>${bk.itemName}</h3>${pill}</div>
     <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${bk.customerName} · wants ${bk.days} day${bk.days>1?'s':''} from ${fmtDateShort(bk.requestedDate)}</p>
-    ${bk.customerPhone?`<p class="muted" style="font-size:.82em; margin-bottom:8px;">${bk.customerPhone}</p>`:''}
+    ${bk.customerPhone?contactHTML(bk.customerPhone, bk.customerName||'Customer'):''}
     ${bk.note?`<p class="muted" style="font-size:.82em; margin-bottom:8px;">"${bk.note}"</p>`:''}
     ${bk.status==='accepted' && bk.bookingCharge!=null ? `<div class="row between" style="margin-bottom:8px;"><span class="muted">Booking charge</span><strong>${money(bk.bookingCharge)}</strong></div>` : ''}
     ${bk.status==='pending' ? `
@@ -4911,7 +5012,8 @@ function orderDetailBizBody(o){
   const rentalFeeLine = (o.rentalItemId && o.rentalFeeTiming==='on_return') ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : '';
   return `
     <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
-    <p class="muted" style="margin-bottom:12px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
+    <p class="muted" style="margin-bottom:8px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
+    ${contactHTML(o.customerPhone || o.receiverPhone, 'Customer')}
     ${o.deliveryTargetType==='pickup' ? `
     <div class="glass card tight" style="margin-bottom:12px;">
       <p class="muted" style="font-size:.78em; margin-bottom:4px;">📦 Pickup from</p>
@@ -7512,19 +7614,7 @@ function sheetRentItem(){
     <div class="row between"><strong>Total</strong><strong class="price" id="rent_total">${money(rentCost+deposit+extraFee)}</strong></div>
     `}
   </div>
-  <div class="field">
-    <label>How will you pay ${isDeferred?'the advance':''}?</label>
-    <div class="stack">
-      <button class="pay-option" onclick="selectPay('transfer')" id="pay_transfer">
-        <div class="ic">🏦</div>
-        <div class="txt"><h3>Bank transfer to store</h3><small>Upload your slip after paying</small></div>
-      </button>
-      <button class="pay-option" onclick="selectPay('cash_to_delivery')" id="pay_cash">
-        <div class="ic">💵</div>
-        <div class="txt"><h3>Cash to the store</h3><small>${fulfillment==='pickup'?'Visit and pay to the store':'Pay to the store'} — no delivery partner involved</small></div>
-      </button>
-    </div>
-  </div>
+  ${payChoiceHTML(biz, {title:'Cash to the store', sub:`${fulfillment==='pickup'?'Pay when you pick it up':'Pay the store'}. The store marks it received`}, `How will you pay${isDeferred?' the advance':''}?`)}
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitRentItem('${item.id}')">Confirm rental</button>
   ${_rentWarning ? `
   <div class="cal-warn-overlay">
@@ -7607,8 +7697,8 @@ async function submitRentItem(itemId){
     deliveryPartnerPayout: 0, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
     needsDeliveryPartner: false, rentalPayoutTiming: null,
-    paymentMethod: _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
-    paymentStatus: _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
+    paymentMethod: _selectedPay==='swipe' && biz.swipeConnected ? 'swipe' : _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
+    paymentStatus: _selectedPay==='swipe' && biz.swipeConnected ? 'awaiting_swipe' : _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null,
     rentalDays: _rentDays, rentalItemId: item.id, rentalFulfillment: fulfillment,
     // See mark_rental_fulfilled/mark_delivered's payment_status='paid' gate -
@@ -7639,6 +7729,7 @@ async function submitRentItem(itemId){
   DB.orders.unshift(order);
   closeSheet();
   go('custOrders');
+  if(order.paymentMethod==='swipe'){ toast('Rental booked. Opening Swipe to pay'); payOrderWithSwipe(order.id); return; }
   toast('Rental order placed!');
 }
 /* ---- Rental bookings: a customer can send a booking request for any rental
@@ -8179,7 +8270,13 @@ async function signOutCustomer(){
 }
 let _selectedPay = 'transfer';
 let _selectedZone = 'male';
-function selectPay(m){ _selectedPay=m; document.getElementById('pay_transfer').style.outline = m==='transfer'?'2px solid var(--coral)':'none'; document.getElementById('pay_cash').style.outline = m==='cash_to_delivery'?'2px solid var(--coral)':'none'; }
+function selectPay(m){
+  _selectedPay = m;
+  [['swipe','pay_swipe'],['transfer','pay_transfer'],['cash_to_delivery','pay_cash']].forEach(([k,id])=>{
+    const el = document.getElementById(id); if(!el) return;
+    el.classList.toggle('selected', k===m); el.setAttribute('aria-checked', k===m);
+  });
+}
 // Places just ONE store's slice of the cart as its own order - a transfer needs a
 // slip attached first (that's what "moves the card to orders": there's no separate
 // pending-transfer step here, the order is created already slip_uploaded so the
@@ -8515,7 +8612,8 @@ function sheetCustOrderDetail(){
     <h2 style="margin:0;">Order #${o.id.slice(-5).toUpperCase()}</h2>
     ${paymentStatusPill(o)}
   </div>
-  <p class="muted" style="font-size:.85em; margin:4px 0 12px;">${o.businessName} · ${new Date(o.createdAt).toLocaleString()}</p>
+  <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · ${new Date(o.createdAt).toLocaleString()}</p>
+  ${biz && biz.phone ? contactHTML(biz.phone, biz.name) : ''}
   ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:10px;">🚚 Out for delivery</div>` : ''}
   ${o.deliveryTargetType==='pickup' ? `
   <div class="glass card tight" style="margin-bottom:12px;">

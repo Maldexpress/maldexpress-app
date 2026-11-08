@@ -15,9 +15,34 @@
 // Requires these secrets (Supabase Dashboard -> Edge Functions -> Secrets):
 //   SWIPE_TOKEN_URL     - OAuth2 client-credentials token endpoint
 //   SWIPE_API_BASE_URL  - Swipe API base (payments endpoint is {base}/api/v1/payments)
-// SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY are auto-provided.
+// SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY are auto-provided.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createRemoteJWKSet, jwtVerify } from "npm:jose@5.9.6";
+
+// Accounts live in Firebase Auth (project "maldexpress"). The caller sends
+// its Firebase ID token; we verify it against Google's public keys and
+// require a verified email, the same rule as public.app_uid() in SQL.
+// Deploy with --no-verify-jwt: the Supabase gateway doesn't check Firebase
+// tokens itself, this function does.
+const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "maldexpress";
+const FIREBASE_JWKS = createRemoteJWKSet(
+  new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
+);
+async function firebaseUid(authHeader: string): Promise<string | null> {
+  const token = authHeader.replace(/^Bearer\s+/i, "");
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, FIREBASE_JWKS, {
+      issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+      audience: FIREBASE_PROJECT_ID,
+    });
+    if (payload.email_verified !== true || typeof payload.sub !== "string" || !payload.sub) return null;
+    return payload.sub;
+  } catch {
+    return null;
+  }
+}
 
 const SWIPE_TOKEN_URL = Deno.env.get("SWIPE_TOKEN_URL") ?? "";
 const SWIPE_API_BASE_URL = Deno.env.get("SWIPE_API_BASE_URL") ?? "";
@@ -67,14 +92,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-    const { data: { user }, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !user) return jsonResponse({ error: "Not authenticated" }, 401);
+    const uid = await firebaseUid(req.headers.get("Authorization") ?? "");
+    if (!uid) return jsonResponse({ error: "Not signed in" }, 401);
 
     const { orderId } = await req.json();
     if (!orderId) return jsonResponse({ error: "orderId is required" }, 400);
@@ -87,7 +106,7 @@ Deno.serve(async (req) => {
       .eq("id", orderId)
       .maybeSingle();
     if (orderErr || !order) return jsonResponse({ error: "Order not found" }, 404);
-    if (order.customer_id !== user.id) return jsonResponse({ error: "Not your order" }, 403);
+    if (order.customer_id !== uid) return jsonResponse({ error: "Not your order" }, 403);
     if (order.payment_method !== "swipe") return jsonResponse({ error: "This order isn't paid by Swipe" }, 400);
     if (order.status === "declined") return jsonResponse({ error: "The store declined this order" }, 409);
     if (order.payment_status === "paid") return jsonResponse({ error: "This order is already paid" }, 409);

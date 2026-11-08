@@ -26,6 +26,10 @@
      below (already pointing at the real Maldexpress project) actually work
      once this file is hosted anywhere outside that sandbox, e.g. GitHub Pages. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
+<!-- Firebase Auth handles accounts (sign-up, email verification, sign-in);
+     Supabase stores the data and checks the Firebase login on every request. -->
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.js"></script>
 <style>
   /* "Sea of Stars": the bioluminescent shores of Vaadhoo at night. A deep
      night-ocean ground lit by drifting plankton glow (cyan), electric blue
@@ -723,9 +727,50 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // the offline sample data instead and say so on screen (see render()).
 const SB_CONFIGURED = SUPABASE_URL.startsWith('http');
 const SB_LIB_MISSING = SB_CONFIGURED && !(window.supabase && typeof window.supabase.createClient === 'function');
+// Firebase project "maldexpress" (public web config, safe to ship).
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDH1UV0oqOW2ftAd-KqoJF2yuKeR0H6QF8",
+  authDomain: "maldexpress.firebaseapp.com",
+  projectId: "maldexpress",
+  storageBucket: "maldexpress.firebasestorage.app",
+  messagingSenderId: "274896174071",
+  appId: "1:274896174071:web:26e00205bd94fa996b4cf2"
+};
+const FB_LIB_MISSING = SB_CONFIGURED && !(window.firebase && typeof window.firebase.initializeApp === 'function' && window.firebase.auth);
+const fbAuth = (SB_CONFIGURED && !FB_LIB_MISSING) ? (window.firebase.initializeApp(FIREBASE_CONFIG), window.firebase.auth()) : null;
+// Supabase gets the signed-in Firebase user's ID token on every request
+// (third-party auth). The database's public.app_uid() only accepts tokens
+// from this Firebase project with a verified email, so an unverified
+// account acts as a signed-out visitor. With accessToken set, sb.auth.* is
+// unavailable; all account actions go through fbAuth instead.
 const sb = (SB_CONFIGURED && !SB_LIB_MISSING)
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      accessToken: async () => {
+        const u = fbAuth && fbAuth.currentUser;
+        return u && u.emailVerified ? await u.getIdToken() : null;
+      }
+    })
   : null;
+// Firebase user -> the session shape applySession() has always used.
+function fbSession(u){
+  return u && u.emailVerified ? { user: { id: u.uid, email: u.email, user_metadata: { full_name: u.displayName || '' } } } : null;
+}
+// Verification and password-reset emails link back to this page.
+function fbActionSettings(){
+  return (location.protocol==='https:' || location.protocol==='http:') ? { url: location.origin + location.pathname } : undefined;
+}
+// Firebase error codes -> plain messages.
+function fbErrorText(e){
+  const c = (e && e.code) || '';
+  if(c==='auth/email-already-in-use') return 'That email already has an account. Sign in instead';
+  if(c==='auth/invalid-email') return "That email address doesn't look right";
+  if(c==='auth/weak-password') return 'Use a password with at least 6 characters';
+  if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Incorrect mobile/email or password. New here? Sign up below';
+  if(c==='auth/too-many-requests') return 'Too many tries. Wait a few minutes and try again';
+  if(c==='auth/network-request-failed') return "Can't reach the sign-in service. Check your connection";
+  if(c==='auth/unauthorized-continue-uri' || c==='auth/unauthorized-domain') return "This site address isn't allowed in Firebase yet (Authentication > Settings > Authorized domains)";
+  return (e && e.message) || 'Something went wrong';
+}
 /* ---- SQL to run once in Supabase → SQL Editor ----
 create extension if not exists "pgcrypto";
 
@@ -2151,7 +2196,8 @@ let storageReady = false;
 // trade-off password-manager apps make between convenience and never
 // letting the server hold a usable private key.
 
-const DELIVERY_POOL_PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuQHPzCTc4smV/lTejQn+3HoY3n4cS6r368A/sMB+ILY+zmijDC1XCp4KgYvjrREUN/U3XVKab8Euk4r9vcF5G3EYYATChpwINM9+deMFNVrIKAi87zOgsMwJUbDvT5ep97oxuASQ623axjDHlvZExlLBPORIboPX6ErKMOzvQf+LeWn/PC6RD9iNN9v7dAvnawDFVrsP464hkrXL8UTN5ugUnfCCiCJbPSV0xflMHNBOsCezrKFunYTV0+DK063et6dpkbg8r0wjzyYqYThRcKq6IXYf+0lG5iobdgbuxxO6eFVI3yMJzEEgIz6O7X52mWdH3W6eE3opHf2o2nJ7UwIDAQAB";
+const DELIVERY_POOL_PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvvaPfBZbRxg68VfkUZZeZJjCH1yeJAbZepG7p1SQMHDmAzgKHjeSaFItc54p4BhkvQMRqA+3WXqHpS/5Uaw7lQarbyqGcA1Iu7TrB5tKwmT+tex+NEjTRG1Y9Gq+SLeauJglLYytgzpIDfZha3SDVI6YM2fEx8fiUOjkbQq6f9ADuj6//xwvGBRUvTUzbzmbh/WFq0/c+h7bhJlbEhSE/U0rxfSOhTQTH2g2UlVXJp3BLV2dGJq8CzrLbis1rgjz6ylDD2pAE7cHcQ3iI2RxuUSd5Jr37RTS8895Cv8oDF+iitX9MFRXsIBpalYI9CeFuDdVfXn6b+spPivh7nAfeQIDAQAB";
+// (rotated 2026-11-08 after the old private key was exposed)
 
 let __myPrivateKey = null;   // this session's own CryptoKey (RSA-OAEP), once unlocked
 let __myPublicKeyB64 = null;
@@ -2171,7 +2217,7 @@ async function deriveWrapKey(password, salt){
   return crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:100000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
 }
 
-// Called from submitSignUp() right after a successful sb.auth.signUp(),
+// Called from submitSignUp() right after a successful Firebase sign-up,
 // while the plaintext password is still in local scope. Returns the
 // columns to include in the same user_profiles insert signup already does.
 async function genKeypairAndWrap(password){
@@ -2194,7 +2240,7 @@ async function genKeypairAndWrap(password){
 }
 
 // Called from signInWithIdentifierPassword() right after a successful
-// sb.auth.signInWithPassword(), while the plaintext password is still
+// Firebase signInWithEmailAndPassword(), while the plaintext password is still
 // in local scope. Self-heals accounts that predate this feature (e.g.
 // the seeded test accounts, or any real account created before this
 // shipped) by generating and saving a keypair for them on the spot,
@@ -3240,7 +3286,7 @@ function render(){
   // Same reasoning, same pattern - see planCompareOverlayHTML() for why this
   // is an overlay rather than a sheet.
   if(_planCompareOpen) app.insertAdjacentHTML('beforeend', planCompareOverlayHTML());
-  if(SB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
+  if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
 /* =================== SUPER ADMIN (?admin) =================== */
@@ -8021,10 +8067,20 @@ function sheetSignIn(){
   <div class="field" style="margin-top:14px;"><label>Mobile or Email</label><input id="auth_identifier" placeholder="you@example.com or 7XXXXXX"></div>
   <div class="field"><label>Password</label><input id="auth_pass" type="password" placeholder="Your password"></div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="signInWithIdentifierPassword()">Sign in</button>
-  <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSignUp(state.sheetData)">Sign up</button></p>`;
+  <p class="muted" style="margin-top:14px;">Don't have an account? <button class="link-btn" onclick="openSignUp(state.sheetData)">Sign up</button></p>
+  <button class="link-btn" style="margin-top:4px; padding-left:0;" onclick="sendPasswordReset()">Forgot password?</button>`;
+}
+async function sendPasswordReset(){
+  if(!fbAuth){ toast("Can't reach the sign-in service. Check your connection",'bad'); return; }
+  const id = val('auth_identifier');
+  let email = id && id.includes('@') ? id : null;
+  if(id && !email && sb){ const { data } = await sb.rpc('resolve_login_email', { p_phone: id }); email = data || null; }
+  if(!email){ toast('Enter your email (or mobile number) above first','bad'); return; }
+  try{ await fbAuth.sendPasswordResetEmail(email, fbActionSettings()); toast(`Password reset email sent to ${email}`); }
+  catch(e){ toast(fbErrorText(e),'bad'); }
 }
 async function signInWithIdentifierPassword(){
-  if(!sb){ toast('Connect Supabase first — see the config note at the top of the script','bad'); return; }
+  if(!sb || !fbAuth){ toast("Can't reach the sign-in service. Check your connection and reload",'bad'); return; }
   const identifier = val('auth_identifier'), pass = val('auth_pass');
   if(!identifier || !pass){ toast('Enter your mobile number or email, and your password','bad'); return; }
   // Captured now, before closeSheet() wipes state.sheetData - onAuthStateChange's
@@ -8039,11 +8095,26 @@ async function signInWithIdentifierPassword(){
     if(lookupErr || !resolvedEmail){ toast('No account found for that mobile number','bad'); return; }
     email = resolvedEmail;
   }
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if(error){ toast('Incorrect mobile/email or password — new here? Sign up below.','bad'); return; }
-  if(data && data.user) await unlockMyPrivateKey(data.user.id, pass);
+  let cred;
+  try{ cred = await fbAuth.signInWithEmailAndPassword(email, pass); }
+  catch(e){ toast(fbErrorText(e),'bad'); return; }
+  const u = cred.user;
+  if(!u.emailVerified){
+    // Signed in to Firebase but not verified yet: the database treats this
+    // as signed out, so finish verification first.
+    _pendingVerifyEmail = email; _pendingSignupPassword = pass;
+    try{ await u.sendEmailVerification(fbActionSettings()); }catch(e){ console.warn(e); }
+    openSheet('verifyEmail');
+    return;
+  }
+  await u.getIdToken(true);
+  applySession(fbSession(u));
+  await unlockMyPrivateKey(u.uid, pass);
+  await loadDB();   // reload as the signed-in user (orders, addresses, ...)
   closeSheet();
   toast('Signed in!');
+  try{ await handlePostAuth(true); }catch(e){ console.error(e); }
+  render();
 }
 function sheetSignUp(){
   const d = _signupDraft;
@@ -8103,27 +8174,14 @@ async function submitSignUp(){
   else if(_signupRole==='delivery') state.pendingIntent = 'delivery';
   _pendingSignupPhone = phone || null;
   _signupInFlight = true;
-  // The confirmation email links back to this page (when its address is in
-  // Supabase's allowed redirect URLs); otherwise Supabase uses its Site URL.
-  const here = (location.protocol==='https:' || location.protocol==='http:') ? location.origin + location.pathname : undefined;
-  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name }, emailRedirectTo: here } });
-  if(error){ _signupInFlight = false; toast(error.message,'bad'); return; }
+  if(!fbAuth){ _signupInFlight = false; toast("Can't reach the sign-in service. Check your connection and reload",'bad'); return; }
+  let cred;
+  try{
+    cred = await fbAuth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: name });
+    await cred.user.sendEmailVerification(fbActionSettings());
+  }catch(e){ _signupInFlight = false; toast(fbErrorText(e),'bad'); return; }
   _pendingVerifyEmail = email;
-  // TODO(auth): "Confirm email" is temporarily OFF in Supabase Auth - we don't have a
-  // domain verified with Resend yet, so a new signup can't receive the verification
-  // code email at all right now. While it's off, signUp() returns an active session
-  // immediately (data.session is populated) instead of requiring the OTP step, so this
-  // branch skips straight past sheetVerifyEmail() to the same post-signup handling
-  // submitVerifyCode() normally does after a successful code. Once a domain is
-  // verified with Resend, re-enable "Confirm email" in the Supabase Auth dashboard and
-  // DELETE this `if(data.session)` block (and this comment) - data.session will go
-  // back to being null here, and the openSheet('verifyEmail') call below will take
-  // over on its own again, no other code changes needed.
-  if(data.session){
-    toast("You're signed in!");
-    await finishSignupPostAuth(data.session.user.id, pass);
-    return;
-  }
   _signupInFlight = false;
   _pendingSignupPassword = pass;
   openSheet('verifyEmail');
@@ -8133,23 +8191,26 @@ async function submitSignUp(){
 // the link, the person comes back and this signs them in with the password
 // they just chose, then finishes setup exactly like a verified code would.
 async function confirmedSignIn(){
-  if(!requireOnline()) return;
-  if(!_pendingSignupPassword || !_pendingVerifyEmail){
-    toast('Sign in with your email and password', 'good');
-    openSheet('signIn'); return;
+  if(!requireOnline() || !fbAuth) return;
+  let u = fbAuth.currentUser;
+  if(!u && _pendingVerifyEmail && _pendingSignupPassword){
+    try{ u = (await fbAuth.signInWithEmailAndPassword(_pendingVerifyEmail, _pendingSignupPassword)).user; }
+    catch(e){ toast(fbErrorText(e),'bad'); return; }
   }
-  _signupInFlight = true;
-  const { data, error } = await sb.auth.signInWithPassword({ email: _pendingVerifyEmail, password: _pendingSignupPassword });
-  if(error){
-    _signupInFlight = false;
-    toast(/confirm/i.test(error.message) ? "Your email isn't confirmed yet. Tap Confirm email address in the email first" : error.message, 'bad');
-    return;
-  }
+  if(!u){ toast('Sign in with your email and password','good'); openSheet('signIn'); return; }
+  await u.reload();
+  u = fbAuth.currentUser;
+  if(!u.emailVerified){ toast("Your email isn't confirmed yet. Tap the link in the email first",'bad'); return; }
+  await u.getIdToken(true);  // fresh token now says email_verified
+  applySession(fbSession(u));
+  await loadDB();
   const pass = _pendingSignupPassword; _pendingSignupPassword = null;
+  _signupInFlight = true;
   toast("Email confirmed. You're signed in!");
-  await finishSignupPostAuth(data.user.id, pass);
+  if(pass) await finishSignupPostAuth(u.uid, pass);
+  else { _signupInFlight = false; closeSheet(); try{ await handlePostAuth(true); }catch(e){ console.error(e); } render(); }
 }
-function toggleVerifyCode(){ const el = document.getElementById('ve_code_box'); if(el) el.classList.toggle('hidden'); }
+
 // Shared by submitSignUp()'s Confirm-email-off branch above and submitVerifyCode()
 // below (the normal OTP path): silently submits a phone number captured on the
 // sign-up form if valid, then resumes whatever the user was signing up to do
@@ -8266,34 +8327,21 @@ function sheetVerifyEmail(){
   <h2>Confirm your email</h2>
   <p class="muted">We sent an email to <strong>${_pendingVerifyEmail}</strong>.</p>
   <ol class="verify-steps">
-    <li>Open it and tap <strong>Confirm email address</strong>. If the page it opens doesn't load, that's fine.</li>
+    <li>Open it and tap the link to verify your email.</li>
     <li>Come back here and tap the button below.</li>
   </ol>
   <button class="btn btn-primary" onclick="confirmedSignIn()">I've confirmed my email</button>
-  <div class="row" style="justify-content:space-between; margin-top:12px; flex-wrap:wrap;">
-    <button class="link-btn" onclick="resendVerifyCode()">Resend email</button>
-    <button class="link-btn" onclick="toggleVerifyCode()">Got a code instead?</button>
-  </div>
-  <div id="ve_code_box" class="hidden" style="margin-top:10px;">
-    <div class="field"><label for="ve_code">Verification code</label><input id="ve_code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code from the email"></div>
-    <button class="btn btn-outline" onclick="submitVerifyCode()">Verify code</button>
-  </div>
-  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam folder. It comes from Supabase Auth.</p>`;
-}
-async function submitVerifyCode(){
-  if(!requireOnline()) return;
-  const code = val('ve_code');
-  if(!code){ toast('Enter the verification code','bad'); return; }
-  const { data, error } = await sb.auth.verifyOtp({ email: _pendingVerifyEmail, token: code, type: 'signup' });
-  if(error){ toast(error.message,'bad'); return; }
-  const userId = data.user ? data.user.id : (data.session && data.session.user ? data.session.user.id : null);
-  toast("Account verified — you're signed in!");
-  await finishSignupPostAuth(userId, null);
+  <button class="link-btn" style="margin-top:12px; padding-left:0;" onclick="resendVerifyCode()">Resend email</button>
+  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam folder. It comes from noreply@maldexpress.firebaseapp.com.</p>`;
 }
 async function resendVerifyCode(){
   if(!requireOnline()) return;
-  const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
-  if(error){ toast(error.message,'bad'); return; }
+  let u = fbAuth && fbAuth.currentUser;
+  if(!u && _pendingVerifyEmail && _pendingSignupPassword){
+    try{ u = (await fbAuth.signInWithEmailAndPassword(_pendingVerifyEmail, _pendingSignupPassword)).user; }catch(e){ toast(fbErrorText(e),'bad'); return; }
+  }
+  if(!u){ toast('Sign in again to resend the email','bad'); return; }
+  try{ await u.sendEmailVerification(fbActionSettings()); }catch(e){ toast(fbErrorText(e),'bad'); return; }
   toast('Email sent again. Check your inbox and spam folder');
 }
 function sheetSetupMobile(){
@@ -8338,7 +8386,7 @@ function skipMobileSetup(){
   resolvePendingIntent();
 }
 async function signOutCustomer(){
-  if(sb) await sb.auth.signOut();
+  if(fbAuth) await fbAuth.signOut();
   applySession(null);
   _screenHistory = [];
   state.role='customer'; state.activeBizId=null; state.activeDelId=null; state.drawerOpen=false;
@@ -8901,21 +8949,31 @@ window.addEventListener('unhandledrejection', e=>{
     // Each step is guarded on its own: a failed session restore shouldn't stop
     // the app from opening as a guest, and a failed post-sign-in check
     // shouldn't stop the signed-in app from drawing.
+    // Firebase restores a saved sign-in on its own; wait for that first
+    // answer (capped so a slow network can't hold the app), then keep
+    // listening for sign-outs and other changes.
     try{
-      const { data:{ session } } = await sb.auth.getSession();
-      applySession(session);
-      if(state.authed) await handlePostAuth();
+      if(fbAuth){
+        const first = await Promise.race([
+          new Promise(res=>{ const off = fbAuth.onAuthStateChanged(u=>{ off(); res(u); }); }),
+          new Promise(res=>setTimeout(()=>res(fbAuth.currentUser), 8000))
+        ]);
+        applySession(fbSession(first));
+        if(state.authed){ await loadDB(); await handlePostAuth(); }
+      }
     }catch(e){ console.error('Session restore failed:', e); }
     try{
-      sb.auth.onAuthStateChange(async (_event, session)=>{
-        applySession(session);
-        // This listener only ever fires from a real sign-in/verify action (see
-        // notify('SIGNED_IN') in the mock client above) - never for the initial
-        // getSession() restore just above, which calls handlePostAuth() directly
-        // instead - so it's always safe to treat this as a fresh sign-in.
-        try{ if(state.authed) await handlePostAuth(true); }catch(e){ console.error(e); }
-        render();
-      });
+      if(fbAuth){
+        let seenFirst = false;
+        fbAuth.onAuthStateChanged(async u=>{
+          if(!seenFirst){ seenFirst = true; return; }   // initial restore handled above
+          const wasAuthed = state.authed;
+          applySession(fbSession(u));
+          // Explicit sign-in/verify paths call handlePostAuth themselves; this
+          // only catches sign-outs or a session ending elsewhere.
+          if(wasAuthed !== state.authed){ await loadDB(); render(); }
+        });
+      }
       ensureLiveRefresh();
     }catch(e){ console.error('Live updates failed to start:', e); }
   }

@@ -400,8 +400,11 @@
   /* ---------- Customer home ---------- */
   /* The lagoon hero: header, search and listing switcher sit on turquoise
      water, with reef rings drawn in the top corner like an atoll from above. */
+  /* overflow stays visible so the listing switcher and notification menus
+     can open past the header's edge (overflow:hidden cut them off); the
+     rings are clipped to the header with clip-path instead. */
   .home-hero{
-    position:relative; overflow:hidden; margin:0 -16px 20px; padding:0 16px 22px;
+    position:relative; z-index:5; margin:0 -16px 20px; padding:0 16px 22px;
     background:
       radial-gradient(120% 90% at 50% 120%, rgba(255,255,255,.35), transparent 60%),
       linear-gradient(160deg, #1BE0CF 0%, var(--lagoon) 45%, #0FB8C9 100%);
@@ -411,12 +414,12 @@
     content:""; position:absolute; width:300px; height:300px; right:-110px; top:-120px; border-radius:50%; pointer-events:none;
     background:repeating-radial-gradient(circle at center, rgba(255,255,255,0) 0 18px, rgba(255,255,255,.22) 18px 20px);
     -webkit-mask:radial-gradient(circle, #000 55%, transparent 72%); mask:radial-gradient(circle, #000 55%, transparent 72%);
-  }
-  .home-hero::after{
-    content:""; position:absolute; width:120px; height:120px; left:-40px; bottom:-60px; border-radius:50%; pointer-events:none;
-    border:2px solid rgba(255,255,255,.28); box-shadow:0 0 0 14px rgba(255,255,255,.08);
+    clip-path:inset(120px 110px 0 0);
   }
   .home-hero > *{position:relative; z-index:1;}
+  /* header (notifications menu) above the search row (switcher menu) above the headline */
+  .home-hero > .home-header{z-index:4;}
+  .home-hero > .row{z-index:3;}
   .home-hero .hero-line{font-size:1.85em; font-weight:900; line-height:1.05; letter-spacing:-.03em; color:var(--channel); margin:4px 0 16px; max-width:15ch;}
   .home-header{justify-content:space-between; padding-bottom:6px; margin-bottom:0; position:relative; top:auto; background:none !important;}
   .home-header .iconbtn{background:rgba(255,255,255,.9); box-shadow:none;}
@@ -458,7 +461,7 @@
   .switcher-pill.accent{background:var(--channel); color:#fff; box-shadow:0 8px 24px rgba(6,30,58,.2);}
   .switcher-pill:active{transform:scale(.96);}
   .switcher-caret{font-size:.85em; opacity:.8; transition:transform .15s ease; display:inline-block;}
-  .switcher-dropdown{position:absolute; top:calc(100% + 8px); right:0; z-index:20; box-shadow:var(--shadow-lift); width:max-content; min-width:100%; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:22px;}
+  .switcher-dropdown{position:absolute; top:calc(100% + 8px); right:0; z-index:40; box-shadow:var(--shadow-lift); width:max-content; min-width:100%; display:flex; flex-direction:column; gap:4px; padding:6px; border-radius:22px;}
   .switcher-dropdown .switcher-pill{width:100%;}
   .switcher-dropdown .switcher-pill:hover{background:var(--ground);}
 

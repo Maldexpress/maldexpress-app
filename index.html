@@ -251,9 +251,8 @@
     font-size:.74em; font-weight:700; padding:7px 4px; flex:1; border-radius:999px; position:relative;
     transition:background .2s ease, color .2s ease;
   }
-  .navbtn .ic{font-size:1.3em; position:relative; display:inline-block; filter:grayscale(1) brightness(1.6); opacity:.8;}
+  .navbtn .ic{position:relative; display:inline-flex; line-height:0;}
   .navbtn.active{background:var(--lagoon); color:var(--channel);}
-  .navbtn.active .ic{filter:none; opacity:1;}
   .navbtn:active{transform:scale(.95);}
   .nav-badge{
     position:absolute; top:-6px; right:-12px; min-width:18px; height:18px; padding:0 5px; border-radius:999px;
@@ -318,6 +317,7 @@
     cursor:pointer; user-select:none; white-space:nowrap; flex-wrap:nowrap;
     transition:background .15s ease, border-color .15s ease;
   }
+  .field label.cat-check-item{display:flex; margin:0; font-size:.86em; font-weight:600;}
   .cat-check-item input{position:absolute; opacity:0; width:0; height:0; margin:0;}
   .cat-check-item.checked{background:var(--shallow); border-color:var(--lagoon);}
   .cat-check-circle{
@@ -552,7 +552,6 @@
   .bottomnav.compact{left:0; right:0; transform:none; max-width:520px; width:auto; padding:0 16px;}
   .bottomnav.compact .bar{max-width:none; overflow-x:auto; scrollbar-width:none;}
   .bottomnav.compact .navbtn{flex:1; flex-direction:row; gap:6px; padding:12px 8px; font-size:.82em; white-space:nowrap;}
-  .bottomnav.compact .navbtn .ic{font-size:1.2em;}
   .bottomnav.compact .navbtn:not(.active) .navlbl{display:none;}
   .bottomnav.compact .navbtn.active{flex:1.8;}
   /* room for the count bubble so it doesn't sit on the tab's label */
@@ -598,6 +597,31 @@
   .zone-stop[aria-checked="true"]{background:#fff; box-shadow:var(--shadow);}
   .zone-stop[aria-checked="true"] .pin{background:var(--coral-pink); border-color:#fff; box-shadow:0 0 0 2px var(--coral-pink); transform:scale(1.1);}
   .zone-stop[aria-checked="true"] .fare{color:var(--coral-pink);}
+
+  /* ---------- Admin ---------- */
+  /* Deep-channel header with the four counts an admin checks first; each
+     count jumps to its tab. */
+  .admin{min-height:100vh; padding-bottom:40px;}
+  .admin-hero{position:relative; overflow:hidden; background:var(--channel); color:#fff; padding:calc(22px + env(safe-area-inset-top)) 18px 20px; border-radius:0 0 30px 30px;}
+  .admin-hero::before{content:""; position:absolute; width:260px; height:260px; right:-100px; top:-110px; border-radius:50%; pointer-events:none;
+    background:repeating-radial-gradient(circle, rgba(20,211,196,0) 0 16px, rgba(20,211,196,.28) 16px 18px);
+    -webkit-mask:radial-gradient(circle, #000 55%, transparent 72%); mask:radial-gradient(circle, #000 55%, transparent 72%);}
+  .admin-hero > *{position:relative;}
+  .admin-kicker{color:var(--lagoon); font-weight:800; font-size:.9em;}
+  .admin-hero h1{color:#fff; font-size:2.2em; font-weight:900;}
+  .admin-who{color:rgba(255,255,255,.7); font-size:.88em; margin-top:4px; word-break:break-word;}
+  .admin-signout{background:rgba(255,255,255,.12); color:#fff;}
+  .admin-stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px;}
+  .admin-stat{display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:14px; border-radius:20px; border:none; background:rgba(255,255,255,.08); color:#fff;}
+  .admin-stat strong{font-size:1.8em; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  .admin-stat span{font-size:.84em; color:rgba(255,255,255,.75); font-weight:600;}
+  .admin-stat.needs{background:var(--lagoon); color:var(--channel);}
+  .admin-stat.needs span{color:var(--channel);}
+  .admin-body{padding:18px 16px 0;}
+  .admin-body .tabs{margin-bottom:16px;}
+  .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--coral-pink); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:4px;}
+  .admin-store{margin-bottom:12px;}
+  .admin-av{width:44px; height:44px; border-radius:14px; background:var(--shallow); color:var(--channel); font-weight:900; font-size:1.1em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
 
   /* Shown when the Supabase library couldn't be downloaded (see sb setup). */
   .offline-banner{margin:10px 16px 0; padding:12px 14px; border-radius:18px; background:#FFF1C9; color:var(--warn); font-size:.88em;}
@@ -2045,7 +2069,8 @@ function fromDbRow(part, r){
 
 async function loadDB(){
   if(!sb){
-    if(!SB_LIB_MISSING) toast('Add your Supabase URL & key in the script to connect a real backend', 'bad');
+    // Unconfigured copy (local preview): runs on sample data. Setup steps are
+    // in the README, so nothing is shown to the person using it.
     storageReady = true;
     return;
   }
@@ -2112,6 +2137,9 @@ async function saveDB(part, only){
 // On success the row Postgres actually wrote is applied back to DB.orders, rather than
 // trusting whatever the client optimistically computed beforehand.
 async function callOrderRpc(rpcName, args, orderId, failMsg){
+  // Without a server connection (offline sample-data mode) there's nothing to
+  // call; this used to throw on sb being null.
+  if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return null; }
   const { data, error } = await sb.rpc(rpcName, args);
   if(error){ toast('Could not update order: '+error.message, 'bad'); return null; }
   if(!data || !data.length){ toast(failMsg || "Couldn't update this order — it may have changed, or you may not have permission", 'bad'); return null; }
@@ -2120,6 +2148,14 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
   const idx = DB.orders.findIndex(o=>o.id===orderId);
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   return updated;
+}
+// True when there's a server to save to. In offline sample-data mode (no
+// Supabase client) actions that write to the server say so instead of
+// throwing on a null client.
+function requireOnline(){
+  if(sb) return true;
+  toast("You're offline, so this can't be saved. Reconnect and try again", 'bad');
+  return false;
 }
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
 const ZONES = {
@@ -2772,34 +2808,54 @@ function renderAdmin(){
   const bankPending = DB.proRequests.filter(r=>r.paymentMethod==='bank_transfer' && r.status==='pending');
   const swipeLog = DB.proRequests.filter(r=>r.paymentMethod==='swipe');
   const catPending = DB.categoryRequests.filter(r=>r.status==='pending');
+  const proCount = DB.businesses.filter(b=>b.tier==='pro').length;
+  const tab = (key,label,count)=>`<button class="tab ${state.adminTab===key?'active':''}" onclick="state.adminTab='${key}'; render();">${label}${count?` <span class="tab-count">${count}</span>`:''}</button>`;
   app.innerHTML = `
-  <div style="padding:20px 16px 90px;">
-    <h1 style="margin-bottom:4px;">Super Admin</h1>
-    <p class="muted" style="margin-bottom:16px; font-size:.85em;">Signed in as ${state.customerEmail} · <a href="javascript:void(0)" onclick="signOutCustomer()" style="color:var(--lagoon);">Sign out</a></p>
-    <div class="row" style="gap:8px; margin-bottom:16px; flex-wrap:wrap;">
-      <button class="btn ${state.adminTab==='businesses'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='businesses'; render();">Businesses</button>
-      <button class="btn ${state.adminTab==='bankRequests'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='bankRequests'; render();">Bank transfer approvals${bankPending.length?` (${bankPending.length})`:''}</button>
-      <button class="btn ${state.adminTab==='swipeRequests'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='swipeRequests'; render();">Paid via Swipe</button>
-      <button class="btn ${state.adminTab==='catRequests'?'btn-primary':'btn-outline'} btn-sm" onclick="state.adminTab='catRequests'; render();">Category requests${catPending.length?` (${catPending.length})`:''}</button>
+  <div class="admin">
+    <header class="admin-hero">
+      <div class="row between" style="align-items:flex-start;">
+        <div><p class="admin-kicker">Maldexpress</p><h1>Admin</h1></div>
+        <button class="btn btn-sm admin-signout" onclick="signOutCustomer()">Sign out</button>
+      </div>
+      <p class="admin-who">Signed in as ${escapeAttr(state.customerEmail||'')}</p>
+      <div class="admin-stats">
+        <button class="admin-stat" onclick="state.adminTab='businesses'; render();"><strong>${DB.businesses.length}</strong><span>Stores</span></button>
+        <button class="admin-stat" onclick="state.adminTab='businesses'; render();"><strong>${proCount}</strong><span>On Pro</span></button>
+        <button class="admin-stat ${bankPending.length?'needs':''}" onclick="state.adminTab='bankRequests'; render();"><strong>${bankPending.length}</strong><span>Transfers to check</span></button>
+        <button class="admin-stat ${catPending.length?'needs':''}" onclick="state.adminTab='catRequests'; render();"><strong>${catPending.length}</strong><span>Category ideas</span></button>
+      </div>
+    </header>
+    <div class="admin-body">
+      <div class="tabs">
+        ${tab('businesses','Stores')}
+        ${tab('bankRequests','Bank transfers',bankPending.length)}
+        ${tab('swipeRequests','Swipe')}
+        ${tab('catRequests','Categories',catPending.length)}
+      </div>
+      ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
+      ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
+      ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
+      ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
     </div>
-    ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
-    ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
-    ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
-    ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
   </div>
   ${sheetHTML()}`;
 }
 function adminBusinessesTab(list){
   return `
   <div class="field" style="margin-bottom:14px;">
-    <input id="adminSearchInput" placeholder="Search by store, owner, or phone…" value="${state.adminSearch}" oninput="adminSearchInput(this.value)">
+    <input id="adminSearchInput" type="search" aria-label="Search stores" placeholder="Search by store, owner, or phone…" value="${state.adminSearch}" oninput="adminSearchInput(this.value)">
   </div>
   ${list.length? list.map(b=>`
-    <div class="glass card" style="margin-bottom:10px;">
-      <div class="row between"><h3>${b.name}</h3><span class="badge ${b.tier}">${b.tier==='pro'?'PRO':'FREE'}</span></div>
-      <p class="muted" style="font-size:.85em; margin-top:4px;">${b.ownerName} · ${b.phone||'—'} · ${b.category||'—'}</p>
-      <p class="muted" style="font-size:.78em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${b.paidAt?` · Paid ${new Date(b.paidAt).toLocaleDateString()}`:''}</p>
-      <div class="row" style="gap:8px; margin-top:10px;">
+    <div class="glass card admin-store">
+      <div class="row" style="align-items:flex-start;">
+        <span class="admin-av">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
+        <div style="flex:1; min-width:0;">
+          <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge ${b.tier}">${b.tier==='pro'?'Pro':'Free'}</span></div>
+          <p class="muted" style="font-size:.86em; margin-top:2px;">${b.ownerName}${b.phone?` · ${b.phone}`:''}</p>
+          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${b.paidAt?` · Paid ${new Date(b.paidAt).toLocaleDateString()}`:''}</p>
+        </div>
+      </div>
+      <div class="row" style="gap:8px; margin-top:12px; justify-content:flex-end;">
         ${b.tier==='pro'
           ? `<button class="btn btn-outline btn-sm" onclick="adminSetTier('${b.id}','free')">Revoke Pro</button>`
           : `<button class="btn btn-primary btn-sm" onclick="adminSetTier('${b.id}','pro')">Grant Pro</button>`}
@@ -2856,6 +2912,7 @@ function adminCategoryRequestsTab(list){
   }).join('') : `<div class="empty"><span class="ic">🏷️</span>No category suggestions yet</div>`;
 }
 async function adminResolveCategoryRequest(reqId, approve){
+  if(!requireOnline()) return;
   const req = DB.categoryRequests.find(r=>r.id===reqId);
   if(!req) return;
   const status = approve ? 'approved' : 'dismissed';
@@ -2904,6 +2961,7 @@ function adminSearchInput(v){
   if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 async function adminSetTier(bizId, tier){
+  if(!requireOnline()) return;
   const biz = DB.businesses.find(b=>b.id===bizId);
   if(!biz) return;
   const paidAt = tier==='pro' ? Date.now() : null;
@@ -2914,6 +2972,7 @@ async function adminSetTier(bizId, tier){
   render();
 }
 async function adminResolveRequest(reqId, approve){
+  if(!requireOnline()) return;
   const req = DB.proRequests.find(r=>r.id===reqId);
   if(!req) return;
   const status = approve ? 'approved' : 'rejected';
@@ -3094,6 +3153,21 @@ function drawerHTML(role){
   </div>`;
 }
 
+// Line icons for the bottom nav, drawn in currentColor so they read on the
+// dark bar (emoji went to grey blobs under the inactive-tab filter).
+const _nav = d => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const NAV_ICONS = {
+  custHome:_nav('<path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>'),
+  bizHome:_nav('<path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>'),
+  custFavourites:_nav('<path d="M12 20s-7.5-4.6-9.2-9.3C1.6 7.4 3.8 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.2 0 5.4 2.9 4.2 6.2C19.5 15.4 12 20 12 20z"/>'),
+  custCart:_nav('<path d="M5 8h14l-1.2 11.1a1 1 0 0 1-1 .9H7.2a1 1 0 0 1-1-.9z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>'),
+  custOrders:_nav('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'),
+  bizOrders:_nav('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'),
+  bizItems:_nav('<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>'),
+  bizPayouts:_nav('<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 12.5h2M3 10h18"/>'),
+  delHome:_nav('<circle cx="6" cy="17" r="2.5"/><circle cx="18" cy="17" r="2.5"/><path d="M8.5 17h6.5l2-6h-4M6 14.5 9 9h4"/><path d="M15 6h3l1 5"/>'),
+  delHistory:_nav('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+};
 function bottomNav(role, active){
   const cfg = {
     business:[['bizHome','🏠','Home'],['bizItems','📦','Items'],['bizOrders','🧾','Orders'],['bizPayouts','🛵','Payouts']],
@@ -3113,7 +3187,7 @@ function bottomNav(role, active){
   // so the badge on the tab they'd open anyway is the notification.
   const bookingCount = role==='business' ? pendingBookingsCount(state.activeBizId) : 0;
   const tabs = cfg[role].map(([scr,ic,label])=>`
-    <button class="navbtn ${active===scr?'active':''}" onclick="go('${scr}')"><span class="ic">${ic}${(scr==='custCart' && cartCount>0)?`<span class="nav-badge">${cartCount>99?'99+':cartCount}</span>`:''}${(scr==='bizOrders' && bookingCount>0)?`<span class="nav-badge">${bookingCount>99?'99+':bookingCount}</span>`:''}</span><span class="navlbl">${label}</span></button>
+    <button class="navbtn ${active===scr?'active':''}" aria-label="${label}" ${active===scr?'aria-current="page"':''} onclick="go('${scr}')"><span class="ic">${NAV_ICONS[scr]||ic}${(scr==='custCart' && cartCount>0)?`<span class="nav-badge">${cartCount>99?'99+':cartCount}</span>`:''}${(scr==='bizOrders' && bookingCount>0)?`<span class="nav-badge">${bookingCount>99?'99+':bookingCount}</span>`:''}</span><span class="navlbl">${label}</span></button>
   `).join('');
   return `<div class="bottomnav ${role==='customer'?'compact':''}"><div class="glass bar">${tabs}</div></div>`;
 }
@@ -3297,6 +3371,7 @@ async function maybeSubmitCategoryRequest(idPrefix, biz){
 // (adminCategoryRequestsTab()), deduped per business+name so re-saving a form
 // that still has the same pending name on it doesn't pile up duplicates.
 async function submitCategoryRequest(biz, otherName){
+  if(!requireOnline()) return;
   if(!biz || !otherName) return;
   const already = DB.categoryRequests.some(r=>r.businessId===biz.id && r.status==='pending' && r.categoryName.toLowerCase()===otherName.toLowerCase());
   if(already) return;
@@ -3554,6 +3629,7 @@ function sheetUpgradeBankSlip(){
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitProBankSlip()">Submit for approval</button>`;
 }
 async function submitProBankSlip(){
+  if(!requireOnline()) return;
   if(!_slipData){ toast('Choose a slip image first','bad'); return; }
   const biz = currentBiz();
   const reqId = uid('pr');
@@ -3614,7 +3690,7 @@ function itemCatPendingNoteHTML(i){
   return `<p class="muted" style="font-size:.76em; margin-top:2px;">🕓 "${i.categoryOtherName}" - pending category approval</p>`;
 }
 function bizItemCard(i){
-  const thumb = i.imageUrl ? `<img src="${i.imageUrl}" alt="">` : '📦';
+  const thumb = itemThumbHTML(i);
   if(i.listingType==='auction'){
     const auction = auctionForItem(i.id);
     if(!auction) return '';
@@ -4157,6 +4233,7 @@ if(out) booking.slipDataUrl = out.url||null;
 
 
 async function acceptBooking(id){
+  if(!requireOnline()) return;
 const bk = DB.bookings.find(x=>x.id===id);
 if(bk && bookingOverlapsExisting(bk.itemId, bk.requestedDate, bk.days, bk.id)){
 toast("Can't accept — those dates overlap a booking you've already accepted for this item", 'bad');
@@ -4175,6 +4252,7 @@ closeSheet(); toast('Booking accepted'); render();
 }
 
 async function declineBooking(id){
+  if(!requireOnline()) return;
 const patch = { status:'declined', decided_at:new Date().toISOString() };
 const { data, error } = await sb.from('rental_bookings').update(patch).eq('id', id).select();
 if(error){ toast('Could not decline booking: '+error.message, 'bad'); return; }
@@ -4187,6 +4265,7 @@ toast('Booking declined'); render();
 }
 
 async function markBookingChargeCollected(id){
+  if(!requireOnline()) return;
 const { data, error } = await sb.from('rental_bookings').update({ charge_status:'collected' }).eq('id', id).select();
 if(error){ toast('Could not update booking: '+error.message, 'bad'); return; }
 if(!data || !data.length){ toast("Couldn't update this booking — it may have changed", 'bad'); return; }
@@ -4202,6 +4281,7 @@ toast('Marked as collected'); render();
 // above explaining why those needed their own SECURITY DEFINER functions
 // rather than a customer update policy like the business gets.
 async function callBookingRpc(rpcName, args, bookingId, failMsg){
+if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return null; }
 const { data, error } = await sb.rpc(rpcName, args);
 if(error){ toast('Could not update booking: '+error.message, 'bad'); return null; }
 if(!data || !data.length){ toast(failMsg || "Couldn't update this booking — it may have changed", 'bad'); return null; }
@@ -4435,7 +4515,7 @@ function orderDetailBizBody(o){
     </div>`;
   }
   const discountLine = o.discountAmount>0 ? `<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>` : '';
-  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) → ${o.deliveryPersonName||'—'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
+  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
   // An 'on_return' rental's own o.total only ever holds the advance due at
   // checkout (see submitRentItem()) - the rental fee itself lives separately
   // in rentalFeeAmount, so it needs its own line here or the order would
@@ -4958,7 +5038,7 @@ function sheetBizUploadPhotos(){
   <p class="muted" style="font-size:.85em; margin-bottom:12px;">${missing.length? "These items don't have a photo yet — add one for each, one at a time." : 'Every item already has a photo. 🎉'}</p>
   ${missing.map(i=>`
     <div class="glass card tight" style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-      <div class="item-thumb" style="width:48px; height:48px; flex-shrink:0; font-size:1.3em;">📦</div>
+      <div class="item-thumb" style="width:48px; height:48px; flex-shrink:0; font-size:1.3em;">${itemArtHTML(i)}</div>
       <div style="flex:1; min-width:0;">
         <h3 style="font-size:.95em;">${i.name}</h3>
         <p class="muted" style="font-size:.78em;">${LISTING_TYPE_META[i.listingType]?LISTING_TYPE_META[i.listingType].label:i.listingType}</p>
@@ -5099,6 +5179,7 @@ function sheetAddAddress(){
   <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">Save address</button>`;
 }
 async function submitAddAddress(){
+  if(!requireOnline()) return;
   const cat = _addAddressCategory;
   const isBoat = cat==='boat';
   const name = val('aa_name'), phone = val('aa_phone');
@@ -5114,6 +5195,7 @@ async function submitAddAddress(){
   toast('Address saved'); openSheet('addressBook');
 }
 async function setAddressDefault(id, category){
+  if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return; }
   const { data, error } = await sb.rpc('set_default_address', { p_address_id: id, p_category: category });
   if(error){ toast('Could not set default: '+error.message, 'bad'); return; }
   if(!data || !data.length){ toast("Couldn't set that as default — it may have been removed", 'bad'); return; }
@@ -5124,6 +5206,7 @@ async function setAddressDefault(id, category){
   render();
 }
 async function deleteAddressEntry(id, category){
+  if(!requireOnline()) return;
   const { error } = await sb.from('customer_addresses').delete().eq('id', id);
   if(error){ toast('Could not remove address: '+error.message, 'bad'); return; }
   const removed = DB.addresses.find(a=>a.id===id);
@@ -5230,6 +5313,7 @@ function renderDelHome(d){
 // that has to be computed server-side (from the store's own timing choice)
 // rather than trusted as a plain column a rider could set to anything.
 async function claimJob(id){
+  if(!requireOnline()) return;
   const order = DB.orders.find(o=>o.id===id);
   if(order && order.rentalItemId){
     const updated = await callOrderRpc('claim_rental_job', { p_order_id: id }, id,
@@ -6642,7 +6726,7 @@ function sheetCheckout(){
   const isPartial = lines.length < allLines.length;
   return `
   <h2>Checkout</h2>
-  <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${escapeAttr(state.customerName)}${state.customerPhone?` · ${escapeAttr(state.customerPhone)}`:''}</strong>` : 'Demo mode — connect Supabase to require sign-in'}</p></div>
+  <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${escapeAttr(state.customerName)}${state.customerPhone?` · ${escapeAttr(state.customerPhone)}`:''}</strong>` : 'This is a preview with sample stores, so orders here aren\'t sent to a real shop'}</p></div>
   ${isPartial ? `<p class="muted" style="font-size:.82em; margin-bottom:10px;">Checking out ${lines.length} selected item${lines.length>1?'s':''} — the rest stays in your cart.</p>` : ''}
   <div class="field"><label>Your name</label><input id="c_name" value="${escapeAttr(state.customerName)}" ${sb && state.authed?'disabled style="opacity:.7;"':''}></div>
   <div class="field"><label>Phone</label><input id="c_phone" placeholder="7XXXXXX" value="${escapeAttr(state.customerPhone||'')}" ${sb && state.authed && state.customerPhone?'disabled style="opacity:.7;"':''}></div>
@@ -6944,6 +7028,7 @@ async function rememberDeliveryAddress(deliveryTarget){
   await saveAddressFromCheckout(cat, fields);
 }
 async function saveAddressFromCheckout(category, fields){
+  if(!requireOnline()) return;
   const existing = myAddresses(category).find(a =>
     a.name===fields.name && a.phone===fields.phone &&
     (category==='boat' ? a.harbour===fields.harbour : a.address===fields.address));
@@ -7705,6 +7790,7 @@ function sheetVerifyEmail(){
   <button class="link-btn" style="margin-top:12px;" onclick="resendVerifyCode()">Resend code</button>`;
 }
 async function submitVerifyCode(){
+  if(!requireOnline()) return;
   const code = val('ve_code');
   if(!code){ toast('Enter the verification code','bad'); return; }
   const { data, error } = await sb.auth.verifyOtp({ email: _pendingVerifyEmail, token: code, type: 'signup' });
@@ -7714,6 +7800,7 @@ async function submitVerifyCode(){
   await finishSignupPostAuth(userId, null);
 }
 async function resendVerifyCode(){
+  if(!requireOnline()) return;
   const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
   if(error){ toast(error.message,'bad'); return; }
   toast('Code resent — check your email!');
@@ -7727,6 +7814,7 @@ function sheetSetupMobile(){
   <button class="link-btn" style="margin-top:12px; display:block; width:100%; text-align:center;" onclick="skipMobileSetup()">Skip for now</button>`;
 }
 async function submitMobileNumber(){
+  if(!requireOnline()) return;
   const phone = val('sm_phone');
   if(!/^[79]\d{6}$/.test(phone)){ toast('Enter a valid mobile number','bad'); return; }
   const userId = _pendingSignupUserId || state.customerId;

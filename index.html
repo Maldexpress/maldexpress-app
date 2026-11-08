@@ -668,9 +668,17 @@
   .contact-btn:hover{border-color:rgba(62,242,224,.5);}
   .contact-btn:active{transform:scale(.96);}
 
+  .route-note{font-size:.84em; color:var(--plankton); margin:0 0 6px;}
   .verify-steps{margin:12px 0 16px; padding-left:20px; color:var(--ink-dim); line-height:1.6;}
   .verify-steps li{margin-bottom:6px;}
   .verify-steps strong{color:var(--ink);}
+
+  /* Rider online switch */
+  .switch{position:relative; width:52px; height:30px; border-radius:999px; border:1px solid var(--glass-brd); background:var(--glass-2); flex-shrink:0; padding:0; transition:background .2s ease, box-shadow .2s ease;}
+  .switch span{position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:var(--star); transition:transform .2s ease;}
+  .switch.on{background:linear-gradient(120deg, var(--plankton), var(--volt)); box-shadow:var(--glow-cyan);}
+  .switch.on span{transform:translateX(22px); background:#03132A;}
+  .rider-status.is-online{border-color:rgba(62,242,224,.5);}
 
   /* ---------- Admin ---------- */
   .admin{min-height:100vh; padding-bottom:40px;}
@@ -2401,10 +2409,10 @@ async function decryptOrderRow(order, dbRow){
 }
 
 function toDbRow(part, o){
-  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null };
+  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
-  if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone };
-  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null };
+  if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
+  if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
   if(part==='auctions') return { id:o.id, item_id:o.itemId, business_id:o.businessId, starting_price:o.startingPrice, bid_increment:o.bidIncrement, start_time:new Date(o.startTime).toISOString(), end_time:new Date(o.endTime).toISOString(), current_highest_bid:o.currentHighestBid, current_highest_bidder:o.currentHighestBidder, bid_count:o.bidCount||0, status:o.status, order_id:o.orderId||null };
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
@@ -2413,13 +2421,14 @@ function toDbRow(part, o){
   if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
-  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'' };
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
-  if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
+  if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
     swipeFee:r.swipe_fee!=null?Number(r.swipe_fee):null, platformFee:r.platform_fee!=null?Number(r.platform_fee):null,
-    platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null };
+    platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null,
+    originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -2579,8 +2588,17 @@ const SWIPE_PREVIEW = !SB_CONFIGURED;
 function swipeOrderNeedsPayment(o){ return o && o.paymentMethod==='swipe' && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'; }
 async function approveSwipeOrder(id){
   const o = DB.orders.find(x=>x.id===id);
-  if(SWIPE_PREVIEW){ if(o){ o.paymentStatus='awaiting_swipe'; } toast('Order approved. The customer can now pay with Swipe'); render(); return; }
-  const updated = await callOrderRpc('approve_swipe_order', { p_order_id: id }, id, "Couldn't approve this order. It may have changed, or Swipe isn't connected");
+  let charge = null;
+  if(o && routeNeedsStoreCharge(o.route)){
+    const raw = val('ap_charge_'+id);
+    charge = Number(raw);
+    if(raw==='' || !isFinite(charge) || charge<0 || charge>10000){ toast('Enter the delivery charge first (0 if free)','bad'); return; }
+  }
+  if(SWIPE_PREVIEW){
+    if(o){ o.paymentStatus='awaiting_swipe'; if(charge!=null){ o.deliveryFee = charge; o.deliveryPartnerPayout = charge; o.total = Math.max(0,(o.itemsTotal||0)-(o.discountAmount||0)) + charge + (o.extraDeliveryFee||0); } }
+    toast('Order approved. The customer can now pay with Swipe'); render(); return;
+  }
+  const updated = await callOrderRpc('approve_swipe_order', { p_order_id: id, p_delivery_charge: charge }, id, "Couldn't approve this order. It may have changed, or Swipe isn't connected");
   if(!updated) return;
   toast('Order approved. The customer can now pay with Swipe'); render();
 }
@@ -2661,7 +2679,10 @@ function swipeBizActionHTML(o){
   const who = o.customerName || 'The customer';
   if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
   if(o.paymentStatus==='awaiting_approval') return `
-    <div class="card tight notice-warn"><p style="font-size:.88em;">New order. Check the items and total, then approve it so ${who} can pay ${money(o.total)} with Swipe.</p></div>
+    ${routeNeedsStoreCharge(o.route) ? `
+    <div class="card tight notice-info"><p style="font-size:.88em;"><strong>${routeLabel(o)}.</strong> Set the delivery charge${o.route!=='local'?' (rider to the jetty plus the boat)':''}. It's added to ${money(Math.max(0,(o.itemsTotal||0)-(o.discountAmount||0))+(o.extraDeliveryFee||0))} for the items.</p></div>
+    <div class="field" style="margin-top:10px;"><label for="ap_charge_${o.id}">Delivery charge (MVR)</label><input id="ap_charge_${o.id}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 50"></div>` : ''}
+    <div class="card tight notice-warn"><p style="font-size:.88em;">New order. Check the items${routeNeedsStoreCharge(o.route)?', set the delivery charge,':' and total,'} then approve it so ${who} can pay with Swipe.</p></div>
     <div class="row" style="gap:8px; margin-top:10px;">
       <button class="btn btn-primary" style="flex:2;" onclick="approveSwipeOrder('${o.id}')">Approve order</button>
       <button class="btn btn-outline" style="flex:1;" onclick="declineSwipeOrder('${o.id}')">Decline</button>
@@ -2699,6 +2720,124 @@ const ZONES = {
   hulhumale2: { label:"Hulhumalé Phase 2", fee:25 }
 };
 function zoneFee(zoneKey){ return (ZONES[zoneKey]||ZONES.male).fee; }
+// ---------- Islands ----------
+// Inhabited islands by atoll (administrative atoll code + name). An island's
+// key is "<code>. <island>" (e.g. "Th. Vilufushi"), the way addresses are
+// written in the Maldives; Greater Malé islands use their plain name.
+// Shipping rules (see routeFor()):
+//   Greater Malé -> Greater Malé   : delivery zones (Malé / Hulhumalé P1 / P2)
+//   Greater Malé -> any island      : by boat
+//   island X     -> island X        : local delivery on the island
+//   island X     -> Greater Malé    : by boat
+//   island X     -> island Y        : not possible
+// For every route except the zones, the store sets the delivery charge when
+// it approves the order. List compiled from public sources; correct names
+// here if any are off.
+const GREATER_MALE = ['Malé','Hulhumalé','Villimalé'];
+const ATOLLS = [
+  { code:'Malé', name:'Greater Malé', islands: GREATER_MALE },
+  { code:'HA', name:'Haa Alif', islands:['Baarah','Dhidhdhoo','Filladhoo','Hoarafushi','Ihavandhoo','Kelaa','Maarandhoo','Molhadhoo','Muraidhoo','Thakandhoo','Thuraakunu','Uligamu','Utheemu','Vashafaru'] },
+  { code:'HDh', name:'Haa Dhaalu', islands:['Finey','Hanimaadhoo','Hirimaradhoo','Kulhudhuffushi','Kumundhoo','Kunburudhoo','Kurinbi','Maavaidhoo','Makunudhoo','Naivaadhoo','Nellaidhoo','Neykurendhoo','Nolhivaram','Nolhivaranfaru','Vaikaradhoo'] },
+  { code:'Sh', name:'Shaviyani', islands:['Bilehffahi','Feevah','Feydhoo','Firubaidhoo','Foakaidhoo','Funadhoo','Goidhoo','Kanditheemu','Komandoo','Lhaimagu','Maakandoodhoo','Maaungoodhoo','Maroshi','Milandhoo','Narudhoo','Noomaraa'] },
+  { code:'N', name:'Noonu', islands:['Fodhdhoo','Henbadhoo','Holhudhoo','Kendhikulhudhoo','Kudafari','Landhoo','Lhohi','Maafaru','Maalhendhoo','Magoodhoo','Manadhoo','Miladhoo','Velidhoo'] },
+  { code:'R', name:'Raa', islands:['Agolhitheemu','Alifushi','Dhuvaafaru','Fainu','Hulhudhuffaaru','Iguraidhoo','Innamaadhoo','Kinolhas','Maakurathu','Maduvvari','Meedhoo','Rasgetheemu','Rasmaadhoo','Ungoofaaru','Vaadhoo'] },
+  { code:'B', name:'Baa', islands:['Dharavandhoo','Dhonfanu','Eydhafushi','Fehendhoo','Fulhadhoo','Goidhoo','Hithaadhoo','Kamadhoo','Kendhoo','Kihaadhoo','Kudarikilu','Maalhos','Thulhaadhoo'] },
+  { code:'Lh', name:'Lhaviyani', islands:['Hinnavaru','Kurendhoo','Maafilaafushi','Naifaru','Olhuvelifushi'] },
+  { code:'K', name:'Kaafu', islands:['Dhiffushi','Gaafaru','Gulhi','Guraidhoo','Himmafushi','Huraa','Kaashidhoo','Maafushi','Thulusdhoo'] },
+  { code:'AA', name:'Alif Alif', islands:['Bodufolhudhoo','Feridhoo','Himandhoo','Maalhos','Mathiveri','Rasdhoo','Thoddoo','Ukulhas'] },
+  { code:'ADh', name:'Alif Dhaalu', islands:['Dhangethi','Dhigurah','Dhidhdhoo','Fenfushi','Hangnaameedhoo','Kunburudhoo','Maamigili','Mahibadhoo','Mandhoo','Omadhoo'] },
+  { code:'V', name:'Vaavu', islands:['Felidhoo','Fulidhoo','Keyodhoo','Rakeedhoo','Thinadhoo'] },
+  { code:'M', name:'Meemu', islands:['Dhiggaru','Kolhufushi','Maduvvari','Madifushi','Mulah','Muli','Naalaafushi','Raimandhoo','Veyvah'] },
+  { code:'F', name:'Faafu', islands:['Bilehdhoo','Dharanboodhoo','Feeali','Magoodhoo','Nilandhoo'] },
+  { code:'Dh', name:'Dhaalu', islands:['Bandidhoo','Gemendhoo','Hulhudheli','Kudahuvadhoo','Maaenboodhoo','Meedhoo','Rinbudhoo','Vaanee'] },
+  { code:'Th', name:'Thaa', islands:['Buruni','Dhiyamigili','Gaadhiffushi','Guraidhoo','Hirilandhoo','Kandoodhoo','Kinbidhoo','Madifushi','Omadhoo','Thimarafushi','Vandhoo','Veymandoo','Vilufushi'] },
+  { code:'L', name:'Laamu', islands:['Dhanbidhoo','Fonadhoo','Gaadhoo','Gan','Hithadhoo','Isdhoo','Kalaidhoo','Kunahandhoo','Maabaidhoo','Maamendhoo','Maavah','Mundoo'] },
+  { code:'GA', name:'Gaafu Alif', islands:['Dhaandhoo','Dhevvadhoo','Dhiyadhoo','Gemanafushi','Kanduhulhudhoo','Kolamaafushi','Kondey','Maamendhoo','Nilandhoo','Viligili'] },
+  { code:'GDh', name:'Gaafu Dhaalu', islands:['Faresmaathodaa','Fiyoaree','Gadhdhoo','Hoandeddhoo','Madaveli','Nadallaa','Rathafandhoo','Thinadhoo','Vaadhoo'] },
+  { code:'Gn', name:'Gnaviyani', islands:['Fuvahmulah'] },
+  { code:'S', name:'Addu City', islands:['Feydhoo','Hithadhoo','Hulhudhoo','Maradhoo','Maradhoo-Feydhoo','Meedhoo'] },
+];
+function islandKey(atollCode, island){ return atollCode==='Malé' ? island : `${atollCode}. ${island}`; }
+function isGreaterMale(key){ return !key || GREATER_MALE.includes(key); }   // no island set = legacy Malé store
+function atollOfIsland(key){
+  if(isGreaterMale(key)) return ATOLLS[0];
+  const code = String(key).split('. ')[0];
+  return ATOLLS.find(a=>a.code===code) || null;
+}
+function islandPlain(key){ return isGreaterMale(key) ? (key||'Malé') : String(key).split('. ').slice(1).join('. '); }
+function bizIsland(biz){ return (biz && biz.island) || 'Malé'; }
+// 'male_zone' | 'boat_to_island' | 'local' | 'boat_to_male' | null (not possible)
+function routeFor(originKey, destKey){
+  const fromMale = isGreaterMale(originKey), toMale = isGreaterMale(destKey);
+  if(fromMale && toMale) return 'male_zone';
+  if(fromMale) return 'boat_to_island';
+  if(toMale) return 'boat_to_male';
+  return originKey===destKey ? 'local' : null;
+}
+function routeLabel(o){
+  if(!o.route || o.route==='male_zone') return ZONES[o.zone] ? ZONES[o.zone].label : (o.rentalItemId ? 'Rental delivery' : '—');
+  if(o.route==='local') return `Delivery on ${o.destIsland}`;
+  if(o.route==='boat_to_island') return `By boat from Malé to ${o.destIsland}`;
+  if(o.route==='boat_to_male') return `By boat from ${o.originIsland} to Malé`;
+  return '—';
+}
+function routeNeedsStoreCharge(route){ return route==='local' || route==='boat_to_island' || route==='boat_to_male'; }
+// Atoll + island picker: two selects; onChange gets the island key.
+function islandPickerHTML(idPrefix, currentKey, onChange){
+  const atoll = currentKey ? atollOfIsland(currentKey) : null;
+  return `
+  <div class="row" style="gap:8px; align-items:stretch;">
+    <select id="${idPrefix}_atoll" style="flex:1; min-width:0;" onchange="islandAtollChanged('${idPrefix}', ${onChange?`'${onChange}'`:'null'})" aria-label="Atoll">
+      <option value="">Atoll…</option>
+      ${ATOLLS.map(a=>`<option value="${a.code}" ${atoll && atoll.code===a.code?'selected':''}>${a.code==='Malé'?a.name:`${a.code}. ${a.name}`}</option>`).join('')}
+    </select>
+    <select id="${idPrefix}_island" style="flex:1; min-width:0;" onchange="${onChange?`${onChange}(this.value)`:''}" aria-label="Island">
+      ${islandOptionsHTML(atoll, currentKey)}
+    </select>
+  </div>`;
+}
+function islandOptionsHTML(atoll, currentKey){
+  if(!atoll) return `<option value="">Island…</option>`;
+  return `<option value="">Island…</option>` + atoll.islands.map(i=>{ const k = islandKey(atoll.code, i); return `<option value="${k}" ${k===currentKey?'selected':''}>${i}</option>`; }).join('');
+}
+function islandAtollChanged(idPrefix, onChange){
+  const code = (document.getElementById(idPrefix+'_atoll')||{}).value;
+  const atoll = ATOLLS.find(a=>a.code===code) || null;
+  const sel = document.getElementById(idPrefix+'_island');
+  if(sel) sel.innerHTML = islandOptionsHTML(atoll, null);
+  if(onChange && typeof window[onChange]==='function') window[onChange]('');
+}
+function pickedIsland(idPrefix){ const el = document.getElementById(idPrefix+'_island'); return el ? el.value : ''; }
+
+// ---------- Nearby riders (GPS) ----------
+// A rider sees a store's open jobs if they're registered on the store's
+// island (any Greater Malé island counts as one area), or if they're online
+// with a fresh location within NEARBY_KM of the store's saved location.
+const NEARBY_KM = 20;
+const LOCATION_FRESH_MS = 30*60*1000;
+function kmBetween(aLat, aLng, bLat, bLng){
+  const R = 6371, toRad = d=>d*Math.PI/180;
+  const dLat = toRad(bLat-aLat), dLng = toRad(bLng-aLng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function riderIsLive(d){ return !!(d && d.online && d.lat!=null && d.lng!=null && d.locationUpdatedAt && Date.now()-d.locationUpdatedAt < LOCATION_FRESH_MS); }
+function jobVisibleToRider(o, d){
+  if(!d) return false;
+  const biz = DB.businesses.find(b=>b.id===o.businessId);
+  const from = o.originIsland || bizIsland(biz);
+  if(!d.island) return true;   // rider hasn't picked an island yet: show everything
+  const sameArea = isGreaterMale(from) ? isGreaterMale(d.island) : from===d.island;
+  if(sameArea) return true;
+  if(riderIsLive(d) && biz && biz.lat!=null && biz.lng!=null) return kmBetween(d.lat, d.lng, biz.lat, biz.lng) <= NEARBY_KM;
+  return false;
+}
+function riderDistanceText(o, d){
+  const biz = DB.businesses.find(b=>b.id===o.businessId);
+  if(!riderIsLive(d) || !biz || biz.lat==null) return '';
+  return `${kmBetween(d.lat, d.lng, biz.lat, biz.lng).toFixed(1)} km away`;
+}
+
 // Zone picker drawn as a ferry route: Malé, then Hulhumalé Phase 1, then
 // Phase 2, each stop showing its flat fee. The hidden input keeps the old
 // #c_zone / #cao_zone id so anything reading .value still works.
@@ -2878,6 +3017,7 @@ async function refreshLiveListings(){
     // while a sheet is open or the person is mid-typing (a search box, a sign-in/
     // checkout field) - a surprise full re-render would otherwise blow away focus
     // and half-typed input.
+    checkNewRiderJobs();
     const onLiveScreen = (state.role==='customer' && (state.screen==='custHome' || state.screen==='custStore'))
       || (state.role==='delivery' && state.screen==='delHome');
     const typing = document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
@@ -3068,8 +3208,8 @@ function seedIfEmpty(){
   if(sb || DB.businesses.length) return;
   const now = Date.now();
   DB.businesses = [
-    {swipeConnected:true, id:'biz_reef', name:'Reef Corner Store', ownerName:'Aisha Hassan', phone:'7712345', accountNumber:'7770000123456', accountName:'Aisha Hassan', tier:'free', joinDate: now - 5*86400000, paidAt:null, category:'Grocery', rating:4.6},
-    {swipeConnected:true, id:'biz_atoll', name:'Atoll Bakes', ownerName:'Moosa Ibrahim', phone:'7798765', accountNumber:'7770009876543', accountName:'Moosa Ibrahim', tier:'pro', joinDate: now - 60*86400000, paidAt: now-60*86400000, category:'Bakery', rating:4.9}
+    {swipeConnected:true, island:'Malé', lat:4.1755, lng:73.5093, id:'biz_reef', name:'Reef Corner Store', ownerName:'Aisha Hassan', phone:'7712345', accountNumber:'7770000123456', accountName:'Aisha Hassan', tier:'free', joinDate: now - 5*86400000, paidAt:null, category:'Grocery', rating:4.6},
+    {swipeConnected:true, island:'K. Maafushi', lat:3.9431, lng:73.4906, id:'biz_atoll', name:'Atoll Bakes', ownerName:'Moosa Ibrahim', phone:'7798765', accountNumber:'7770009876543', accountName:'Moosa Ibrahim', tier:'pro', joinDate: now - 60*86400000, paidAt: now-60*86400000, category:'Bakery', rating:4.9}
   ];
   DB.items = [
     {id:uid('it'), businessId:'biz_reef', name:'Fresh Rice 5kg', price:145, stock:20, category:'Grocery'},
@@ -3079,7 +3219,7 @@ function seedIfEmpty(){
     {id:uid('it'), businessId:'biz_atoll', name:'Short Eats Box (12pc)', price:120, stock:12, category:'Bakery'}
   ];
   DB.delivery = [
-    {id:'del_shifau', name:'Shifau Rasheed', phone:'7701122'}
+    {id:'del_shifau', name:'Shifau Rasheed', phone:'7701122', island:'Malé', online:false}
   ];
   DB.orders = [];
 }
@@ -3745,8 +3885,9 @@ function bottomNav(role, active){
   // renter's attention, and there's no separate notification bell on that side,
   // so the badge on the tab they'd open anyway is the notification.
   const bookingCount = role==='business' ? pendingBookingsCount(state.activeBizId) : 0;
+  const jobCount = role==='delivery' ? openJobsFor(currentDel()).length : 0;
   const tabs = cfg[role].map(([scr,ic,label])=>`
-    <button class="navbtn ${active===scr?'active':''}" aria-label="${label}" ${active===scr?'aria-current="page"':''} onclick="go('${scr}')"><span class="ic">${NAV_ICONS[scr]||ic}${(scr==='custCart' && cartCount>0)?`<span class="nav-badge">${cartCount>99?'99+':cartCount}</span>`:''}${(scr==='bizOrders' && bookingCount>0)?`<span class="nav-badge">${bookingCount>99?'99+':bookingCount}</span>`:''}</span><span class="navlbl">${label}</span></button>
+    <button class="navbtn ${active===scr?'active':''}" aria-label="${label}" ${active===scr?'aria-current="page"':''} onclick="go('${scr}')"><span class="ic">${NAV_ICONS[scr]||ic}${(scr==='custCart' && cartCount>0)?`<span class="nav-badge">${cartCount>99?'99+':cartCount}</span>`:''}${(scr==='delHome' && jobCount>0)?`<span class="nav-badge">${jobCount>99?'99+':jobCount}</span>`:''}${(scr==='bizOrders' && bookingCount>0)?`<span class="nav-badge">${bookingCount>99?'99+':bookingCount}</span>`:''}</span><span class="navlbl">${label}</span></button>
   `).join('');
   return `<div class="bottomnav ${role==='customer'?'compact':''}"><div class="glass bar">${tabs}</div></div>`;
 }
@@ -3857,6 +3998,9 @@ function sheetBizSignup(){
   <div class="field"><label>Bank account number</label><input id="f_acc" placeholder="77700001234567"></div>
   <div class="field"><label>Account holder name</label><input id="f_accname" placeholder="Same as owner or business name"></div>
   <div class="field"><label>Store address / pickup location (optional)</label><input id="f_address" placeholder="e.g. H. Sample Building, Malé"></div>
+  <div class="field"><label>Island</label>${islandPickerHTML('f_isl', 'Malé', null)}
+    <p class="muted" style="font-size:.8em; margin-top:6px;">From Malé you can send to every island by boat. From other islands you deliver on your island, or to Malé by boat.</p>
+  </div>
   <div class="field"><label>Category (mark all that fit)</label>
     ${catChecklistHTML('f_cat', '')}
   </div>
@@ -3900,11 +4044,13 @@ function submitBizSignup(){
   if(sb && !state.authed){ toast('Sign in first','bad'); return; }
   const name=val('f_name'), owner=val('f_owner'), phone=val('f_phone'), cat=getCatChecklistValue('f_cat'), acc=val('f_acc'), accname=val('f_accname');
   if(!name||!owner||!acc||!accname){ toast('Please fill in store name, owner, and account details','bad'); return; }
+  const island = pickedIsland('f_isl');
+  if(!island){ toast('Pick the island your store is on','bad'); return; }
   // Kept on the business record (not just the pending category_requests row)
   // so "Other" items added later default to the same written-in name instead
   // of the seller retyping it every time - see itemCatFieldHTML().
   const catOtherName = cat.split(',').map(s=>s.trim()).includes('Other') ? getCatOtherName('f_cat') : '';
-  const biz = {id:uid('biz'), ownerId:state.customerId, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
+  const biz = {id:uid('biz'), ownerId:state.customerId, island, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
   DB.businesses.push(biz); saveDB('businesses');
   maybeSubmitCategoryRequest('f_cat', biz);
   closeSheet();
@@ -4021,8 +4167,11 @@ function sheetDelSignup(){
   ${needsPhone
     ? `<div class="field"><label>Phone</label><input id="d_phone" placeholder="7XXXXXX"></div>`
     : `<div class="field"><label>Phone</label><input id="d_phone" value="${escapeAttr(state.customerPhone)}" disabled style="opacity:.7;"></div>`}
+  <div class="field"><label>Island you deliver on</label>${islandPickerHTML('d_isl', 'Malé', null)}
+    <p class="muted" style="font-size:.8em; margin-top:6px;">You'll get jobs from stores on this island. Go online in the app to also get jobs from stores within ${NEARBY_KM} km of you.</p>
+  </div>
   <div class="card tight" style="background:rgba(34,184,200,.12); border:1px solid rgba(34,184,200,.3);">
-    <p style="font-size:.85em; margin-bottom:8px;">You earn a flat fee per delivery based on zone:</p>
+    <p style="font-size:.85em; margin-bottom:8px;">In Greater Malé you earn a flat fee per delivery by zone. On other islands, and for runs to the boat jetty, the store sets the fee for each order.</p>
     <div class="row between" style="font-size:.85em;"><span>Malé</span><strong>MVR 15</strong></div>
     <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 1</span><strong>MVR 20</strong></div>
     <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 2</span><strong>MVR 25</strong></div>
@@ -4034,8 +4183,10 @@ function submitDelSignup(){
   const name = state.customerName;
   const phone = state.customerPhone || val('d_phone');
   if(!phone){ toast('Please enter your phone number','bad'); return; }
+  const island = pickedIsland('d_isl');
+  if(!island){ toast('Pick the island you deliver on','bad'); return; }
   if(!state.customerPhone) state.customerPhone = phone;
-  const d = {id:uid('del'), userId:state.customerId, name, phone};
+  const d = {id:uid('del'), userId:state.customerId, name, phone, island, online:false, lat:null, lng:null, locationUpdatedAt:null};
   DB.delivery.push(d); saveDB('delivery');
   closeSheet();
   state.role='delivery';
@@ -5100,7 +5251,7 @@ function orderDetailBizBody(o){
     </div>`;
   }
   const discountLine = o.discountAmount>0 ? `<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>` : '';
-  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${ZONES[o.zone]?ZONES[o.zone].label:'—'}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
+  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${routeLabel(o)}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
   // An 'on_return' rental's own o.total only ever holds the advance due at
   // checkout (see submitRentItem()) - the rental fee itself lives separately
   // in rentalFeeAmount, so it needs its own line here or the order would
@@ -5110,6 +5261,7 @@ function orderDetailBizBody(o){
     <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
     <p class="muted" style="margin-bottom:8px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
     ${contactHTML(o.customerPhone || o.receiverPhone, 'Customer')}
+    ${o.route && o.route!=='male_zone' ? `<p class="route-note">⛴️ ${routeLabel(o)}</p>` : ''}
     ${o.deliveryTargetType==='pickup' ? `
     <div class="glass card tight" style="margin-bottom:12px;">
       <p class="muted" style="font-size:.78em; margin-bottom:4px;">📦 Pickup from</p>
@@ -5445,6 +5597,13 @@ function sheetBizSettings(){
   <div class="field"><label>Owner name</label><input id="s_owner" value="${biz.ownerName||''}"></div>
   <div class="field"><label>Phone</label><input id="s_phone" value="${biz.phone||''}"></div>
   <div class="field"><label>Store address / pickup location</label><input id="s_address" value="${escapeAttr(biz.address||'')}" placeholder="e.g. H. Sample Building, Malé"></div>
+  <div class="field"><label>Island</label>${islandPickerHTML('s_isl', bizIsland(biz), null)}</div>
+  <div class="field"><label>Store location (for finding nearby delivery partners)</label>
+    <div class="row between" style="gap:10px;">
+      <span class="muted" id="s_loc_txt" style="font-size:.86em;">${biz.lat!=null ? `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})` : 'Not saved yet'}</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="useStoreLocation()">📍 Use my current location</button>
+    </div>
+  </div>
   ${settingsSectionLabel('Category')}
   <div class="field"><label>Category (mark all that fit)</label>
     ${catChecklistHTML('s_cat', biz.category)}
@@ -5468,6 +5627,18 @@ function sheetBizSettings(){
   ${sb ? `<button class="btn btn-outline" style="margin-top:10px;" onclick="signOutCustomer()">Sign out</button>` : ''}
   `;
 }
+// Saves the phone's current GPS position as the store's location; riders
+// within NEARBY_KM who are online then see its delivery jobs.
+function useStoreLocation(){
+  const biz = currentBiz(); if(!biz) return;
+  if(!navigator.geolocation){ toast("This device can't share its location",'bad'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    biz.lat = pos.coords.latitude; biz.lng = pos.coords.longitude;
+    saveDB('businesses');
+    const el = document.getElementById('s_loc_txt'); if(el) el.textContent = `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})`;
+    toast('Store location saved');
+  }, err=>toast(err && err.code===1 ? 'Location permission was denied. Allow it in your browser settings' : "Couldn't get your location",'bad'), { enableHighAccuracy:true, timeout:15000 });
+}
 function saveBizSettings(){
   const biz = currentBiz();
   biz.name = val('s_name')||biz.name;
@@ -5478,6 +5649,7 @@ function saveBizSettings(){
   biz.categoryOtherName = biz.category.split(',').map(s=>s.trim()).includes('Other') ? (getCatOtherName('s_cat')||'') : '';
   biz.accountName = val('s_accname')||biz.accountName;
   biz.accountNumber = val('s_acc')||biz.accountNumber;
+  biz.island = pickedIsland('s_isl') || biz.island || 'Malé';
   saveDB('businesses');
   maybeSubmitCategoryRequest('s_cat', biz);
   closeSheet(); toast('Settings saved'); render();
@@ -5824,6 +5996,85 @@ function fontSizeControl(){
 
 /* =================== DELIVERY SIDE =================== */
 function currentDel(){ return DB.delivery.find(d=>d.id===state.activeDelId); }
+// Open jobs this rider should see: their island's stores, plus stores within
+// NEARBY_KM while they're online (see jobVisibleToRider()).
+function openJobsFor(d){
+  if(!d) return [];
+  return DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion'
+    && (o.rentalItemId ? o.needsDeliveryPartner : o.readyForPickup) && jobVisibleToRider(o, d));
+}
+function riderStatusCardHTML(d){
+  const live = riderIsLive(d);
+  return `
+  <div class="glass card rider-status ${d.online?'is-online':''}">
+    <div class="row between" style="gap:12px;">
+      <div style="min-width:0;">
+        <h3>${d.online ? "You're online" : "You're offline"}</h3>
+        <p class="muted" style="font-size:.84em; margin-top:2px;">${d.online
+          ? (live ? `Getting jobs on ${d.island||'your island'} and within ${NEARBY_KM} km of you.` : 'Waiting for your location…')
+          : `Getting jobs on ${d.island||'your island'} only. Go online to get jobs from stores near you too.`}</p>
+      </div>
+      <button type="button" class="switch ${d.online?'on':''}" role="switch" aria-checked="${!!d.online}" aria-label="Online" onclick="toggleRiderOnline()"><span></span></button>
+    </div>
+    <details style="margin-top:10px;"><summary class="muted" style="font-size:.84em; cursor:pointer;">Island: ${d.island||'not set'} · change</summary>
+      <div style="margin-top:8px;">${islandPickerHTML('r_isl', d.island, 'setRiderIsland')}</div>
+    </details>
+  </div>`;
+}
+// Saves only this rider's own location/online columns (RLS: self update).
+async function saveRiderFields(d, fields){
+  if(sb){ const { error } = await sb.from('delivery_persons').update(fields).eq('id', d.id); if(error){ console.warn(error); toast("Couldn't update your status",'bad'); return false; } }
+  return true;
+}
+async function setRiderIsland(k){
+  const d = currentDel(); if(!d || !k) return;
+  d.island = k;
+  if(await saveRiderFields(d, { island:k })){ toast(`Now delivering on ${k}`); render(); }
+}
+let _riderWatchId = null, _riderLastSave = 0;
+function riderSavePosition(d, pos){
+  d.lat = pos.coords.latitude; d.lng = pos.coords.longitude; d.locationUpdatedAt = Date.now();
+  // Throttled: every 2 minutes is plenty to decide who's nearby.
+  if(Date.now() - _riderLastSave < 120000) return;
+  _riderLastSave = Date.now();
+  saveRiderFields(d, { lat:d.lat, lng:d.lng, location_updated_at:new Date(d.locationUpdatedAt).toISOString() });
+}
+function startRiderTracking(d){
+  if(_riderWatchId!=null || !navigator.geolocation) return;
+  _riderWatchId = navigator.geolocation.watchPosition(pos=>riderSavePosition(d, pos), ()=>{}, { enableHighAccuracy:true, maximumAge:60000, timeout:30000 });
+}
+function stopRiderTracking(){ if(_riderWatchId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(_riderWatchId); } _riderWatchId = null; }
+async function toggleRiderOnline(){
+  const d = currentDel(); if(!d) return;
+  if(d.online){
+    d.online = false; stopRiderTracking();
+    await saveRiderFields(d, { online:false });
+    toast("You're offline"); render(); return;
+  }
+  if(!navigator.geolocation){ toast("This device can't share its location",'bad'); return; }
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    d.online = true; _riderLastSave = 0; riderSavePosition(d, pos);
+    await saveRiderFields(d, { online:true, lat:d.lat, lng:d.lng, location_updated_at:new Date(d.locationUpdatedAt).toISOString() });
+    startRiderTracking(d);
+    toast("You're online. Nearby jobs will show up here"); render();
+  }, err=>toast(err && err.code===1 ? 'Allow location access to go online' : "Couldn't get your location",'bad'), { enableHighAccuracy:true, timeout:15000 });
+}
+// In-app job alerts: when the background refresh finds a new job this rider
+// can take, show a toast and vibrate.
+let _seenRiderJobIds = null;
+function checkNewRiderJobs(){
+  if(state.role!=='delivery') return;
+  const d = currentDel(); if(!d) return;
+  const ids = openJobsFor(d).map(o=>o.id);
+  if(_seenRiderJobIds===null){ _seenRiderJobIds = new Set(ids); return; }
+  const fresh = ids.filter(id=>!_seenRiderJobIds.has(id));
+  ids.forEach(id=>_seenRiderJobIds.add(id));
+  if(fresh.length){
+    const o = DB.orders.find(x=>x.id===fresh[0]);
+    toast(fresh.length>1 ? `${fresh.length} new delivery jobs near you` : `New delivery job: ${o ? o.businessName : 'near you'}`);
+    try{ navigator.vibrate && navigator.vibrate([180,80,180]); }catch(_){}
+  }
+}
 
 function renderDelivery(){
   if(state.screen==='delPicker') return renderPicker(sb ? DB.delivery.filter(d=>d.userId===state.customerId) : DB.delivery,'del');
@@ -5844,6 +6095,7 @@ function payoutAmountFor(o){ return o.deliveryPartnerPayout!=null ? o.deliveryPa
 // remits everything they collected, and is paid separately via payout_status.
 function cashCutAmount(o){ return o.deliveryType==='free' ? 0 : payoutAmountFor(o); }
 function renderDelHome(d){
+  if(d.online) startRiderTracking(d);
   const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status!=='delivered');
   // A store offering this rider a second (or third...) order directly - see
   // offerOrderToRider() - because they're already picking up another one of
@@ -5853,8 +6105,9 @@ function renderDelHome(d){
   // never gets set just by it existing.
   const offers = DB.orders.filter(o=>o.pendingRiderId===d.id);
   document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
-    ${topbar(d.name, `MVR 15–25 per delivery, by zone`)}
+    ${topbar(d.name, d.island ? `Delivering on ${d.island}` : 'Pick your island below')}
     <div style="padding:4px 16px 0;">
+      ${riderStatusCardHTML(d)}
       ${offers.length? `
       <div class="section" style="margin-bottom:22px;">
         <div class="section-head"><h2>Delivery requests</h2></div>
@@ -5877,10 +6130,11 @@ function renderDelHome(d){
              until the business posts it (readyForPickup, see
              markOrderReadyForPickup()) or not at all if they chose to deliver
              it themselves (selfDelivery). -->
-        ${DB.orders.filter(o=>!o.deliveryPersonId && o.status!=='delivered' && o.paymentStatus!=='awaiting_completion' && (o.rentalItemId ? o.needsDeliveryPartner : o.readyForPickup)).map(o=>`
+        ${openJobsFor(d).map(o=>`
           <div class="glass card">
             <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
-            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} · ${o.rentalItemId ? 'Rental delivery' : (ZONES[o.zone]?ZONES[o.zone].label:'—')}</p>
+            <p class="muted" style="font-size:.85em; margin-top:4px;">${o.businessName} · ${o.originIsland || bizIsland(DB.businesses.find(b=>b.id===o.businessId))}${riderDistanceText(o,d)?` · ${riderDistanceText(o,d)}`:''}</p>
+            <p class="route-note" style="margin-top:4px;">${o.rentalItemId ? 'Rental delivery' : routeLabel(o)}${o.route==='boat_to_island'||o.route==='boat_to_male' ? ' (take it to the boat jetty)' : ''}</p>
             ${o.rentalItemId?`<p class="muted" style="font-size:.78em; margin-top:2px;">${o.rentalPayoutTiming==='upfront'?'Paid upfront when you accept':'Paid once you mark it delivered'}</p>`:''}
             <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="claimJob('${o.id}')">Accept job</button>
           </div>`).join('') || `<div class="empty"><span class="ic">📭</span>No open jobs right now</div>`}
@@ -5929,7 +6183,7 @@ function delOfferCard(o){
   return `
   <div class="glass card">
     <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3><span class="price">Earn ${money(payoutAmountFor(o))}</span></div>
-    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} · ${ZONES[o.zone]?ZONES[o.zone].label:'—'}</p>
+    <p class="muted" style="font-size:.85em; margin:4px 0 10px;">${o.businessName} · ${routeLabel(o)}</p>
     <p class="muted" style="font-size:.8em; margin-bottom:10px;">You're already picking up another order from ${o.businessName} - they'd like you to take this one too.</p>
     <div class="row" style="gap:8px;">
       <button class="btn btn-outline btn-sm" style="flex:1;" onclick="declineDeliveryOffer('${o.id}')">Decline</button>
@@ -5976,7 +6230,7 @@ function delJobCard(o){
     ${!handedOff ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">📍 Pickup from ${biz && biz.address ? biz.address : (biz?biz.name:'the store')}</p>` : ''}
     ${handedOff && o.receiverName ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤':'📍'} ${[o.receiverPhone,o.receiverAddress].filter(Boolean).join(' · ')}</p>` : ''}
     ${!handedOff && o.receiverAddress ? `<p class="muted" style="font-size:.82em; margin-bottom:8px;">${o.deliveryTargetType==='boat'?'🚤 Drop-off':'📍 Drop-off'}: ${o.receiverAddress}</p>` : ''}
-    <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
+    <div class="row between" style="margin-bottom:8px;"><span class="muted" style="font-size:.82em;">${routeLabel(o)} · your payout</span><strong>${money(payoutAmt)}</strong></div>
     ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
       <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the customer transfers and uploads their slip - the business takes it from there.</p>
@@ -6053,7 +6307,7 @@ function sheetDelOrderDetail(){
   </div>` : ''}
   <div class="card tight">
     ${handedOff ? itemsList : `<p class="muted" style="font-size:.85em;">Item details show once the store hands this over to you.</p>`}
-    <div class="row between" style="margin-top:6px;"><span class="muted">${ZONES[o.zone]?ZONES[o.zone].label:'—'} · your payout</span><strong>${money(payoutAmt)}</strong></div>
+    <div class="row between" style="margin-top:6px;"><span class="muted">${routeLabel(o)} · your payout</span><strong>${money(payoutAmt)}</strong></div>
     ${handedOff ? `<div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price">${money(o.total)}</strong></div>` : ''}
   </div>
   ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
@@ -7322,10 +7576,42 @@ function sheetCheckout(){
   ${deliveryTargetFieldsHTML()}
   <div class="field">
     <label id="c_zone_lbl">Deliver to</label>
-    ${zoneRouteHTML('c_zone', 'refreshCheckoutTotals', groups.every(g=>!cartBuyerPaysFee(g.lines)))}
+    <div class="tabs" role="tablist" style="margin-bottom:10px;">
+      <button type="button" class="tab ${_destMode==='male'?'active':''}" id="destTab_male" onclick="setDestMode('male')">Greater Malé</button>
+      <button type="button" class="tab ${_destMode==='island'?'active':''}" id="destTab_island" onclick="setDestMode('island')">Another island</button>
+    </div>
+    <div id="destMaleBox" class="${_destMode==='male'?'':'hidden'}">
+      ${zoneRouteHTML('c_zone', 'refreshCheckoutTotals', groups.every(g=>!cartBuyerPaysFee(g.lines)))}
+    </div>
+    <div id="destIslandBox" class="${_destMode==='island'?'':'hidden'}">
+      ${islandPickerHTML('dest', _destIsland, 'setDestIsland')}
+      <p class="muted" style="font-size:.8em; margin-top:8px;">Stores in Malé can send to any island by boat. Stores on other islands deliver on their own island, or to Malé by boat.</p>
+    </div>
   </div>
   ${groups.length>1 ? `<p class="muted" style="font-size:.8em; margin:16px 4px 10px;">Your cart has items from ${groups.length} stores — pay and place each store's order separately below.</p>` : ''}
-  ${groups.map(g=>storeCheckoutCardHTML(g)).join('')}`;
+  <div id="ckStores">${groups.map(g=>storeCheckoutCardHTML(g)).join('')}</div>`;
+}
+// Where this checkout delivers: a Greater Malé zone, or a picked island.
+let _destMode = 'male', _destIsland = '';
+function checkoutDestKey(){
+  if(_destMode==='male') return _selectedZone==='male' ? 'Malé' : 'Hulhumalé';
+  return _destIsland || '';
+}
+function setDestMode(m){
+  _destMode = m;
+  const a = document.getElementById('destTab_male'), b = document.getElementById('destTab_island');
+  if(a) a.classList.toggle('active', m==='male'); if(b) b.classList.toggle('active', m==='island');
+  const mb = document.getElementById('destMaleBox'), ib = document.getElementById('destIslandBox');
+  if(mb) mb.classList.toggle('hidden', m!=='male'); if(ib) ib.classList.toggle('hidden', m!=='island');
+  refreshCheckoutCards();
+}
+function setDestIsland(k){ _destIsland = k || ''; refreshCheckoutCards(); }
+function refreshCheckoutCards(){
+  const box = document.getElementById('ckStores'); if(!box) return;
+  const entries = Object.entries(state.cart);
+  const allLines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const groups = sortGroupsByRecency(groupCartLinesByBusiness(cartCheckoutLines(allLines)));
+  box.innerHTML = groups.map(g=>storeCheckoutCardHTML(g)).join('');
 }
 // One store's slice of checkout: its own items/totals, its own account details (or
 // cash note), its own slip upload, and its own "place order" button - all scoped by
@@ -7335,27 +7621,36 @@ function storeCheckoutCardHTML(g){
   const itemsTotal = lines.reduce((s,l)=>s+effectivePrice(l.it)*l.qty,0);
   const buyerPaysFee = cartBuyerPaysFee(lines);
   const extraFee = cartExtraFee(lines);
+  const from = bizIsland(biz), dest = checkoutDestKey();
+  const route = dest ? routeFor(from, dest) : undefined;
+  const zoneRoute = route==='male_zone';
   const fee = zoneFee(_selectedZone);
-  const shownFee = buyerPaysFee ? fee : 0;
+  const shownFee = zoneRoute && buyerPaysFee ? fee : 0;
   const total = itemsTotal + shownFee + extraFee;
+  const routeText = route==='boat_to_island' ? `Sent by boat from Malé to ${dest}` : route==='boat_to_male' ? `Sent by boat from ${from} to Malé` : route==='local' ? `Delivered on ${dest}` : '';
+  const blocked = route===null;
   return `
   <div class="glass card" id="storeCard_${biz.id}" style="margin-bottom:16px;">
-    <h3 style="margin-bottom:8px;">${biz.name}</h3>
+    <div class="row between" style="margin-bottom:8px; align-items:baseline;"><h3>${biz.name}</h3><span class="muted" style="font-size:.8em;">From ${from}</span></div>
     ${lines.map(l=>`<div class="row between" style="margin-bottom:4px;"><span class="muted" style="font-size:.85em;">${l.qty}× ${l.it.name}</span><span style="font-size:.85em;">${money(effectivePrice(l.it)*l.qty)}</span></div>`).join('')}
     <div class="divider" style="margin:8px 0;"></div>
-    <div class="row between" style="font-size:.85em;"><span class="muted">Delivery fee</span><span id="ck_fee_${biz.id}">${buyerPaysFee?money(shownFee):'Free'}</span></div>
+    ${routeText ? `<p class="route-note">⛴️ ${routeText}</p>` : ''}
+    <div class="row between" style="font-size:.85em;"><span class="muted">Delivery</span><span id="ck_fee_${biz.id}">${zoneRoute ? (buyerPaysFee?money(shownFee):'Free') : route ? `Set by ${biz.name}` : '—'}</span></div>
     ${extraFee>0?`<div class="row between" style="margin-top:4px; font-size:.85em;"><span class="muted">Extra delivery fee</span><span id="ck_extra_${biz.id}">${money(extraFee)}</span></div>`:''}
-    <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price" id="ck_total_${biz.id}">${money(total)}</strong></div>
+    <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price" id="ck_total_${biz.id}">${money(total)}${zoneRoute||!route?'':' + delivery'}</strong></div>
+    ${blocked ? `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} is on ${from}. It can deliver on ${from} or send to Malé by boat, but not to ${dest}.</p></div>`
+      : route===undefined ? `<div class="card tight notice-info" style="margin-top:12px;"><p style="font-size:.88em;">Pick your atoll and island above.</p></div>`
+      : `
     <div class="swipe-note">
       <span class="swipe-badge" aria-hidden="true">S</span>
       <div style="min-width:0;">
         <strong>Pay with Swipe</strong>
-        <p>${biz.name} confirms your order first. Then you'll get a Swipe link to pay <span id="ck_swipe_${biz.id}">${money(total)}</span>.</p>
+        <p>${biz.name} confirms your order${zoneRoute?'':' and sets the delivery charge'} first. Then you'll get a Swipe link to pay${zoneRoute?` <span id="ck_swipe_${biz.id}">${money(total)}</span>`:' the total'}.</p>
       </div>
     </div>
     ${biz.swipeConnected
       ? `<button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="placeStoreOrder('${biz.id}')">Send order to ${biz.name}</button>`
-      : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't set up Swipe payments.</p></div>`}
+      : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't set up Swipe payments.</p></div>`}`}
   </div>`;
 }
 // Shared by every checkout-shaped sheet (cart checkout, rent, complete-auction-win) -
@@ -7575,6 +7870,7 @@ async function saveAddressFromCheckout(category, fields){
 // there's one shared delivery destination - updates each store card's numbers in
 // place rather than re-rendering the whole sheet (see storeCheckoutCardHTML()).
 function refreshCheckoutTotals(){
+  if(document.getElementById('ckStores')){ refreshCheckoutCards(); return; }
   const entries = Object.entries(state.cart);
   const allLines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   const lines = cartCheckoutLines(allLines);
@@ -8448,8 +8744,15 @@ async function placeStoreOrder(bizId){
   if(!deliveryTarget) return;
   const { deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt } = deliveryTarget;
   if(!biz.swipeConnected){ toast(`${biz.name} hasn't set up Swipe payments yet, so it can't take orders`, 'bad'); return; }
+  const originIsland = bizIsland(biz), destIsland = checkoutDestKey();
+  if(!destIsland){ toast('Pick the island to deliver to','bad'); return; }
+  const route = routeFor(originIsland, destIsland);
+  if(!route){ toast(`${biz.name} can't deliver from ${originIsland} to ${destIsland}`,'bad'); return; }
+  const zoneRoute = route==='male_zone';
   const buyerPaysFee = cartBuyerPaysFee(cartLines);
-  const fee = zoneFee(_selectedZone);
+  // Zones have a flat fee; every other route's charge is set by the store
+  // when it approves the order (approve_swipe_order).
+  const fee = zoneRoute ? zoneFee(_selectedZone) : 0;
   const extraFee = cartExtraFee(cartLines);
   const total = itemsTotal + (buyerPaysFee?fee:0) + extraFee;
   state.customerName = name;
@@ -8458,8 +8761,9 @@ async function placeStoreOrder(bizId){
     customerId: state.customerId, customerEmail: state.customerEmail,
     customerName: name, customerPhone: phone, items: lines,
     deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt: boatDepartureAt||null,
-    itemsTotal, deliveryFee: buyerPaysFee ? fee : 0, extraDeliveryFee: extraFee, total, zone:_selectedZone,
+    itemsTotal, deliveryFee: buyerPaysFee ? fee : 0, extraDeliveryFee: extraFee, total, zone: zoneRoute ? _selectedZone : null,
     deliveryType: buyerPaysFee ? 'zone' : 'free',
+    route, originIsland, destIsland,
     // The delivery partner is always paid the zone's flat fee, regardless of
     // whether the buyer was charged for it.
     deliveryPartnerPayout: fee, payoutStatus: null,
@@ -8755,6 +9059,7 @@ function sheetCustOrderDetail(){
   </div>
   <p class="muted" style="font-size:.85em; margin:4px 0 8px;">${o.businessName} · ${new Date(o.createdAt).toLocaleString()}</p>
   ${biz && biz.phone ? contactHTML(biz.phone, biz.name) : ''}
+  ${o.route && o.route!=='male_zone' ? `<p class="route-note">⛴️ ${routeLabel(o)}${routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' ? '. The store will add the delivery charge when it confirms' : ''}</p>` : ''}
   ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:10px;">🚚 Out for delivery</div>` : ''}
   ${o.deliveryTargetType==='pickup' ? `
   <div class="glass card tight" style="margin-bottom:12px;">

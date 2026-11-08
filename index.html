@@ -25,7 +25,7 @@
      this loads the genuine supabase-js library so SUPABASE_URL/ANON_KEY
      below (already pointing at the real Maldexpress project) actually work
      once this file is hosted anywhere outside that sandbox, e.g. GitHub Pages. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js"></script>
 <style>
   /* "Harbour signage": Malé ferry-terminal boards and painted dhoni hulls.
      Hull-white ground, reef-ink text, Maldivian flag red for actions and
@@ -8278,29 +8278,68 @@ async function handlePostAuth(isFreshSignIn=false){
   // resolve the pending intent while the user is still mid-verification.
   if(state.sheet!=='setupMobile' && state.sheet!=='verifyEmail') resolvePendingIntent(isFreshSignIn);
 }
+// Shown in place of the app if startup fails, so the screen is never left
+// empty: says what happened and offers a reload.
+function startupErrorHTML(e){
+  const msg = (e && (e.message || String(e))) || 'Unknown error';
+  return `<div class="empty" style="padding-top:30vh;">
+    <span class="ic">⚠️</span>
+    <h2>Maldexpress couldn't start</h2>
+    <p style="margin:6px auto 16px; max-width:32ch;">Check your connection and try again. If it keeps happening, send this to support: <code style="word-break:break-word;">${escapeAttr(msg)}</code></p>
+    <button class="btn btn-primary btn-sm" onclick="location.reload()">Reload</button>
+  </div>`;
+}
+// A thrown error anywhere before the first full render used to leave a blank
+// page. If nothing has drawn yet, show the error screen instead.
+window.addEventListener('error', e=>{
+  const app = document.getElementById('app');
+  if(app && !storageReady) app.innerHTML = startupErrorHTML(e.error || e.message);
+});
+window.addEventListener('unhandledrejection', e=>{
+  const app = document.getElementById('app');
+  if(app && !storageReady) app.innerHTML = startupErrorHTML(e.reason);
+});
 (async function init(){
   // The CSS --fs var otherwise only ever gets set from the Settings slider's own
   // oninput - without this, the default state.fontSize never actually reaches the
   // page until the user drags the slider once.
   setFont(state.fontSize);
-  await loadDB();
-  seedIfEmpty();
-  if(sb){
-    const { data:{ session } } = await sb.auth.getSession();
-    applySession(session);
-    if(state.authed) await handlePostAuth();
-    sb.auth.onAuthStateChange(async (_event, session)=>{
-      applySession(session);
-      // This listener only ever fires from a real sign-in/verify action (see
-      // notify('SIGNED_IN') in the mock client above) - never for the initial
-      // getSession() restore just above, which calls handlePostAuth() directly
-      // instead - so it's always safe to treat this as a fresh sign-in.
-      if(state.authed) await handlePostAuth(true);
-      render();
-    });
-    ensureLiveRefresh();
-  }
+  // Draw the "Loading Maldexpress…" screen straight away. Before, nothing was
+  // drawn until every table had downloaded and the sign-in check finished, so
+  // a slow connection showed an empty screen.
   render();
+  try{
+    await loadDB();
+    seedIfEmpty();
+  }catch(e){
+    console.error('Startup data load failed:', e);
+    storageReady = true;
+    toast('Some data could not be loaded. Pull down or reload to try again', 'bad');
+  }
+  if(sb){
+    // Each step is guarded on its own: a failed session restore shouldn't stop
+    // the app from opening as a guest, and a failed post-sign-in check
+    // shouldn't stop the signed-in app from drawing.
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      applySession(session);
+      if(state.authed) await handlePostAuth();
+    }catch(e){ console.error('Session restore failed:', e); }
+    try{
+      sb.auth.onAuthStateChange(async (_event, session)=>{
+        applySession(session);
+        // This listener only ever fires from a real sign-in/verify action (see
+        // notify('SIGNED_IN') in the mock client above) - never for the initial
+        // getSession() restore just above, which calls handlePostAuth() directly
+        // instead - so it's always safe to treat this as a fresh sign-in.
+        try{ if(state.authed) await handlePostAuth(true); }catch(e){ console.error(e); }
+        render();
+      });
+      ensureLiveRefresh();
+    }catch(e){ console.error('Live updates failed to start:', e); }
+  }
+  try{ render(); }
+  catch(e){ console.error('Render failed:', e); document.getElementById('app').innerHTML = startupErrorHTML(e); }
 })();
 </script>
 </body>

@@ -2058,24 +2058,38 @@ $$;
 
 -- Auctions and rentals can also be paid by Swipe. A rental is inserted
 -- straight into 'awaiting_swipe'. An auction win is completed by
--- complete_auction_order (production version lives in 05_encryption.sql)
--- with payment_method 'swipe', which leaves it 'pending_cash'; this then
--- opens it for payment.
-create or replace function start_swipe_payment(p_order_id text)
+-- complete_auction_order; this is the live definition (see
+-- supabase/live_functions_snapshot.sql) with one change: 'swipe' goes to
+-- 'awaiting_swipe' instead of 'pending_cash', which orders_insert_guard /
+-- orders_update_guard would reject as cash_not_supported. Cash for an
+-- auction win is paid to the store ('cash_on_pickup'); riders never carry
+-- cash.
+create or replace function complete_auction_order(p_order_id text, p_delivery_zone text, p_payment_method text,
+  p_delivery_target_type text default 'person', p_shipping_enc text default null, p_shipping_iv text default null, p_shipping_keys jsonb default null)
 returns setof orders
 language sql
 security definer
 set search_path = public
 as $$
-  update orders o set payment_status = 'awaiting_swipe'
-  where o.id = p_order_id
-    and o.customer_id = auth.uid()
-    and o.payment_method = 'swipe' and o.payment_status = 'pending_cash'
-    and exists (select 1 from auction_listings al where al.order_id = o.id)
-    and exists (select 1 from business_swipe_accounts s where s.business_id = o.business_id)
-  returning o.*;
+  update orders set
+    zone = p_delivery_zone,
+    delivery_fee = case when delivery_type <> 'free' then case p_delivery_zone when 'hulhumale1' then 20 when 'hulhumale2' then 25 else 15 end else 0 end + coalesce(extra_delivery_fee, 0),
+    delivery_partner_payout = case p_delivery_zone when 'hulhumale1' then 20 when 'hulhumale2' then 25 else 15 end,
+    payment_method = p_payment_method,
+    payment_status = case p_payment_method when 'transfer' then 'pending_transfer' when 'swipe' then 'awaiting_swipe' else 'pending_cash' end,
+    delivery_target_type = p_delivery_target_type,
+    receiver_name = null,
+    receiver_phone = null,
+    receiver_address = null,
+    shipping_enc = p_shipping_enc,
+    shipping_iv = p_shipping_iv,
+    shipping_keys = p_shipping_keys
+  where id = p_order_id and customer_id = auth.uid() and payment_status = 'awaiting_completion'
+    and p_payment_method in ('transfer','cash_on_pickup','swipe')
+    and (p_payment_method <> 'swipe' or exists (select 1 from business_swipe_accounts s where s.business_id = orders.business_id))
+    and exists (select 1 from auction_listings al where al.order_id = orders.id and al.current_highest_bidder = auth.uid())
+  returning *;
 $$;
-grant execute on function start_swipe_payment(text) to authenticated;
 
 -- Rentals may only start unpaid too (the policy above still let a rental be
 -- inserted with any payment_status, including 'paid').
@@ -2097,27 +2111,9 @@ create policy "customer insert own order" on orders for insert
     )
   );
 
--- Swipe orders are prepaid, so the rider never collects anything: the store
--- always owes the rider their zone fee once delivered.
-create or replace function mark_delivered(p_order_id text, p_boat_photo_url text default null)
-returns setof orders
-language sql
-security definer
-set search_path = public
-as $$
-  update orders
-  set
-    status = 'delivered',
-    payout_status = case when delivery_type = 'free' or payment_method = 'swipe' then 'pending' else payout_status end,
-    handoff_photo_url = case when delivery_target_type = 'boat' and rental_item_id is null then p_boat_photo_url else handoff_photo_url end
-  where id = p_order_id
-    and status is distinct from 'delivered'
-    and (rental_item_id is not null or status = 'out_for_delivery')
-    and (rental_item_id is null or payment_status = 'paid')
-    and (delivery_target_type is distinct from 'boat' or rental_item_id is not null or p_boat_photo_url is not null)
-    and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
-  returning *;
-$$;
+-- Riders are owed their zone fee on every delivered non-rental order; the
+-- live orders_update_guard trigger already sets payout_status = 'pending',
+-- so mark_delivered needs no change for Swipe orders.
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
@@ -2530,12 +2526,6 @@ async function declineSwipeOrder(id){
   if(!updated) return;
   toast('Order declined'); render();
 }
-async function retryAuctionSwipe(id){
-  const ready = SWIPE_PREVIEW || await callOrderRpc('start_swipe_payment', { p_order_id: id }, id, "Couldn't set up the Swipe payment. Try again in a moment");
-  if(!ready) return;
-  const o = DB.orders.find(x=>x.id===id); if(o && SWIPE_PREVIEW) o.paymentStatus = 'awaiting_swipe';
-  payOrderWithSwipe(id);
-}
 let _swipePayBusy = false;
 async function payOrderWithSwipe(id){
   const o = DB.orders.find(x=>x.id===id);
@@ -2615,7 +2605,6 @@ function swipeBizActionHTML(o){
   if(o.paymentStatus==='awaiting_swipe') return `
     <div class="card tight notice-info"><p style="font-size:.88em;">${isBuyNow?'Approved. ':''}Waiting for ${who} to pay ${money(o.total)} with Swipe. You can hand it over once it's paid.</p></div>
     ${isBuyNow ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineSwipeOrder('${o.id}')">Cancel order</button>` : ''}`;
-  if(o.paymentStatus==='pending_cash') return `<div class="card tight notice-warn"><p style="font-size:.88em;">${who} chose Swipe but hasn't started the payment yet.</p></div>`;
   return `<div class="status-pill ok" style="display:inline-block;">Paid with Swipe ✓</div>${swipeFeeRowsHTML(o)}`;
 }
 function custSwipeHTML(o, inCard){
@@ -2625,8 +2614,6 @@ function custSwipeHTML(o, inCard){
   const stop = inCard ? 'event.stopPropagation(); ' : '';
   if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${store} couldn't take this order. You haven't been charged.</p>`;
   if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${store} to confirm your order. You'll pay with Swipe after that.</p>`;
-  if(o.paymentStatus==='pending_cash') return `
-    <button class="btn btn-primary ${inCard?'btn-sm':''}" style="width:100%; margin-top:10px;" onclick="${stop}retryAuctionSwipe('${o.id}')">Pay ${money(o.total)} with Swipe</button>`;
   if(o.paymentStatus==='awaiting_swipe') return `
     <p class="muted" style="font-size:.85em; margin-top:8px;">${o.rentalItemId || DB.auctions.some(a=>a.orderId===o.id) ? 'Pay now so the store can hand it over.' : `${store} confirmed your order. Pay now to send it on its way.`}</p>
     <button class="btn btn-primary ${inCard?'btn-sm':''}" style="width:100%; margin-top:10px;" onclick="${stop}payOrderWithSwipe('${o.id}')">Pay ${money(o.total)} with Swipe</button>`;
@@ -2929,7 +2916,7 @@ function sheetCompleteAuctionOrder(){
     <div class="divider"></div>
     <div class="row between"><strong>Total</strong><strong class="price" id="cao_total">${money(o.itemsTotal+shownFee+extraFee)}</strong></div>
   </div>
-  ${payChoiceHTML(DB.businesses.find(b=>b.id===o.businessId), {title:'Cash on delivery', sub:'Pay the delivery partner when it arrives. The store confirms once it gets the cash'})}
+  ${payChoiceHTML(DB.businesses.find(b=>b.id===o.businessId), {title:'Cash to the store', sub:'Pay the store directly. The store marks it received before sending it out'})}
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitCompleteAuctionOrder('${o.id}')">Confirm order</button>`;
 }
 function refreshCompleteOrderTotals(){
@@ -2951,20 +2938,16 @@ async function submitCompleteAuctionOrder(orderId){
   const dbRow = { receiver_name: deliveryTarget.receiverName, receiver_phone: deliveryTarget.receiverPhone, receiver_address: deliveryTarget.receiverAddress };
   await encryptOrderRow(dbRow, o);
   const payingBySwipe = _selectedPay==='swipe';
+  // Cash for an auction win is paid to the store, never the rider.
+  const method = _selectedPay==='cash_to_delivery' ? 'cash_on_pickup' : _selectedPay;
   const updated = await callOrderRpc('complete_auction_order',
-    { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: _selectedPay,
+    { p_order_id: orderId, p_delivery_zone: _selectedZone, p_payment_method: method,
       p_delivery_target_type: deliveryTarget.deliveryTargetType, p_shipping_enc: dbRow.shipping_enc,
       p_shipping_iv: dbRow.shipping_iv, p_shipping_keys: dbRow.shipping_keys }, orderId);
   if(!updated) return;
   await rememberDeliveryAddress(deliveryTarget);
-  // Swipe: open the order for payment (start_swipe_payment moves it to
-  // awaiting_swipe), then go straight to Swipe.
-  if(payingBySwipe){
-    const ready = await callOrderRpc('start_swipe_payment', { p_order_id: orderId }, orderId, "Couldn't set up the Swipe payment. Try paying from My orders");
-    closeSheet(); render();
-    if(ready) payOrderWithSwipe(orderId);
-    return;
-  }
+  // Swipe: complete_auction_order already set awaiting_swipe, so go straight to Swipe.
+  if(payingBySwipe){ closeSheet(); render(); payOrderWithSwipe(orderId); return; }
   closeSheet();
   toast('Order confirmed!');
   render();
@@ -5908,7 +5891,7 @@ function delJobCard(o){
     </div>`;
   }
   const biz = DB.businesses.find(b=>b.id===o.businessId);
-  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':o.paymentMethod==='cash_on_pickup'?'Customer pays the store, nothing to collect':'Collect cash on delivery';
   const payoutAmt = payoutAmountFor(o);
   const cashCut = cashCutAmount(o);
   // The customer's name, phone, items, and the order's own total are all
@@ -5973,7 +5956,7 @@ function sheetDelOrderDetail(){
       : `<div class="card tight" style="margin-top:10px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the customer's ${o.rentalFeeTiming==='on_return'?'advance':'payment'} to be confirmed before you can hand this over.</p></div>`}
     `;
   }
-  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':o.paymentMethod==='cash_on_pickup'?'Customer pays the store, nothing to collect':'Collect cash on delivery';
   // Same handoff-gated redaction as delJobCard() above - see the comment
   // there for why the pickup address substitutes for customer identity/items/
   // total until the store's actually handed this over.

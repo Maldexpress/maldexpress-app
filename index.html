@@ -664,6 +664,10 @@
   .contact-btn:hover{border-color:rgba(62,242,224,.5);}
   .contact-btn:active{transform:scale(.96);}
 
+  .verify-steps{margin:12px 0 16px; padding-left:20px; color:var(--ink-dim); line-height:1.6;}
+  .verify-steps li{margin-bottom:6px;}
+  .verify-steps strong{color:var(--ink);}
+
   /* ---------- Admin ---------- */
   .admin{min-height:100vh; padding-bottom:40px;}
   .admin-hero{position:relative; overflow:hidden; background:radial-gradient(120% 90% at 90% 0%, rgba(91,124,255,.45), transparent 60%), radial-gradient(80% 70% at 0% 100%, rgba(62,242,224,.25), transparent 60%), rgba(10,20,48,.6); border-bottom:1px solid var(--glass-brd); color:var(--ink); padding:calc(22px + env(safe-area-inset-top)) 18px 20px; border-radius:0 0 30px 30px;}
@@ -7954,6 +7958,10 @@ toast('Booking request sent!');
 }
 
 let _pendingVerifyEmail = null;
+// Kept in memory only (never stored) between sign-up and the "I've confirmed"
+// tap, so the app can sign the new account in itself once the email link has
+// been tapped. Cleared as soon as that sign-in finishes.
+let _pendingSignupPassword = null;
 let _pendingSignupUserId = null;
 let _pendingSignupPhone = null;
 // True only while submitSignUp() is driving its own post-auth handling for the
@@ -8095,7 +8103,10 @@ async function submitSignUp(){
   else if(_signupRole==='delivery') state.pendingIntent = 'delivery';
   _pendingSignupPhone = phone || null;
   _signupInFlight = true;
-  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name } } });
+  // The confirmation email links back to this page (when its address is in
+  // Supabase's allowed redirect URLs); otherwise Supabase uses its Site URL.
+  const here = (location.protocol==='https:' || location.protocol==='http:') ? location.origin + location.pathname : undefined;
+  const { data, error } = await sb.auth.signUp({ email, password: pass, options:{ data:{ full_name:name }, emailRedirectTo: here } });
   if(error){ _signupInFlight = false; toast(error.message,'bad'); return; }
   _pendingVerifyEmail = email;
   // TODO(auth): "Confirm email" is temporarily OFF in Supabase Auth - we don't have a
@@ -8114,8 +8125,31 @@ async function submitSignUp(){
     return;
   }
   _signupInFlight = false;
+  _pendingSignupPassword = pass;
   openSheet('verifyEmail');
 }
+// The confirmation email Supabase sends on the free plan has a link, not a
+// code (its templates can't be edited without custom SMTP). After tapping
+// the link, the person comes back and this signs them in with the password
+// they just chose, then finishes setup exactly like a verified code would.
+async function confirmedSignIn(){
+  if(!requireOnline()) return;
+  if(!_pendingSignupPassword || !_pendingVerifyEmail){
+    toast('Sign in with your email and password', 'good');
+    openSheet('signIn'); return;
+  }
+  _signupInFlight = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email: _pendingVerifyEmail, password: _pendingSignupPassword });
+  if(error){
+    _signupInFlight = false;
+    toast(/confirm/i.test(error.message) ? "Your email isn't confirmed yet. Tap Confirm email address in the email first" : error.message, 'bad');
+    return;
+  }
+  const pass = _pendingSignupPassword; _pendingSignupPassword = null;
+  toast("Email confirmed. You're signed in!");
+  await finishSignupPostAuth(data.user.id, pass);
+}
+function toggleVerifyCode(){ const el = document.getElementById('ve_code_box'); if(el) el.classList.toggle('hidden'); }
 // Shared by submitSignUp()'s Confirm-email-off branch above and submitVerifyCode()
 // below (the normal OTP path): silently submits a phone number captured on the
 // sign-up form if valid, then resumes whatever the user was signing up to do
@@ -8229,11 +8263,22 @@ function sheetPolicy(){
 }
 function sheetVerifyEmail(){
   return `
-  <h2>Verify your email</h2>
-  <p class="muted">We sent a 6-digit code to <strong>${_pendingVerifyEmail}</strong>. Enter it below to finish creating your account.</p>
-  <div class="field" style="margin-top:14px;"><label>Verification code</label><input id="ve_code" placeholder="123456"></div>
-  <button class="btn btn-primary" onclick="submitVerifyCode()">Verify</button>
-  <button class="link-btn" style="margin-top:12px;" onclick="resendVerifyCode()">Resend code</button>`;
+  <h2>Confirm your email</h2>
+  <p class="muted">We sent an email to <strong>${_pendingVerifyEmail}</strong>.</p>
+  <ol class="verify-steps">
+    <li>Open it and tap <strong>Confirm email address</strong>. If the page it opens doesn't load, that's fine.</li>
+    <li>Come back here and tap the button below.</li>
+  </ol>
+  <button class="btn btn-primary" onclick="confirmedSignIn()">I've confirmed my email</button>
+  <div class="row" style="justify-content:space-between; margin-top:12px; flex-wrap:wrap;">
+    <button class="link-btn" onclick="resendVerifyCode()">Resend email</button>
+    <button class="link-btn" onclick="toggleVerifyCode()">Got a code instead?</button>
+  </div>
+  <div id="ve_code_box" class="hidden" style="margin-top:10px;">
+    <div class="field"><label for="ve_code">Verification code</label><input id="ve_code" inputmode="numeric" autocomplete="one-time-code" placeholder="Code from the email"></div>
+    <button class="btn btn-outline" onclick="submitVerifyCode()">Verify code</button>
+  </div>
+  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam folder. It comes from Supabase Auth.</p>`;
 }
 async function submitVerifyCode(){
   if(!requireOnline()) return;
@@ -8249,7 +8294,7 @@ async function resendVerifyCode(){
   if(!requireOnline()) return;
   const { error } = await sb.auth.resend({ type: 'signup', email: _pendingVerifyEmail });
   if(error){ toast(error.message,'bad'); return; }
-  toast('Code resent — check your email!');
+  toast('Email sent again. Check your inbox and spam folder');
 }
 function sheetSetupMobile(){
   return `

@@ -12,7 +12,7 @@ Currently a single static file (`index.html`) — plain HTML/CSS/JS, no build st
 
 - Frontend: vanilla HTML/CSS/JS (mobile-first)
 - Backend: [Supabase](https://supabase.com) (Postgres + Auth), free tier
-- Hosting: static site on [Render](https://render.com)
+- Hosting: **GitHub Pages**, built from `main` (root folder): https://maldexpress.github.io/maldexpress-app/
 
 ## Setup
 
@@ -26,7 +26,7 @@ Currently a single static file (`index.html`) — plain HTML/CSS/JS, no build st
    ```
    Replace both with the values from Supabase → Settings → API.
 5. **Run it locally** — just open `index.html` in a browser, or serve the folder with any static server (e.g. `npx serve .`).
-6. **Deploy** — push to GitHub, then create a new Static Site on Render pointing at this repo. No build command needed; publish directory is the repo root.
+6. **Deploy** — merging into `main` publishes to GitHub Pages automatically (Settings → Pages: deploy from branch `main`, folder `/ (root)`). Live at https://maldexpress.github.io/maldexpress-app/. Keep `maldexpress.github.io` in Firebase → Authentication → Settings → Authorized domains.
 
 ## Swipe payments for orders
 

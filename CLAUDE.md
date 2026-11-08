@@ -7,7 +7,8 @@ Maldexpress: a marketplace + delivery app for the Maldives. Three portals in one
 - **State**: one global `state` object, re-rendered on every change via a hand-rolled `render()` dispatcher keyed on `state.role` and `state.screen`.
 - **Data layer**: `DB` object (`businesses`, `items`, `orders`, `delivery`) synced to Supabase Postgres tables via `loadDB()` / `saveDB(part)`. `saveDB` currently does a full-array `upsert` per call rather than single-row writes — fine at this scale, but revisit if it grows.
 - **Auth**: Supabase email magic-link auth (`signInWithOtp`), shared across all three roles — one signed-in account can own a business, a delivery profile, and place customer orders. `state.authed / state.customerId / state.customerEmail` hold the session.
-- **Styling**: glassmorphism theme (blurred translucent cards) over an ocean-gradient background, mobile-first, `--fs` CSS variable drives the user-adjustable font size.
+- **Styling**: "Harbour signage" theme (replaced the old glassmorphism look). Hull-white background, reef-ink text, Maldivian flag red for primary actions and prices, flag green for paid/settled/delivered, lagoon for selection. One typeface, Archivo (variable width): wide for headings and store names, narrow (`--narrow`) for prices and numbers. Colour tokens live in `:root`; the old names (`--glass`, `--coral`, `--ink`, …) are kept as aliases because inline styles in the script use them. Red is reserved for the one action that moves an order forward. Mobile-first, `--fs` CSS variable drives the user-adjustable font size (default 14px).
+- **Delivery zone picker**: drawn as a ferry route (`zoneRouteHTML()` / `pickZone()`), stops in order Malé → Hulhumalé Phase 1 → Phase 2. A hidden input keeps the `#c_zone` / `#cao_zone` ids.
 - **Sheets/modals**: bottom-sheet popups (`openSheet(name)` / `sheetHTML()`) handle all forms — signup, checkout, settings, etc.
 
 ## Business rules to preserve

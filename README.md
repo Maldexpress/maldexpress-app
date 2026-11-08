@@ -10,7 +10,7 @@ Currently a single static file (`index.html`) — plain HTML/CSS/JS, no build st
 
 ## Stack
 
-- Frontend: vanilla HTML/CSS/JS (glassmorphism UI, mobile-first)
+- Frontend: vanilla HTML/CSS/JS (mobile-first)
 - Backend: [Supabase](https://supabase.com) (Postgres + Auth), free tier
 - Hosting: static site on [Render](https://render.com)
 

@@ -759,10 +759,25 @@ function fbSession(u){
 function fbActionSettings(){
   return (location.protocol==='https:' || location.protocol==='http:') ? { url: location.origin + location.pathname } : undefined;
 }
+// Send a verification / password-reset email. Asks Firebase to link back
+// to this page; if Firebase refuses that address (not in Authorized
+// domains, e.g. the app was opened from a different host), sends the plain
+// Firebase email instead, whose link verifies on Firebase's own page.
+const FB_BAD_CONTINUE = ['auth/unauthorized-continue-uri','auth/unauthorized-domain','auth/invalid-continue-uri','auth/missing-continue-uri'];
+async function fbSendVerification(u){
+  const acs = fbActionSettings();
+  try{ await u.sendEmailVerification(acs); }
+  catch(e){ if(acs && FB_BAD_CONTINUE.includes(e && e.code)) await u.sendEmailVerification(); else throw e; }
+}
+async function fbSendPasswordReset(email){
+  const acs = fbActionSettings();
+  try{ await fbAuth.sendPasswordResetEmail(email, acs); }
+  catch(e){ if(acs && FB_BAD_CONTINUE.includes(e && e.code)) await fbAuth.sendPasswordResetEmail(email); else throw e; }
+}
 // Firebase error codes -> plain messages.
 function fbErrorText(e){
   const c = (e && e.code) || '';
-  if(c==='auth/email-already-in-use') return 'That email already has an account. Sign in instead';
+  if(c==='auth/email-already-in-use') return "That email already has an account. Tap Sign in below (if it isn't verified yet, we'll resend the email)";
   if(c==='auth/invalid-email') return "That email address doesn't look right";
   if(c==='auth/weak-password') return 'Use a password with at least 6 characters';
   if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Incorrect mobile/email or password. New here? Sign up below';
@@ -8076,7 +8091,7 @@ async function sendPasswordReset(){
   let email = id && id.includes('@') ? id : null;
   if(id && !email && sb){ const { data } = await sb.rpc('resolve_login_email', { p_phone: id }); email = data || null; }
   if(!email){ toast('Enter your email (or mobile number) above first','bad'); return; }
-  try{ await fbAuth.sendPasswordResetEmail(email, fbActionSettings()); toast(`Password reset email sent to ${email}`); }
+  try{ await fbSendPasswordReset(email); toast(`Password reset email sent to ${email}`); }
   catch(e){ toast(fbErrorText(e),'bad'); }
 }
 async function signInWithIdentifierPassword(){
@@ -8103,7 +8118,7 @@ async function signInWithIdentifierPassword(){
     // Signed in to Firebase but not verified yet: the database treats this
     // as signed out, so finish verification first.
     _pendingVerifyEmail = email; _pendingSignupPassword = pass;
-    try{ await u.sendEmailVerification(fbActionSettings()); }catch(e){ console.warn(e); }
+    try{ await fbSendVerification(u); }catch(e){ console.warn(e); }
     openSheet('verifyEmail');
     return;
   }
@@ -8178,18 +8193,19 @@ async function submitSignUp(){
   let cred;
   try{
     cred = await fbAuth.createUserWithEmailAndPassword(email, pass);
-    await cred.user.updateProfile({ displayName: name });
-    await cred.user.sendEmailVerification(fbActionSettings());
   }catch(e){ _signupInFlight = false; toast(fbErrorText(e),'bad'); return; }
+  // The account exists from here on: a failed name/email step shouldn't
+  // strand the user, they can resend from the next screen.
+  try{ await cred.user.updateProfile({ displayName: name }); }catch(e){ console.warn(e); }
+  try{ await fbSendVerification(cred.user); }
+  catch(e){ console.warn(e); toast("Account created, but the email didn't send. Tap Resend email", 'bad'); }
   _pendingVerifyEmail = email;
   _signupInFlight = false;
   _pendingSignupPassword = pass;
   openSheet('verifyEmail');
 }
-// The confirmation email Supabase sends on the free plan has a link, not a
-// code (its templates can't be edited without custom SMTP). After tapping
-// the link, the person comes back and this signs them in with the password
-// they just chose, then finishes setup exactly like a verified code would.
+// After tapping the verification link in the Firebase email, the person
+// comes back and this reloads their account, then finishes setup.
 async function confirmedSignIn(){
   if(!requireOnline() || !fbAuth) return;
   let u = fbAuth.currentUser;
@@ -8341,7 +8357,7 @@ async function resendVerifyCode(){
     try{ u = (await fbAuth.signInWithEmailAndPassword(_pendingVerifyEmail, _pendingSignupPassword)).user; }catch(e){ toast(fbErrorText(e),'bad'); return; }
   }
   if(!u){ toast('Sign in again to resend the email','bad'); return; }
-  try{ await u.sendEmailVerification(fbActionSettings()); }catch(e){ toast(fbErrorText(e),'bad'); return; }
+  try{ await fbSendVerification(u); }catch(e){ toast(fbErrorText(e),'bad'); return; }
   toast('Email sent again. Check your inbox and spam folder');
 }
 function sheetSetupMobile(){

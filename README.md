@@ -18,7 +18,7 @@ Currently a single static file (`index.html`) — plain HTML/CSS/JS, no build st
 
 1. **Create a Supabase project** at supabase.com (free tier is enough to start).
 2. **Run the schema.** Open the SQL Editor in your Supabase dashboard and run the SQL block found in a comment near the top of `index.html` (search for `SQL to run once`). It creates the `businesses`, `items`, `delivery_persons`, and `orders` tables plus row-level security policies.
-3. **Enable email auth.** In Authentication → Providers, confirm Email is turned on (magic link sign-in works out of the box).
+3. **Set up sign-in.** In Firebase, enable Email/Password sign-in. In Supabase, add Firebase (project ID `maldexpress`) under Authentication → Third-party auth, then run `supabase/migrations/2026-11-08_firebase_auth.sql`.
 4. **Add your keys.** In `index.html`, find:
    ```js
    const SUPABASE_URL = "YOUR_SUPABASE_URL";
@@ -46,4 +46,4 @@ Maldexpress takes 5% of each order and Swipe's 1% charge is split equally, so a 
 ## Notes
 
 - Until you fill in the Supabase keys, the app runs in an offline demo mode with seeded sample data and no sign-in requirement, so you can preview the UI immediately.
-- Business and delivery accounts use the same Supabase Auth as customers — one email, one account, usable across all three roles.
+- Accounts use **Firebase Auth** (project `maldexpress`, email + password with email verification); Supabase stores the data and checks the Firebase login on every request (Supabase → Authentication → Third-party auth → Firebase). One account works across all three roles. Add your site's domain under Firebase → Authentication → Settings → Authorized domains.

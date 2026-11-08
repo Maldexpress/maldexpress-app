@@ -598,6 +598,16 @@
   .zone-stop[aria-checked="true"] .pin{background:var(--coral-pink); border-color:#fff; box-shadow:0 0 0 2px var(--coral-pink); transform:scale(1.1);}
   .zone-stop[aria-checked="true"] .fare{color:var(--coral-pink);}
 
+  /* Swipe payment note at checkout, and the two notice tints */
+  .swipe-note{display:flex; gap:12px; align-items:flex-start; margin-top:12px; padding:14px; border-radius:18px; background:var(--ground);}
+  .swipe-note strong{display:block;}
+  .swipe-note p{font-size:.86em; color:var(--ink-dim); margin-top:2px;}
+  .swipe-badge{width:40px; height:40px; border-radius:12px; background:var(--channel); color:var(--lagoon); font-weight:900; font-size:1.2em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .notice-warn{background:#FFF1C9 !important; box-shadow:none !important; color:var(--ink);}
+  .notice-info{background:var(--shallow) !important; box-shadow:none !important; color:var(--ink);}
+  .fee-card .row{padding:3px 0; font-size:.9em; gap:16px;}
+  .fee-card .row span:last-child, .fee-card .row strong:last-child{white-space:nowrap; font-variant-numeric:tabular-nums;}
+
   /* ---------- Admin ---------- */
   /* Deep-channel header with the four counts an admin checks first; each
      count jumps to its tab. */
@@ -618,7 +628,7 @@
   .admin-stat.needs{background:var(--lagoon); color:var(--channel);}
   .admin-stat.needs span{color:var(--channel);}
   .admin-body{padding:18px 16px 0;}
-  .admin-body .tabs{margin-bottom:16px;}
+  .admin-body .tabs{margin-bottom:16px; flex-wrap:wrap; width:auto; border-radius:22px;}
   .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--coral-pink); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:4px;}
   .admin-store{margin-bottom:12px;}
   .admin-av{width:44px; height:44px; border-radius:14px; background:var(--shallow); color:var(--channel); font-weight:900; font-size:1.1em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
@@ -1821,6 +1831,194 @@ as $$
   returning *;
 $$;
 grant execute on function set_default_address(text, text) to authenticated;
+
+-- =========================================================================
+-- SWIPE ORDER PAYMENTS (Buy now orders). Run this block once after the rest.
+-- Flow: customer places order (payment_method 'swipe', payment_status
+-- 'awaiting_approval') -> store approves ('awaiting_swipe') or declines ->
+-- customer pays through a Swipe link created on the STORE'S OWN Swipe
+-- account (edge function create-order-payment) -> Swipe calls
+-- swipe-order-webhook -> 'paid', fees recorded. The store can't hand the
+-- order to a rider until it's paid. Cash on delivery and bank transfer are
+-- no longer offered for Buy now orders; rentals and auctions are unchanged.
+--
+-- Fees: Maldexpress takes 5% of each order total. Swipe's 1% charge is
+-- split 1:1 between the store and Maldexpress. Money lands in the store's
+-- wallet minus Swipe's 1%, so the store owes Maldexpress
+-- platform_fee - swipe_fee/2 (4.5% of the total). Recorded per order in
+-- platform_fee_due and cleared by an admin with settle_platform_fees().
+-- =========================================================================
+
+-- Each store's Swipe API credentials. RLS on and NO policies: only the edge
+-- functions (service role) can read them, so secrets never reach a browser.
+create table if not exists business_swipe_accounts (
+  business_id text primary key references businesses(id) on delete cascade,
+  client_id text not null,
+  client_secret text not null,
+  webhook_secret text not null,
+  updated_at timestamptz default now()
+);
+alter table business_swipe_accounts enable row level security;
+
+-- Which stores can take Swipe payments (ids only, never the credentials).
+-- A function rather than a businesses column, so no client write can mark a
+-- store as connected.
+create or replace function swipe_connected_business_ids()
+returns setof text
+language sql
+stable
+security definer
+set search_path = public
+as $$ select business_id from business_swipe_accounts; $$;
+grant execute on function swipe_connected_business_ids() to anon, authenticated;
+
+alter table orders add column if not exists swipe_reference text;
+alter table orders add column if not exists swipe_payment_link text;
+alter table orders add column if not exists paid_at timestamptz;
+alter table orders add column if not exists swipe_fee numeric;
+alter table orders add column if not exists platform_fee numeric;
+alter table orders add column if not exists platform_fee_due numeric;
+alter table orders add column if not exists fee_settled_at timestamptz;
+
+-- A new Buy now order can only start unpaid and awaiting the store. Before
+-- this, the insert policy only checked customer_id, so a customer could
+-- insert an order already marked paid. Rentals and auction wins keep their
+-- own starting states.
+drop policy if exists "customer insert own order" on orders;
+create policy "customer insert own order" on orders for insert
+  with check (
+    auth.uid() = customer_id
+    and swipe_reference is null and swipe_payment_link is null and paid_at is null
+    and swipe_fee is null and platform_fee is null and platform_fee_due is null and fee_settled_at is null
+    and (
+      rental_item_id is not null
+      or payment_status = 'awaiting_completion'
+      or (payment_method = 'swipe' and payment_status = 'awaiting_approval')
+    )
+  );
+
+-- Store owner saves (or replaces) their Swipe credentials.
+create or replace function set_business_swipe_account(p_business_id text, p_client_id text, p_client_secret text, p_webhook_secret text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (select 1 from businesses b where b.id = p_business_id and b.owner_id = auth.uid()) then
+    return false;
+  end if;
+  if coalesce(trim(p_client_id),'') = '' or coalesce(trim(p_client_secret),'') = '' or coalesce(trim(p_webhook_secret),'') = '' then
+    return false;
+  end if;
+  insert into business_swipe_accounts (business_id, client_id, client_secret, webhook_secret, updated_at)
+  values (p_business_id, trim(p_client_id), trim(p_client_secret), trim(p_webhook_secret), now())
+  on conflict (business_id) do update
+    set client_id = excluded.client_id, client_secret = excluded.client_secret,
+        webhook_secret = excluded.webhook_secret, updated_at = now();
+  return true;
+end;
+$$;
+grant execute on function set_business_swipe_account(text, text, text, text) to authenticated;
+
+create or replace function approve_swipe_order(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set payment_status = 'awaiting_swipe'
+  where o.id = p_order_id
+    and o.payment_method = 'swipe' and o.payment_status = 'awaiting_approval'
+    and o.status is distinct from 'declined'
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and exists (select 1 from business_swipe_accounts s where s.business_id = o.business_id)
+  returning o.*;
+$$;
+grant execute on function approve_swipe_order(text) to authenticated;
+
+create or replace function decline_swipe_order(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set status = 'declined'
+  where o.id = p_order_id
+    and o.payment_method = 'swipe' and o.payment_status in ('awaiting_approval','awaiting_swipe')
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+  returning o.*;
+$$;
+grant execute on function decline_swipe_order(text) to authenticated;
+
+-- Admin marks everything a store owes Maldexpress as paid.
+create or replace function settle_platform_fees(p_business_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set fee_settled_at = now()
+  where o.business_id = p_business_id
+    and o.platform_fee_due is not null and o.fee_settled_at is null
+    and is_admin()
+  returning o.*;
+$$;
+grant execute on function settle_platform_fees(text) to authenticated;
+
+-- A Swipe order can't go to a rider (or out for self-delivery) until paid.
+create or replace function mark_order_ready_for_pickup(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set ready_for_pickup = true, self_delivery = false
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.delivery_person_id is null
+    and o.status is distinct from 'delivered' and o.status is distinct from 'declined'
+    and (o.payment_method is distinct from 'swipe' or o.payment_status = 'paid')
+  returning o.*;
+$$;
+create or replace function mark_order_self_delivery(p_order_id text)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders o set self_delivery = true, ready_for_pickup = false
+  where o.id = p_order_id
+    and exists (select 1 from businesses b where b.id = o.business_id and b.owner_id = auth.uid())
+    and o.rental_item_id is null
+    and o.delivery_person_id is null
+    and o.status is distinct from 'delivered' and o.status is distinct from 'declined'
+    and (o.payment_method is distinct from 'swipe' or o.payment_status = 'paid')
+  returning o.*;
+$$;
+
+-- Swipe orders are prepaid, so the rider never collects anything: the store
+-- always owes the rider their zone fee once delivered.
+create or replace function mark_delivered(p_order_id text, p_boat_photo_url text default null)
+returns setof orders
+language sql
+security definer
+set search_path = public
+as $$
+  update orders
+  set
+    status = 'delivered',
+    payout_status = case when delivery_type = 'free' or payment_method = 'swipe' then 'pending' else payout_status end,
+    handoff_photo_url = case when delivery_target_type = 'boat' and rental_item_id is null then p_boat_photo_url else handoff_photo_url end
+  where id = p_order_id
+    and status is distinct from 'delivered'
+    and (rental_item_id is not null or status = 'out_for_delivery')
+    and (rental_item_id is null or payment_status = 'paid')
+    and (delivery_target_type is distinct from 'boat' or rental_item_id is not null or p_boat_photo_url is not null)
+    and exists (select 1 from delivery_persons d where d.id = orders.delivery_person_id and d.user_id = auth.uid())
+  returning *;
+$$;
 --------------------------------------------------- */
 
 /* =================== DATA LAYER =================== */
@@ -2058,7 +2256,10 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'' };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0) };
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
+    swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
+    swipeFee:r.swipe_fee!=null?Number(r.swipe_fee):null, platformFee:r.platform_fee!=null?Number(r.platform_fee):null,
+    platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -2113,6 +2314,11 @@ DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
     DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
     mergeCustomCategories();
+    // Ids only - credentials never leave the server (see business_swipe_accounts).
+    const { data: swipeIds, error: swipeErr } = await sb.rpc('swipe_connected_business_ids');
+    if(swipeErr) console.error('loadDB: swipe_connected_business_ids failed:', swipeErr);
+    const connected = new Set((swipeIds||[]).map(r=>typeof r==='string'?r:(r.swipe_connected_business_ids||r.business_id)));
+    DB.businesses.forEach(b=>{ b.swipeConnected = connected.has(b.id); });
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
 }
@@ -2148,6 +2354,131 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
   const idx = DB.orders.findIndex(o=>o.id===orderId);
   if(idx>=0) DB.orders[idx] = updated; else DB.orders.unshift(updated);
   return updated;
+}
+// ---------- Swipe order payments (Buy now orders) ----------
+// Flow: placed (awaiting_approval) -> store approves (awaiting_swipe) or
+// declines -> customer pays on the store's own Swipe link -> paid (set by
+// the swipe-order-webhook edge function, which also records the fees).
+// Fees: Maldexpress takes 5% of the total; Swipe's 1% charge is split 1:1
+// between the store and Maldexpress. Keep in sync with swipe-order-webhook.
+const SWIPE_FEES = { platformRate: 0.05, swipeRate: 0.01 };
+const round2 = n => Math.round(n*100)/100;
+function swipeFeeBreakdown(o){
+  const total = Number(o.total)||0;
+  const swipeFee = o.swipeFee!=null ? o.swipeFee : round2(total*SWIPE_FEES.swipeRate);
+  const platformFee = o.platformFee!=null ? o.platformFee : round2(total*SWIPE_FEES.platformRate);
+  const due = o.platformFeeDue!=null ? o.platformFeeDue : round2(platformFee - swipeFee/2);
+  return { total, swipeFee, platformFee, due, keep: round2(total - swipeFee - due) };
+}
+// The local preview (no Supabase configured) simulates the server steps so
+// the whole flow can be tried; a configured app that's offline refuses.
+const SWIPE_PREVIEW = !SB_CONFIGURED;
+function swipeOrderNeedsPayment(o){ return o && o.paymentMethod==='swipe' && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'; }
+async function approveSwipeOrder(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(SWIPE_PREVIEW){ if(o){ o.paymentStatus='awaiting_swipe'; } toast('Order approved. The customer can now pay with Swipe'); render(); return; }
+  const updated = await callOrderRpc('approve_swipe_order', { p_order_id: id }, id, "Couldn't approve this order. It may have changed, or Swipe isn't connected");
+  if(!updated) return;
+  toast('Order approved. The customer can now pay with Swipe'); render();
+}
+async function declineSwipeOrder(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(SWIPE_PREVIEW){ if(o){ o.status='declined'; } toast('Order declined'); render(); return; }
+  const updated = await callOrderRpc('decline_swipe_order', { p_order_id: id }, id, "Couldn't decline this order. It may already be paid");
+  if(!updated) return;
+  toast('Order declined'); render();
+}
+let _swipePayBusy = false;
+async function payOrderWithSwipe(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(!o || _swipePayBusy) return;
+  if(SWIPE_PREVIEW){
+    const f = swipeFeeBreakdown(o);
+    Object.assign(o, { paymentStatus:'paid', paidAt:Date.now(), swipeFee:f.swipeFee, platformFee:f.platformFee, platformFeeDue:f.due });
+    closeSheet(); toast('Preview: Swipe payment simulated. In the real app this opens Swipe'); render(); return;
+  }
+  if(!requireOnline()) return;
+  _swipePayBusy = true;
+  try{
+    if(o.swipePaymentLink){ window.location.assign(o.swipePaymentLink); return; }
+    const { data, error } = await sb.functions.invoke('create-order-payment', { body: { orderId: id } });
+    if(error || !data || !data.paymentLink){
+      let msg = 'Could not start the Swipe payment. Try again in a moment';
+      try{ const body = error && error.context && await error.context.json(); if(body && body.error) msg = body.error; }catch(_){}
+      toast(msg, 'bad'); return;
+    }
+    o.swipePaymentLink = data.paymentLink; o.swipeReference = data.reference;
+    window.location.assign(data.paymentLink);
+  } finally { _swipePayBusy = false; }
+}
+async function saveSwipeAccount(){
+  const biz = currentBiz(); if(!biz) return;
+  const clientId = val('sw_client_id'), clientSecret = val('sw_client_secret'), webhookSecret = val('sw_webhook_secret');
+  if(!clientId || !clientSecret || !webhookSecret){ toast('Fill in all three Swipe details', 'bad'); return; }
+  if(SWIPE_PREVIEW){ biz.swipeConnected = true; closeSheet(); toast('Swipe connected'); render(); return; }
+  if(!requireOnline()) return;
+  const { data, error } = await sb.rpc('set_business_swipe_account', { p_business_id: biz.id, p_client_id: clientId, p_client_secret: clientSecret, p_webhook_secret: webhookSecret });
+  if(error || data!==true){ toast('Could not save your Swipe details'+(error?': '+error.message:''), 'bad'); return; }
+  biz.swipeConnected = true; closeSheet(); toast('Swipe connected'); render();
+}
+function swipeWebhookUrl(biz){ return `${SB_CONFIGURED ? SUPABASE_URL : 'https://YOUR-PROJECT.supabase.co'}/functions/v1/swipe-order-webhook?business=${biz.id}`; }
+function sheetConnectSwipe(){
+  const biz = currentBiz(); if(!biz) return '';
+  const hook = swipeWebhookUrl(biz);
+  return `
+  <h2>${biz.swipeConnected ? 'Update Swipe details' : 'Connect Swipe'}</h2>
+  <p class="muted" style="font-size:.9em; margin-bottom:14px;">Customers pay you through your own Swipe merchant account. Get these from the Swipe Merchant Portal under API access.</p>
+  <div class="field"><label for="sw_client_id">Client ID</label><input id="sw_client_id" autocomplete="off" placeholder="From Swipe Merchant Portal"></div>
+  <div class="field"><label for="sw_client_secret">Client secret</label><input id="sw_client_secret" type="password" autocomplete="off" placeholder="Kept on the server, never shown again"></div>
+  <div class="field"><label for="sw_webhook_secret">Webhook signing secret</label><input id="sw_webhook_secret" type="password" autocomplete="off" placeholder="Starts with whsec_"></div>
+  <div class="acct-box" style="margin-bottom:14px;">
+    <div class="lbl">In Swipe, set your webhook URL to</div>
+    <div class="val" style="font-size:.86em; font-weight:700; word-break:break-all;"><span class="copy-num" onclick="copyText('${hook}')">${hook}</span></div>
+  </div>
+  <p class="muted" style="font-size:.82em; margin-bottom:14px;">Maldexpress keeps 5% of each order. Swipe's 1% charge is split equally between you and Maldexpress, so you keep 94.5%.</p>
+  <button class="btn btn-primary" onclick="saveSwipeAccount()">Save Swipe details</button>`;
+}
+function copyText(s){
+  try{ navigator.clipboard.writeText(s).then(()=>toast('Copied'), ()=>toast('Copy failed. Press and hold to copy', 'bad')); }
+  catch(_){ toast('Copy failed. Press and hold to copy', 'bad'); }
+}
+function swipeFeeRowsHTML(o){
+  const f = swipeFeeBreakdown(o);
+  return `
+  <div class="glass card tight fee-card" style="margin-top:10px;">
+    <div class="row between"><span class="muted">Customer paid</span><span>${money(f.total)}</span></div>
+    <div class="row between"><span class="muted">Swipe charge (1%, taken by Swipe)</span><span>−${money(f.swipeFee)}</span></div>
+    <div class="row between"><span class="muted">Maldexpress fee (5%, less half the Swipe charge)</span><span>−${money(f.due)}</span></div>
+    <div class="divider" style="margin:8px 0;"></div>
+    <div class="row between"><strong>You keep</strong><strong>${money(f.keep)}</strong></div>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maldexpress fee settled ✓' : `You owe Maldexpress ${money(f.due)} for this order.`}</p>
+  </div>`;
+}
+function swipeBizActionHTML(o){
+  const who = o.customerName || 'The customer';
+  if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+  if(o.paymentStatus==='awaiting_approval') return `
+    <div class="card tight notice-warn"><p style="font-size:.88em;">New order. Check the items and total, then approve it so ${who} can pay ${money(o.total)} with Swipe.</p></div>
+    <div class="row" style="gap:8px; margin-top:10px;">
+      <button class="btn btn-primary" style="flex:2;" onclick="approveSwipeOrder('${o.id}')">Approve order</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="declineSwipeOrder('${o.id}')">Decline</button>
+    </div>`;
+  if(o.paymentStatus==='awaiting_swipe') return `
+    <div class="card tight notice-info"><p style="font-size:.88em;">Approved. Waiting for ${who} to pay ${money(o.total)} with Swipe. You can send it out once it's paid.</p></div>
+    <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineSwipeOrder('${o.id}')">Cancel order</button>`;
+  return `<div class="status-pill ok" style="display:inline-block;">Paid with Swipe ✓</div>${swipeFeeRowsHTML(o)}`;
+}
+function custSwipeHTML(o, inCard){
+  if(o.paymentMethod!=='swipe') return '';
+  const biz = DB.businesses.find(b=>b.id===o.businessId);
+  const store = biz ? biz.name : 'The store';
+  const stop = inCard ? 'event.stopPropagation(); ' : '';
+  if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${store} couldn't take this order. You haven't been charged.</p>`;
+  if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${store} to confirm your order. You'll pay with Swipe after that.</p>`;
+  if(o.paymentStatus==='awaiting_swipe') return `
+    <p class="muted" style="font-size:.85em; margin-top:8px;">${store} confirmed your order. Pay now to send it on its way.</p>
+    <button class="btn btn-primary ${inCard?'btn-sm':''}" style="width:100%; margin-top:10px;" onclick="${stop}payOrderWithSwipe('${o.id}')">Pay ${money(o.total)} with Swipe</button>`;
+  return '';
 }
 // True when there's a server to save to. In offline sample-data mode (no
 // Supabase client) actions that write to the server say so instead of
@@ -2540,8 +2871,8 @@ function seedIfEmpty(){
   if(sb || DB.businesses.length) return;
   const now = Date.now();
   DB.businesses = [
-    {id:'biz_reef', name:'Reef Corner Store', ownerName:'Aisha Hassan', phone:'7712345', accountNumber:'7770000123456', accountName:'Aisha Hassan', tier:'free', joinDate: now - 5*86400000, paidAt:null, category:'Grocery', rating:4.6},
-    {id:'biz_atoll', name:'Atoll Bakes', ownerName:'Moosa Ibrahim', phone:'7798765', accountNumber:'7770009876543', accountName:'Moosa Ibrahim', tier:'pro', joinDate: now - 60*86400000, paidAt: now-60*86400000, category:'Bakery', rating:4.9}
+    {swipeConnected:true, id:'biz_reef', name:'Reef Corner Store', ownerName:'Aisha Hassan', phone:'7712345', accountNumber:'7770000123456', accountName:'Aisha Hassan', tier:'free', joinDate: now - 5*86400000, paidAt:null, category:'Grocery', rating:4.6},
+    {swipeConnected:true, id:'biz_atoll', name:'Atoll Bakes', ownerName:'Moosa Ibrahim', phone:'7798765', accountNumber:'7770009876543', accountName:'Moosa Ibrahim', tier:'pro', joinDate: now - 60*86400000, paidAt: now-60*86400000, category:'Bakery', rating:4.9}
   ];
   DB.items = [
     {id:uid('it'), businessId:'biz_reef', name:'Fresh Rice 5kg', price:145, stock:20, category:'Grocery'},
@@ -2809,6 +3140,7 @@ function renderAdmin(){
   const swipeLog = DB.proRequests.filter(r=>r.paymentMethod==='swipe');
   const catPending = DB.categoryRequests.filter(r=>r.status==='pending');
   const proCount = DB.businesses.filter(b=>b.tier==='pro').length;
+  const feeStores = new Set(DB.orders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).map(o=>o.businessId)).size;
   const tab = (key,label,count)=>`<button class="tab ${state.adminTab===key?'active':''}" onclick="state.adminTab='${key}'; render();">${label}${count?` <span class="tab-count">${count}</span>`:''}</button>`;
   app.innerHTML = `
   <div class="admin">
@@ -2831,11 +3163,13 @@ function renderAdmin(){
         ${tab('bankRequests','Bank transfers',bankPending.length)}
         ${tab('swipeRequests','Swipe')}
         ${tab('catRequests','Categories',catPending.length)}
+        ${tab('fees','Fees',feeStores)}
       </div>
       ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
       ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
       ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
       ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
+      ${state.adminTab==='fees' ? adminFeesTab() : ''}
     </div>
   </div>
   ${sheetHTML()}`;
@@ -2862,6 +3196,34 @@ function adminBusinessesTab(list){
       </div>
     </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
   `;
+}
+// What each store owes Maldexpress from paid Swipe orders (5% less half of
+// Swipe's 1% charge), with a button to record that the store has paid it.
+function adminFeesTab(){
+  const byStore = {};
+  DB.orders.filter(o=>o.platformFeeDue!=null).forEach(o=>{
+    const s = byStore[o.businessId] || (byStore[o.businessId] = { due:0, settled:0, orders:0 });
+    if(o.feeSettledAt) s.settled += o.platformFeeDue; else { s.due += o.platformFeeDue; s.orders++; }
+  });
+  const rows = Object.entries(byStore).sort((a,b)=>b[1].due-a[1].due);
+  if(!rows.length) return `<div class="empty"><span class="ic">💸</span>No Swipe order fees yet</div>`;
+  return rows.map(([bizId,s])=>{
+    const biz = DB.businesses.find(b=>b.id===bizId);
+    return `
+    <div class="glass card" style="margin-bottom:10px;">
+      <div class="row between"><h3>${biz?biz.name:'Unknown store'}</h3>${s.due>0?`<span class="status-pill wait">Owes ${money(round2(s.due))}</span>`:`<span class="status-pill ok">Settled</span>`}</div>
+      <p class="muted" style="font-size:.85em; margin-top:4px;">${s.orders} unpaid order fee${s.orders===1?'':'s'} · ${money(round2(s.settled))} already settled</p>
+      ${s.due>0?`<div class="row" style="justify-content:flex-end; margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="adminSettleFees('${bizId}')">Mark ${money(round2(s.due))} received</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+async function adminSettleFees(bizId){
+  if(!requireOnline()) return;
+  const { data, error } = await sb.rpc('settle_platform_fees', { p_business_id: bizId });
+  if(error){ toast('Failed: '+error.message,'bad'); return; }
+  const now = Date.now();
+  (data||[]).forEach(r=>{ const o = DB.orders.find(x=>x.id===r.id); if(o) o.feeSettledAt = now; });
+  toast('Fees marked as received'); render();
 }
 function adminBankRequestsTab(list){
   return list.length ? list.map(r=>{
@@ -3246,6 +3608,7 @@ function sheetHTML(){
   if(state.sheet==='bizSignup') body = sheetBizSignup();
   else if(state.sheet==='delSignup') body = sheetDelSignup();
   else if(state.sheet==='bizSettings') body = sheetBizSettings();
+  else if(state.sheet==='connectSwipe') body = sheetConnectSwipe();
   else if(state.sheet==='bizBulkImport') body = sheetBizBulkImport();
   else if(state.sheet==='bizUploadPhotos') body = sheetBizUploadPhotos();
   else if(state.sheet==='delSettings') body = sheetDelSettings();
@@ -3499,13 +3862,14 @@ function renderBusiness(){
 
 function renderBizHome(biz,t){
   const myOrders = DB.orders.filter(o=>o.businessId===biz.id);
-  const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded').length;
-  const activeOrders = myOrders.filter(o=>o.status!=='delivered').length;
+  const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentMethod==='swipe' && o.paymentStatus==='awaiting_approval' && o.status!=='declined')).length;
+  const activeOrders = myOrders.filter(o=>o.status!=='delivered' && o.status!=='declined').length;
+  const feesDue = round2(myOrders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).reduce((s,o)=>s+o.platformFeeDue,0));
   // A normal order sits here until you pick how it's getting delivered (see
   // markOrderReadyForPickup()/markOrderSelfDelivery()) - surfaced alongside
   // slip approvals so a placed order never just quietly waits unnoticed.
-  const needsFulfillmentChoice = myOrders.filter(o=>!o.rentalItemId && !o.deliveryPersonId && o.status!=='delivered' && !o.readyForPickup && !o.selfDelivery && o.paymentStatus!=='awaiting_completion');
-  const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || needsFulfillmentChoice.includes(o));
+  const needsFulfillmentChoice = myOrders.filter(o=>!o.rentalItemId && !o.deliveryPersonId && o.status!=='delivered' && !o.readyForPickup && !o.selfDelivery && o.paymentStatus!=='awaiting_completion' && o.status!=='declined' && !swipeOrderNeedsPayment(o));
+  const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentMethod==='swipe' && o.paymentStatus==='awaiting_approval' && o.status!=='declined') || needsFulfillmentChoice.includes(o));
   const myItems = DB.items.filter(i=>i.businessId===biz.id);
   const badge = biz.tier==='pro'
     ? `<span class="badge pro">PRO</span>`
@@ -3539,6 +3903,21 @@ function renderBizHome(biz,t){
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em; color:${pendingApproval?'var(--warn)':'inherit'};">${pendingApproval}</h1><div class="muted" style="font-size:.78em;">Awaiting approval</div></div>
       </div>
 
+      <div class="section">
+        <div class="section-head"><h2>Swipe payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
+        ${biz.swipeConnected ? `
+        <div class="glass card">
+          <div class="row between"><span class="muted">Status</span><span class="status-pill ok">Connected</span></div>
+          <div class="divider"></div>
+          <div class="row between"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>
+          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you directly through Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
+        </div>` : `
+        <div class="card notice-warn">
+          <h3>Connect Swipe to take orders</h3>
+          <p style="font-size:.88em; margin-top:4px;">Customers can only order from you once your Swipe merchant account is connected.</p>
+          <button class="btn btn-primary" style="margin-top:12px;" onclick="openSheet('connectSwipe')">Connect Swipe</button>
+        </div>`}
+      </div>
       <div class="section">
         <div class="section-head"><h2>Store account</h2></div>
         <div class="glass card">
@@ -3642,7 +4021,7 @@ async function submitProBankSlip(){
 }
 
 function orderCardBiz(o){
-  const pm = o.paymentMethod==null ? 'Awaiting customer' : o.paymentMethod==='transfer' ? 'Bank transfer' : o.paymentMethod==='cash_on_pickup' ? 'Cash' : 'Cash to delivery';
+  const pm = o.paymentMethod==null ? 'Awaiting customer' : o.paymentMethod==='swipe' ? 'Swipe' : o.paymentMethod==='transfer' ? 'Bank transfer' : o.paymentMethod==='cash_on_pickup' ? 'Cash' : 'Cash to delivery';
   const fulfilmentTag = o.rentalItemId ? (o.rentalFulfillment==='pickup'?'Pickup':(o.deliveryPersonName||(o.needsDeliveryPartner?'Finding rider':'You deliver'))) : (o.deliveryPersonName||'Unassigned');
   let pillHtml = paymentStatusPill(o);
   return `
@@ -3653,6 +4032,11 @@ function orderCardBiz(o){
   </div>`;
 }
 function paymentStatusPill(o){
+  if(o.paymentMethod==='swipe'){
+    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
+    if(o.paymentStatus==='awaiting_swipe') return `<span class="status-pill mid">Ready to pay</span>`;
+  }
   if(o.paymentStatus==='awaiting_completion') return `<span class="status-pill wait">Needs completion</span>`;
   // An 'on_return' rental's payment_status flips to 'paid' the moment its
   // advance is confirmed - same column a fully-paid order uses - but the
@@ -4348,6 +4732,8 @@ function orderDetailBizBody(o){
   let actionArea = '';
   if(o.paymentStatus==='awaiting_completion'){
     actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">This order was won at auction and is waiting for the customer to choose delivery and payment details.</p></div>`;
+  } else if(o.paymentMethod==='swipe'){
+    actionArea = swipeBizActionHTML(o);
   } else if(o.paymentMethod==='transfer'){
     if(o.paymentStatus==='pending_transfer'){
       actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for customer to transfer & upload slip.</p></div>`;
@@ -4445,6 +4831,8 @@ function orderDetailBizBody(o){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">${o.rentalFulfillment==='pickup'?'Picked up ✓':'Delivered ✓'}</div>`;
       actionArea += rentalReturnActionHTML(o);
     }
+  } else if(swipeOrderNeedsPayment(o) || o.status==='declined'){
+    // Nothing to hand over: a Swipe order goes out only once it's paid.
   } else if(o.deliveryPersonId){
     if(o.status==='delivered'){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
@@ -5370,7 +5758,7 @@ function delJobCard(o){
     </div>`;
   }
   const biz = DB.businesses.find(b=>b.id===o.businessId);
-  const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
   const payoutAmt = payoutAmountFor(o);
   const cashCut = cashCutAmount(o);
   // The customer's name, phone, items, and the order's own total are all
@@ -5435,7 +5823,7 @@ function sheetDelOrderDetail(){
       : `<div class="card tight" style="margin-top:10px; background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the customer's ${o.rentalFeeTiming==='on_return'?'advance':'payment'} to be confirmed before you can hand this over.</p></div>`}
     `;
   }
-  const pm = o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
+  const pm = o.paymentMethod==='swipe'?'Prepaid with Swipe, nothing to collect':o.paymentMethod==='transfer'?'Customer pays by transfer':'Collect cash on delivery';
   // Same handoff-gated redaction as delJobCard() above - see the comment
   // there for why the pickup address substitutes for customer identity/items/
   // total until the store's actually handed this over.
@@ -6751,7 +7139,6 @@ function storeCheckoutCardHTML(g){
   const fee = zoneFee(_selectedZone);
   const shownFee = buyerPaysFee ? fee : 0;
   const total = itemsTotal + shownFee + extraFee;
-  const payMethod = _storePayMethod[biz.id] || 'transfer';
   return `
   <div class="glass card" id="storeCard_${biz.id}" style="margin-bottom:16px;">
     <h3 style="margin-bottom:8px;">${biz.name}</h3>
@@ -6760,78 +7147,17 @@ function storeCheckoutCardHTML(g){
     <div class="row between" style="font-size:.85em;"><span class="muted">Delivery fee</span><span id="ck_fee_${biz.id}">${buyerPaysFee?money(shownFee):'Free'}</span></div>
     ${extraFee>0?`<div class="row between" style="margin-top:4px; font-size:.85em;"><span class="muted">Extra delivery fee</span><span id="ck_extra_${biz.id}">${money(extraFee)}</span></div>`:''}
     <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price" id="ck_total_${biz.id}">${money(total)}</strong></div>
-    <div class="field" style="margin-top:12px;">
-      <label>How will you pay?</label>
-      <div class="stack">
-        <button class="pay-option" onclick="selectStorePay('${biz.id}','transfer')" id="pay_transfer_${biz.id}">
-          <div class="ic">🏦</div>
-          <div class="txt"><h3>Bank transfer</h3><small>Pay now or after delivery</small></div>
-        </button>
-        <button class="pay-option" onclick="selectStorePay('${biz.id}','cash_to_delivery')" id="pay_cash_${biz.id}">
-          <div class="ic">💵</div>
-          <div class="txt"><h3>Cash or transfer on delivery</h3><small>Pay when it arrives</small></div>
-        </button>
+    <div class="swipe-note">
+      <span class="swipe-badge" aria-hidden="true">S</span>
+      <div style="min-width:0;">
+        <strong>Pay with Swipe</strong>
+        <p>${biz.name} confirms your order first. Then you'll get a Swipe link to pay <span id="ck_swipe_${biz.id}">${money(total)}</span>.</p>
       </div>
     </div>
-    <div id="transferBox_${biz.id}" class="${payMethod==='transfer'?'':'hidden'}" style="margin-top:10px;">
-      <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
-      <div class="field" style="margin-top:10px;">
-        <label>Amount to be paid</label>
-        <input type="number" step="0.01" inputmode="decimal" id="slipAmount_${biz.id}" placeholder="${total.toFixed(2)}">
-      </div>
-      <div class="field" style="margin-top:10px;">
-        <label>Account number to be transferred</label>
-        <input id="slipAccount_${biz.id}" placeholder="${biz.accountNumber}">
-      </div>
-      <div class="field" style="margin-top:10px;">
-        <label>Slip / screenshot</label>
-        <input type="file" accept="image/*" id="slipFile_${biz.id}" style="display:none;" onchange="previewStoreSlip(event,'${biz.id}')">
-        <label for="slipFile_${biz.id}" class="filebtn">📎 Tap to choose an image</label>
-        <div class="slip-preview-wrap" id="slipPreviewWrap_${biz.id}" style="display:none; margin-top:10px;">
-          <img id="slipPreview_${biz.id}" style="width:100%; border-radius:14px; display:block; max-height:180px; object-fit:contain; background:#fff; border:1px solid var(--glass-brd);">
-          <button type="button" class="slip-remove-btn" onclick="removeStoreSlip('${biz.id}')" title="Remove image">✕</button>
-        </div>
-      </div>
-      <p class="muted" style="font-size:.78em; margin-top:8px;">Optional right now — leave these blank to pay whenever you're ready (even after delivery) and upload the slip from the order later. If you fill any of them in, the amount and account number must match this order's total (<span id="ck_slipnote_${biz.id}">${money(total)}</span>) and the "Pay to" details, or the slip can't be submitted.</p>
-    </div>
-    <div id="cashNote_${biz.id}" class="${payMethod==='cash_to_delivery'?'':'hidden'}" style="margin-top:10px;">
-      <p class="muted" style="font-size:.82em;">Have <span id="ck_cash_${biz.id}">${money(total)}</span> ready for when it arrives — pay your delivery partner cash, or transfer it straight to the store's account instead:</p>
-      <div class="acct-box" style="margin-top:8px;"><div class="lbl">Store account (if you'd rather transfer)</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
-    </div>
-    <button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="placeStoreOrder('${biz.id}')">Place order with ${biz.name}</button>
+    ${biz.swipeConnected
+      ? `<button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="placeStoreOrder('${biz.id}')">Send order to ${biz.name}</button>`
+      : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't set up Swipe payments.</p></div>`}
   </div>`;
-}
-// Per-store payment method toggle - direct DOM show/hide (like setDeliveryTarget())
-// rather than a full render(), so switching one store's payment method never
-// disturbs the shared name/phone/receiver fields or any other store's card.
-let _storePayMethod = {};
-let _storeSlipData = {};
-function selectStorePay(bizId, m){
-  _storePayMethod[bizId] = m;
-  const t = document.getElementById('pay_transfer_'+bizId), c = document.getElementById('pay_cash_'+bizId);
-  if(t) t.style.outline = m==='transfer' ? '2px solid var(--coral)' : 'none';
-  if(c) c.style.outline = m==='cash_to_delivery' ? '2px solid var(--coral)' : 'none';
-  const tb = document.getElementById('transferBox_'+bizId), cn = document.getElementById('cashNote_'+bizId);
-  if(tb) tb.classList.toggle('hidden', m!=='transfer');
-  if(cn) cn.classList.toggle('hidden', m!=='cash_to_delivery');
-}
-function previewStoreSlip(e, bizId){
-  const f = e.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    _storeSlipData[bizId] = reader.result;
-    const img = document.getElementById('slipPreview_'+bizId);
-    const wrap = document.getElementById('slipPreviewWrap_'+bizId);
-    if(img) img.src = reader.result;
-    if(wrap) wrap.style.display = 'block';
-  };
-  reader.readAsDataURL(f);
-}
-function removeStoreSlip(bizId){
-  delete _storeSlipData[bizId];
-  const input = document.getElementById('slipFile_'+bizId); if(input) input.value = '';
-  const wrap = document.getElementById('slipPreviewWrap_'+bizId); if(wrap) wrap.style.display = 'none';
-  const img = document.getElementById('slipPreview_'+bizId); if(img) img.src = '';
 }
 // Shared by every checkout-shaped sheet (cart checkout, rent, complete-auction-win) -
 // who the order actually gets handed to: a person (default - you, unless you say
@@ -7063,14 +7389,11 @@ function refreshCheckoutTotals(){
     const feeEl = document.getElementById('ck_fee_'+g.biz.id); if(feeEl) feeEl.textContent = buyerPaysFee ? money(shownFee) : 'Free';
     const extraEl = document.getElementById('ck_extra_'+g.biz.id); if(extraEl) extraEl.textContent = money(extraFee);
     const totalEl = document.getElementById('ck_total_'+g.biz.id); if(totalEl) totalEl.textContent = money(total);
-    const cashEl = document.getElementById('ck_cash_'+g.biz.id); if(cashEl) cashEl.textContent = money(total);
-    const slipNoteEl = document.getElementById('ck_slipnote_'+g.biz.id); if(slipNoteEl) slipNoteEl.textContent = money(total);
-    const amtInput = document.getElementById('slipAmount_'+g.biz.id); if(amtInput) amtInput.placeholder = total.toFixed(2);
+    const swipeEl = document.getElementById('ck_swipe_'+g.biz.id); if(swipeEl) swipeEl.textContent = money(total);
   }
 }
 function goCheckout(){
   if(sb && !state.authed){ state.pendingItemAction = {type:'checkout'}; openSheet('signIn', {intent:'checkout'}); return; }
-  _storePayMethod = {}; _storeSlipData = {};
   openSheet('checkout');
 }
 // Renting is a single-item flow (pick a duration, then pickup/deliver + payment),
@@ -7886,33 +8209,11 @@ async function placeStoreOrder(bizId){
   const deliveryTarget = readDeliveryTargetFields();
   if(!deliveryTarget) return;
   const { deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt } = deliveryTarget;
-  const payMethod = _storePayMethod[bizId] || 'transfer';
+  if(!biz.swipeConnected){ toast(`${biz.name} hasn't set up Swipe payments yet, so it can't take orders`, 'bad'); return; }
   const buyerPaysFee = cartBuyerPaysFee(cartLines);
   const fee = zoneFee(_selectedZone);
   const extraFee = cartExtraFee(cartLines);
   const total = itemsTotal + (buyerPaysFee?fee:0) + extraFee;
-  const slipData = payMethod==='transfer' ? _storeSlipData[bizId] : null;
-  let paymentStatus = payMethod==='transfer' ? 'pending_transfer' : 'pending_cash';
-  // Paying by transfer doesn't require proof of it right this second - the
-  // customer can transfer whenever's convenient, even after the delivery
-  // arrives, and upload the slip later from the order itself (same as any
-  // other pending_transfer order - see "Upload transfer slip" on the order
-  // card/detail). But if they've already started filling any of the slip
-  // fields in, treat that as "I'm submitting proof now" and validate the
-  // whole thing properly rather than silently dropping a half-filled slip -
-  // the amount and account number they say they sent still has to match
-  // this order's total and the store's real account.
-  if(payMethod==='transfer'){
-    const enteredAmount = Number(val('slipAmount_'+bizId));
-    const enteredAccount = val('slipAccount_'+bizId);
-    const attemptingSlipNow = !!(slipData || enteredAmount || enteredAccount);
-    if(attemptingSlipNow){
-      if(!slipData || !enteredAmount || !enteredAccount){ toast(`Fill in the amount, account number, and slip image for ${biz.name} — or leave all three blank to pay later`, 'bad'); return; }
-      if(Math.abs(enteredAmount - total) > 0.01){ toast(`That amount doesn't match this order's total (${money(total)}) for ${biz.name}`, 'bad'); return; }
-      if(enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match ${biz.name}'s account (${biz.accountNumber})`, 'bad'); return; }
-      paymentStatus = 'slip_uploaded';
-    }
-  }
   state.customerName = name;
   const order = {
     id: uid('ord'), businessId: biz.id, businessName: biz.name,
@@ -7925,9 +8226,11 @@ async function placeStoreOrder(bizId){
     // whether the buyer was charged for it.
     deliveryPartnerPayout: fee, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
-    paymentMethod: payMethod,
-    paymentStatus,
-    status:'placed', createdAt: Date.now(), slipDataUrl: paymentStatus==='slip_uploaded' ? slipData : null
+    // Buy now orders are paid only by Swipe, after the store approves them
+    // (see approveSwipeOrder() / payOrderWithSwipe()).
+    paymentMethod: 'swipe',
+    paymentStatus: 'awaiting_approval',
+    status:'placed', createdAt: Date.now(), slipDataUrl: null
   };
   // A genuine insert, not saveDB('orders', [order])'s upsert - PostgREST's upsert
   // always compiles to INSERT ... ON CONFLICT DO UPDATE, and Postgres checks UPDATE
@@ -7948,10 +8251,9 @@ async function placeStoreOrder(bizId){
   // Clear only this store's lines, not the whole cart - any other store, or
   // anything left deselected (see toggleCartSelected()), stays in the cart.
   for(const l of cartLines){ delete state.cart[l.it.id]; if(state.cartSelected) delete state.cartSelected[l.it.id]; }
-  delete _storePayMethod[bizId]; delete _storeSlipData[bizId];
   const card = document.getElementById('storeCard_'+bizId);
   if(card) card.remove();
-  toast(`Order placed with ${biz.name}!`);
+  toast(`Order sent to ${biz.name}. You'll pay with Swipe once they confirm it`);
   const remainingEntries = Object.entries(state.cart);
   const remainingLines = remainingEntries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   if(!cartCheckoutLines(remainingLines).length){ closeSheet(); go('custOrders'); }
@@ -8186,6 +8488,7 @@ function custOrderCard(o){
       </div>
     </div>
     ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:8px;">🚚 Out for delivery</div>` : ''}
+    ${custSwipeHTML(o, true)}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
       ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
@@ -8235,6 +8538,7 @@ function sheetCustOrderDetail(){
     <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return' ? 'Paid now':'Total'}</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>
   </div>
   ${o.rentalItemId && o.rentalReturnedAt ? `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Returned ✓</div>` : ''}
+  ${custSwipeHTML(o, false)}
   ${showAcct ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
     ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}

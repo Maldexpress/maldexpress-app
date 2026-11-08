@@ -28,6 +28,21 @@ Currently a single static file (`index.html`) — plain HTML/CSS/JS, no build st
 5. **Run it locally** — just open `index.html` in a browser, or serve the folder with any static server (e.g. `npx serve .`).
 6. **Deploy** — push to GitHub, then create a new Static Site on Render pointing at this repo. No build command needed; publish directory is the repo root.
 
+## Swipe payments for orders
+
+Buy now orders are paid through each store's own Swipe merchant account after the store approves the order. To turn it on:
+
+1. Run the **SWIPE ORDER PAYMENTS** block at the end of the SQL comment in `index.html` (Supabase → SQL Editor).
+2. Deploy the two edge functions:
+   ```
+   supabase functions deploy create-order-payment
+   supabase functions deploy swipe-order-webhook --no-verify-jwt
+   ```
+3. Make sure the `SWIPE_TOKEN_URL` and `SWIPE_API_BASE_URL` secrets are set (Supabase → Edge Functions → Secrets). The Pro-upgrade function already uses them.
+4. Each store opens its dashboard → **Connect Swipe**, enters its Swipe client ID, client secret and webhook signing secret, and pastes the webhook URL shown there into its Swipe Merchant Portal.
+
+Maldexpress takes 5% of each order and Swipe's 1% charge is split equally, so a store owes 4.5% per order. An admin records fee payments under Admin → Fees.
+
 ## Notes
 
 - Until you fill in the Supabase keys, the app runs in an offline demo mode with seeded sample data and no sign-in requirement, so you can preview the UI immediately.

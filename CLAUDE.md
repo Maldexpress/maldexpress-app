@@ -14,7 +14,10 @@ Maldexpress: a marketplace + delivery app for the Maldives. Three portals in one
 ## Business rules to preserve
 - Free tier: 30 days from `joinDate`, max 10 items. Pro tier (MVR 500 one-time): max 500 items, no expiry.
 - Delivery fee is a **flat amount by zone**, not a percentage: Malé MVR 15, Hulhumalé Phase 1 MVR 20, Hulhumalé Phase 2 MVR 25. Chosen by the customer at checkout.
-- Payment methods: bank transfer (customer uploads a slip → business approves) or cash to the delivery partner (rider marks cash collected → owes the business `total - deliveryFee` → business confirms settlement).
+- **Buy now orders are paid only by Swipe** (cash on delivery and bank transfer were removed for them). Flow: customer places order (`payment_method 'swipe'`, `payment_status 'awaiting_approval'`) → store approves (`awaiting_swipe`) or declines → customer pays on a Swipe link created on the **store's own Swipe account** (edge function `create-order-payment`) → Swipe calls `swipe-order-webhook?business=<id>` → `paid`. A Swipe order can't go to a rider until it's paid, and riders never collect cash for it; the store owes the rider the zone fee after delivery.
+- **Fees on Swipe orders**: Maldexpress takes 5% of the order total; Swipe's 1% charge is split 1:1 between the store and Maldexpress. So per order the store owes Maldexpress `5% − 0.5% = 4.5%` (`platform_fee_due`) and keeps 94.5%. Swipe has no split-payment API, so fees are tracked per order and settled by an admin (Admin → Fees). Rates live in `SWIPE_FEES` (index.html) and the webhook — keep them in sync.
+- A store must connect its Swipe merchant account (client ID, client secret, webhook signing secret) before it can take orders. Credentials live in `business_swipe_accounts`, which has RLS with no policies so only edge functions can read them.
+- Rentals and auction wins keep their old payment methods: bank transfer (customer uploads a slip → business approves) or cash.
 - Store account number/name are only shown to the customer/rider while payment is unconfirmed.
 
 ## Known follow-ups (not yet done)

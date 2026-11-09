@@ -5251,7 +5251,7 @@ function orderDetailBizBody(o){
     </div>`;
   }
   const discountLine = o.discountAmount>0 ? `<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>` : '';
-  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${routeLabel(o)}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${buyerPaidFee?'':' · covered by you, not charged to buyer'}</span><span>${money(payoutAmt)}</span></div>`;
+  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${routeLabel(o)}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${(routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval') ? '' : (buyerPaidFee?'':' · covered by you, not charged to buyer')}</span><span>${(routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval') ? 'Set when you approve' : money(payoutAmt)}</span></div>`;
   // An 'on_return' rental's own o.total only ever holds the advance due at
   // checkout (see submitRentItem()) - the rental fee itself lives separately
   // in rentalFeeAmount, so it needs its own line here or the order would

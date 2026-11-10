@@ -944,7 +944,15 @@
   .ap-ic{font-size:1.5em;}
   .ap-x{background:none; border:none; color:var(--ink-dim); font-size:1em; padding:6px;}
   @media (min-width:1024px){ .addr-prompt{margin:0 0 32px;} }
-  /* Sizes */
+  /* Options (sizes, colours, ...) */
+  .opt-editor{margin-bottom:14px; padding:14px; border-radius:16px; background:var(--sand-bg); border:1px solid var(--edge);}
+  .opt-head{display:flex; flex-direction:column; gap:2px; margin-bottom:10px;}
+  .opt-head .muted{font-size:.8em;}
+  .opt-row{display:grid; grid-template-columns:110px minmax(0,1fr); gap:10px; align-items:center; margin-bottom:8px;}
+  .opt-row label{font-weight:600; font-size:.88em;}
+  .opt-row input{width:100%; padding:11px 13px; border-radius:12px; border:1.5px solid var(--edge); background:#fff; color:var(--ink); outline:none;}
+  .opt-row input:focus{border-color:var(--lagoon-500); box-shadow:0 0 0 4px rgba(15,163,163,.14);}
+  .opt-custom{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); margin-top:4px;}
   .size-pick{margin:0 0 12px;}
   .size-pick-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:8px;}
   .size-need{color:var(--sunset-dk); font-weight:700; font-size:.86em;}
@@ -2769,7 +2777,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , sizes: (o.sizes&&o.sizes.length) ? o.sizes.join(', ') : null };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -2781,7 +2789,7 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , sizes: parseSizes(r.sizes) };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options) };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -5256,9 +5264,8 @@ function itemCatFieldHTML(idPrefix, selectedCat, otherNameVal){
     <p class="muted" style="font-size:.78em; margin-top:5px;">Shown to buyers as "Other" until the Maldexpress team approves it as a real category.</p>
   </div>`;
 }
-function toggleSizesField(sel){ const p = sel.id.replace(/_cat$/,''); const w = document.getElementById(p+'_sizesWrap'); if(w) w.style.display = sel.value==='Fashion' || (document.getElementById(p+'_sizes')||{}).value ? '' : 'none'; }
 function toggleItemCatOther(sel){
-  toggleSizesField(sel);
+  refreshOptionsEditor(sel);
   const idPrefix = sel.id.replace(/_cat$/,'');
   const wrap = document.getElementById(idPrefix+'_catOtherWrap');
   if(wrap) wrap.style.display = sel.value==='Other' ? '' : 'none';
@@ -5321,10 +5328,9 @@ function sheetAddItem(){
   </div>
   <input type="hidden" id="i_listing_type" value="buy_now">
   <div class="field"><label>Item name</label><input id="i_name" placeholder="e.g. Fresh Rice 5kg"></div>
-  <div class="field ${''}" id="i_sizesWrap" style="display:none;"><label for="i_sizes">Sizes (optional)</label><input id="i_sizes" placeholder="e.g. S, M, L, XL  or  36, 38, 40">
-    <p class="muted" style="font-size:.78em; margin-top:5px;">Separate with commas. Customers must pick a size before adding to cart.</p></div>
   <div class="field"><label>More details (optional)</label><textarea id="i_desc" rows="3" placeholder="Anything buyers should know - size, ingredients, condition, rental terms, etc."></textarea></div>
   ${itemCatFieldHTML('i', defaultCat, defaultOtherName)}
+  ${optionsEditorHTML('i', defaultCat || MARKETPLACE_CATEGORIES[0], {})}
   <div id="buyNowFields">
     <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
     <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
@@ -5462,7 +5468,7 @@ async function submitAddItem(){
   const description = val('i_desc');
   toast('Saving item…');
   const imageUrl = await uploadItemPhoto();
-  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), sizes: parseSizes(val('i_sizes'))};
+  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -5500,7 +5506,7 @@ const BULK_COLUMNS = [
   ['deposit','Rental only: refundable deposit (optional)'],
   ['pickup_location','Rental only: where renters pick it up (required for rentals)'],
   ['available_from','Rental only: YYYY-MM-DD if not available yet (optional)'],
-  ['sizes','Optional (fashion). Sizes separated by commas or |, e.g. S, M, L, XL or 36|38|40. Customers pick one before adding to cart'],
+  ['options','Optional. Choices the customer picks from, e.g. Size: S, M, L; Colour: White, Navy. A column named after an option (Size, Colour, Weight, Flavour, Storage…) works too'],
   ['photo','Optional. The file name of a photo you pick together with the sheet (e.g. rice.jpg), or a web link to a picture. Leave empty to add a photo later'],
 ];
 let _bulk = null;   // { fileName, rows:[{line, data, item, auction, errors:[], warnings:[]}] }
@@ -5511,7 +5517,7 @@ function downloadBulkTemplate(){
     ['buy_now','Fresh Rice 5kg','Basmati, 5kg bag','Grocery','145','20','10','yes','0','','','','','','','','rice.jpg'],
     ['auction','Vintage dhoni model','Hand-carved, 60cm','Collectibles','500','','','yes','0','25','5','','','','','',''],
     ['rental','Snorkel set','Mask, snorkel and fins','Sports & Outdoors','50','4','','','0','','','day','200','Majeedhee Magu, Malé','','',''],
-    ['buy_now','Linen shirt','Breathable linen, relaxed fit','Fashion','350','12','','yes','0','','','','','','','S, M, L, XL','shirt.jpg'],
+    ['buy_now','Linen shirt','Breathable linen, relaxed fit','Fashion','350','12','','yes','0','','','','','','','Size: S, M, L, XL; Colour: White, Navy','shirt.jpg'],
   ];
   const csv = '﻿' + [head, ...examples].map(r=>r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
@@ -5591,10 +5597,12 @@ function bulkBuildRow(data, line, bizId){
     if(disc!=null && (isNaN(disc) || disc<0 || disc>90)) errors.push('Discount must be 0 to 90');
     item.price = price; item.stock = stockN||0; item.discountPercent = disc && !isNaN(disc) ? disc : 0;
   }
-  // Sizes: the sizes column (or "size"), else "Size: S, M, L" found in the details.
-  let sizes = parseSizes(g('sizes') || g('size') || g('size_options'));
-  if(!sizes.length){ const found = sizesFromText(item.description); if(found.length){ sizes = found; warnings.push(`Sizes found in the details: ${found.join(', ')}`); } }
-  item.sizes = sizes;
+  // Options: the options column, plus any column named after an option
+  // (Size, Colour, Weight, ...); if none, "Colour: red, blue" in the details.
+  const opts = parseOptions(g('options'));
+  Object.keys(data).forEach(k=>{ const n = canonOptName(k); if(n && !opts[n]){ const list = parseOptValues(data[k]); if(list.length) opts[n] = list; } });
+  if(!Object.keys(opts).length){ const found = optionsFromText(item.description); if(Object.keys(found).length){ Object.assign(opts, found); warnings.push(`Options found in the details: ${Object.entries(found).map(([n,v])=>`${n} ${v.join(', ')}`).join('; ')}`); } }
+  item.options = opts;
   const photo = g('photo');
   let photoUrl = '';
   if(/^https?:\/\//i.test(photo)) photoUrl = photo;
@@ -5679,7 +5687,7 @@ function sheetBulkItems(){
   return `
   <h2>Upload a list of items</h2>
   <ol class="bulk-steps">
-    <li><strong>Download the template.</strong> It opens in Excel, Google Sheets or Numbers and has 4 example rows to copy (one is a fashion item with sizes).</li>
+    <li><strong>Download the template.</strong> It opens in Excel, Google Sheets or Numbers and has 4 example rows to copy (one is a fashion item with size and colour options).</li>
     <li><strong>Add one item per row</strong> and save it as a CSV file.</li>
     <li><strong>Upload it here</strong> and check the preview before adding.</li>
   </ol>
@@ -5715,7 +5723,7 @@ function sheetBulkItems(){
       <div class="bulk-row ${r.errors.length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
-          <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${(r.item.sizes||[]).length?` · Sizes ${escapeAttr(r.item.sizes.join(', '))}`:''}</p></div>
+          <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>
         ${r.errors.map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
@@ -5781,10 +5789,9 @@ function sheetEditItem(){
   <h2>Edit item</h2>
   ${isAuction? `<p class="muted" style="margin-bottom:10px; font-size:.85em;">This is an auction listing — price, bid increment, and duration can't be changed after it's created.</p>`:''}
   <div class="field"><label>Item name</label><input id="e_name" value="${item.name}"></div>
-  <div class="field" id="e_sizesWrap" style="${(item.category==='Fashion'||itemSizes(item).length)?'':'display:none;'}"><label for="e_sizes">Sizes (optional)</label><input id="e_sizes" placeholder="e.g. S, M, L, XL  or  36, 38, 40" value="${escapeAttr(itemSizes(item).join(', '))}">
-    <p class="muted" style="font-size:.78em; margin-top:5px;">Separate with commas. Leave empty if it has no sizes.</p></div>
   <div class="field"><label>More details (optional)</label><textarea id="e_desc" rows="3">${item.description||''}</textarea></div>
   ${itemCatFieldHTML('e', item.category, item.categoryOtherName)}
+  ${optionsEditorHTML('e', item.category, itemOptions(item))}
   ${!isAuction && !isRental? `
   <div class="field"><label>Price (MVR)</label><input id="e_price" type="number" value="${item.price}"></div>
   <div class="field"><label>Stock quantity</label><input id="e_stock" type="number" value="${item.stock}"></div>
@@ -5856,7 +5863,7 @@ async function submitEditItem(itemId){
   item.categoryOtherName = item.category==='Other' ? (val('e_cat_other')||'') : '';
   if(item.categoryOtherName) await submitCategoryRequest(currentBiz(), item.categoryOtherName);
   item.description = val('e_desc');
-  if(document.getElementById('e_sizes')) item.sizes = parseSizes(val('e_sizes'));
+  if(document.getElementById('e_opts')) item.options = readOptionsEditor('e');
   if(item.listingType==='rental'){
     const price = Number(val('e_rent_rate')), stock = Number(val('e_rent_stock')||0);
     if(!price){ toast('Enter a daily rate','bad'); return; }
@@ -8310,7 +8317,7 @@ function itemDetailRowsHTML(item){
   const add = (k,v)=>{ if(v!==undefined && v!==null && v!=='') rows.push([k,v]); };
   add('Type', isAuction ? 'Auction' : isRental ? 'Rental' : 'Buy now');
   add('Category', item.category==='Other' && item.categoryOtherName ? `${escapeAttr(item.categoryOtherName)} (Other)` : escapeAttr(item.category||'General'));
-  if(itemSizes(item).length) add('Sizes', itemSizes(item).map(z=>escapeAttr(z)).join(' · '));
+  Object.entries(itemOptions(item)).forEach(([n,vals])=>add(escapeAttr(n), vals.map(z=>escapeAttr(z)).join(' · ')));
   if(!isAuction && !isRental){
     add('Price', money(item.price));
     if(item.discountPercent>0){ add('Discount', `${item.discountPercent}% off`); add('You pay', money(effectivePrice(item))); }
@@ -8426,21 +8433,22 @@ function itemActionsHTML(item){
   <div class="stack">
     ${!isAuction && !isRental ? (()=>{
       if(isOutOfStock(item)) return `<button class="btn btn-primary" style="opacity:.5;" disabled>Out of stock</button>`;
-      const sizes = itemSizes(item);
-      const size = sizes.length ? ((state.pickedSize||{})[item.id] || '') : '';
-      const key = cartKey(item.id, size);
-      const inCart = (!sizes.length || size) ? (state.cart[key]||0) : 0;
+      const missing = missingOptions(item);
+      const opts = hasOptions(item) ? pickedOptsFor(item.id) : {};
+      const label = optsLabel(opts);
+      const key = cartKey(item.id, opts);
+      const inCart = !missing.length ? (state.cart[key]||0) : 0;
       const atMax = item.stock!=null && cartQtyForItem(item.id)>=item.stock;
-      return `${sizePickerHTML(item)}
+      return `${optionPickerHTML(item)}
         ${inCart>0
           ? `<div class="qty-ctrl" style="justify-content:center; padding:6px 0;">
                <button onclick="changeQty('${escapeAttr(key)}',-1)">−</button><strong style="font-size:1.1em; min-width:26px; text-align:center;">${inCart}</strong><button ${atMax?'disabled style="opacity:.35;"':''} onclick="changeQty('${escapeAttr(key)}',1)">+</button>
-             </div>${size?`<p class="muted" style="font-size:.82em; text-align:center;">Size ${escapeAttr(size)} in your cart</p>`:''}`
+             </div>${label?`<p class="muted" style="font-size:.82em; text-align:center;">${escapeAttr(label)} in your cart</p>`:''}`
           : atMax
             ? `<button class="btn btn-primary" disabled style="opacity:.55;">All ${item.stock} in stock are in your cart</button>`
-          : sizes.length && !size
-            ? `<button class="btn btn-primary" disabled style="opacity:.55;">Choose a size to add to cart</button>`
-            : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart${size?` · Size ${escapeAttr(size)}`:''}</button>`}`;
+          : missing.length
+            ? `<button class="btn btn-primary" disabled style="opacity:.55;">Choose ${escapeAttr(missing.map(n=>n.toLowerCase()).join(' and '))} to add to cart</button>`
+            : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart${label?` · ${escapeAttr(label)}`:''}</button>`}`;
     })() : ''}
     ${isRental ? (soonRental
       ? `<button class="btn btn-primary" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for ${fmtDateShort(item.availableFrom)}</button>`
@@ -8750,7 +8758,7 @@ function renderCustStore(){
   const filteredBuyNow = catFilter==='All' ? buyNowItems : buyNowItems.filter(i=>(i.category||'General')===catFilter);
   const filteredAuction = catFilter==='All' ? auctionItems : auctionItems.filter(i=>(i.category||'General')===catFilter);
   const filteredRental = catFilter==='All' ? rentalItems : rentalItems.filter(i=>(i.category||'General')===catFilter);
-  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, itemSizes(i).length ? 0 : (state.cart[i.id]||0))).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
+  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
   const auctionHTML = filteredAuction.map(i=>{
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
@@ -8842,57 +8850,146 @@ function sortGroupsByRecency(groups){
 // guest fill a cart they'll only be asked to sign in for at checkout. The item they
 // were adding is remembered (state.pendingCartItemId) and actually added once they
 // finish signing in or signing up — see resolvePendingIntent().
-// ---------- Sizes ----------
-// An item can have sizes (fashion): stored as text "S, M, L" in items.sizes,
-// kept as an array on the item. A size must be picked before it goes in the
-// cart; the cart key is "itemId::size" so two sizes are two lines.
-function parseSizes(v){
-  if(Array.isArray(v)) return v.map(x=>String(x).trim()).filter(Boolean);
-  const out = String(v||'').split(/[,|\/;]+/).map(x=>x.trim()).filter(Boolean);
+// ---------- Item options (attributes) ----------
+// Every category has suggested options (Fashion: Size, Colour; Grocery:
+// Weight, Pack size; ...), and sellers can add their own. Stored on the item
+// as { "Size": ["S","M"], "Colour": ["Red"] } (items.options, jsonb). The
+// customer must pick one value of each before Add to cart; the cart key is
+// "itemId::Size=M&Colour=Red", so each combination is its own cart line, and
+// stock is shared by all of them.
+const CATEGORY_OPTIONS = {
+  'Grocery':['Weight','Pack size'], 'Bakery':['Size','Flavour'], 'Café':['Size','Flavour'], 'Fashion':['Size','Colour'],
+  'Electronics':['Storage','Colour'], 'Beauty & Personal Care':['Shade','Volume'], 'Home & Living':['Colour','Size'],
+  'Health & Wellness':['Strength','Pack size'], 'Sports & Outdoors':['Size','Colour'], 'Toys & Games':['Age','Colour'],
+  'Books & Stationery':['Format','Language'], 'Automotive':['Fits','Colour'], 'Pet Supplies':['Size','Flavour'],
+  'Hardware':['Size','Material'], 'Collectibles':['Edition','Condition'], 'Other':['Option'],
+};
+const OPTION_HINTS = { 'Size':'S, M, L, XL  or  36, 38, 40', 'Colour':'Black, White, Red', 'Weight':'500g, 1kg, 5kg', 'Pack size':'1, 6, 12',
+  'Flavour':'Vanilla, Chocolate', 'Storage':'64GB, 128GB, 256GB', 'Shade':'Ivory, Beige, Tan', 'Volume':'50ml, 100ml', 'Strength':'250mg, 500mg',
+  'Age':'3+, 6+, 12+', 'Format':'Paperback, Hardcover', 'Language':'English, Dhivehi', 'Fits':'Honda, Yamaha', 'Material':'Steel, Wood',
+  'Edition':'Standard, Limited', 'Condition':'New, Used', 'Option':'Small, Large' };
+// Words that mean the same option (template headers, "Colour: red" in text).
+const OPTION_ALIASES = { size:'Size', sizes:'Size', size_options:'Size', colour:'Colour', colours:'Colour', color:'Colour', colors:'Colour',
+  weight:'Weight', pack_size:'Pack size', pack:'Pack size', flavour:'Flavour', flavours:'Flavour', flavor:'Flavour', flavors:'Flavour',
+  storage:'Storage', capacity:'Storage', shade:'Shade', shades:'Shade', volume:'Volume', strength:'Strength', dose:'Strength', age:'Age',
+  format:'Format', language:'Language', fits:'Fits', material:'Material', edition:'Edition', condition:'Condition', option:'Option', options_list:'Option' };
+function canonOptName(n){ const k = String(n||'').trim().toLowerCase().replace(/[\s-]+/g,'_'); return OPTION_ALIASES[k] || null; }
+function tidyOptName(n){ const c = canonOptName(n); if(c) return c; const t = String(n||'').trim().replace(/\s+/g,' ').slice(0,24); return t ? t[0].toUpperCase()+t.slice(1) : ''; }
+function parseOptValues(v){
+  if(Array.isArray(v)) v = v.join(',');
+  const out = String(v||'').split(/[,|\/;]+/).map(x=>x.trim()).filter(Boolean).map(x=>x.slice(0,30));
   return [...new Set(out)].slice(0, 30);
 }
-function itemSizes(it){ return parseSizes(it && it.sizes); }
-// "Size: S, M, L" / "Sizes - 36/38/40" inside a description
-function sizesFromText(t){ const m = String(t||'').match(/\bsizes?\s*(?:available)?\s*[:\-–]\s*([A-Za-z0-9 ,|\/.+]+?)(?:[.;\n]|$)/i); return m ? parseSizes(m[1].replace(/\band\b/gi, ',')) : []; }
-function cartKey(itemId, size){ return size ? `${itemId}::${size}` : itemId; }
-function parseCartKey(k){ const n = String(k).indexOf('::'); return n<0 ? { itemId:k, size:'' } : { itemId:k.slice(0,n), size:k.slice(n+2) }; }
+// Object, JSON text, or "Size: S, M; Colour: Red, Blue" -> { Size:[..], Colour:[..] }
+function parseOptions(v){
+  const out = {};
+  if(!v) return out;
+  if(typeof v === 'string'){ const t = v.trim(); if(t.startsWith('{')){ try{ v = JSON.parse(t); }catch(e){ v = t; } } }
+  if(typeof v === 'object' && !Array.isArray(v)){
+    Object.entries(v).forEach(([k,vals])=>{ const n = tidyOptName(k), list = parseOptValues(vals); if(n && list.length) out[n] = list; });
+    return out;
+  }
+  let last = null;
+  String(v).split(/;|\n/).forEach(part=>{
+    const m = part.match(/^\s*([^:=]+?)\s*[:=]\s*(.+)$/);
+    if(m){ const n = tidyOptName(m[1]), list = parseOptValues(m[2]); if(n && list.length){ out[n] = list; last = n; } }
+    else if(last){ const more = parseOptValues(part); if(more.length) out[last] = [...new Set([...out[last], ...more])]; }   // "Weight: 1kg; 5kg"
+  });
+  return out;
+}
+function itemOptions(it){
+  const o = parseOptions(it && it.options);
+  if(!Object.keys(o).length && it && it.sizes){ const s = parseOptValues(it.sizes); if(s.length) o.Size = s; }
+  return o;
+}
+function hasOptions(it){ return Object.keys(itemOptions(it)).length > 0; }
+// "Colour: black, red." / "Sizes - 36/38/40" inside a description
+function optionsFromText(t){
+  const out = {}, text = String(t||'');
+  const re = /\b(sizes?|colou?rs?|weight|pack size|flavou?rs?|storage|shades?|volume|strength|age|format|language|material|edition|condition)\s*(?:available|options?)?\s*[:\-–]\s*([A-Za-z0-9 ,|\/.+'&]+?)(?=[.;\n]|$)/gi;
+  let m; while((m = re.exec(text))){ const n = canonOptName(m[1]) || tidyOptName(m[1]); const list = parseOptValues(m[2].replace(/\band\b/gi, ',')); if(n && list.length && !out[n]) out[n] = list; }
+  return out;
+}
+function optsLabel(opts){ return Object.entries(opts||{}).filter(([,v])=>v).map(([k,v])=>`${k} ${v}`).join(', '); }
+function cartKey(itemId, opts){
+  const e = Object.entries(opts||{}).filter(([,v])=>v).sort(([a],[b])=>a.localeCompare(b));
+  return e.length ? `${itemId}::${e.map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&')}` : itemId;
+}
+function parseCartKey(k){
+  k = String(k); const n = k.indexOf('::');
+  if(n<0) return { itemId:k, opts:{} };
+  const opts = {}; k.slice(n+2).split('&').forEach(pair=>{ const [a,b] = pair.split('='); if(a && b!==undefined) opts[decodeURIComponent(a)] = decodeURIComponent(b); });
+  return { itemId:k.slice(0,n), opts };
+}
 function cartLinesFromState(){
-  return Object.entries(state.cart||{}).map(([key,qty])=>{ const { itemId, size } = parseCartKey(key); const it = DB.items.find(i=>i.id===itemId); return it ? { it, qty, size, key } : null; }).filter(Boolean);
+  return Object.entries(state.cart||{}).map(([key,qty])=>{
+    const { itemId, opts: raw } = parseCartKey(key); const it = DB.items.find(i=>i.id===itemId); if(!it) return null;
+    const order = Object.keys(itemOptions(it)); const opts = {};   // in the item's own option order (Size, then Colour)
+    [...order, ...Object.keys(raw).filter(k=>!order.includes(k))].forEach(k=>{ if(raw[k]) opts[k] = raw[k]; });
+    return { it, qty, opts, key, size: opts.Size||'' };
+  }).filter(Boolean);
 }
 function cartQtyForItem(itemId){ return Object.entries(state.cart||{}).reduce((s,[k,q])=>s+(parseCartKey(k).itemId===itemId?q:0),0); }
-function pickItemSize(itemId, size){ state.pickedSize = state.pickedSize || {}; state.pickedSize[itemId] = size; render(); }
-function sizePickerHTML(item){
-  const sizes = itemSizes(item); if(!sizes.length) return '';
-  const cur = (state.pickedSize||{})[item.id] || '';
-  return `<div class="size-pick" role="radiogroup" aria-label="Size">
-    <div class="size-pick-head"><strong>Size</strong>${cur?`<span class="muted">Selected: ${escapeAttr(cur)}</span>`:`<span class="size-need">Choose a size</span>`}</div>
-    <div class="size-chips">${sizes.map(z=>`<button type="button" class="size-chip ${cur===z?'on':''}" role="radio" aria-checked="${cur===z}" onclick="pickItemSize('${item.id}', '${escapeAttr(z).replace(/'/g,"\\'")}')">${escapeAttr(z)}</button>`).join('')}</div>
+function pickedOptsFor(itemId){ return (state.pickedOpts||{})[itemId] || {}; }
+function missingOptions(item){ const chosen = pickedOptsFor(item.id); return Object.keys(itemOptions(item)).filter(n=>!chosen[n]); }
+function pickItemOption(itemId, name, value){ state.pickedOpts = state.pickedOpts || {}; state.pickedOpts[itemId] = { ...pickedOptsFor(itemId), [name]: value }; render(); }
+function optionPickerHTML(item){
+  const opts = itemOptions(item), names = Object.keys(opts); if(!names.length) return '';
+  const chosen = pickedOptsFor(item.id);
+  return names.map((n,gi)=>`<div class="size-pick" role="radiogroup" aria-label="${escapeAttr(n)}">
+    <div class="size-pick-head"><strong>${escapeAttr(n)}</strong>${chosen[n]?`<span class="muted">Selected: ${escapeAttr(chosen[n])}</span>`:`<span class="size-need">Choose ${escapeAttr(n.toLowerCase())}</span>`}</div>
+    <div class="size-chips">${opts[n].map((v,vi)=>`<button type="button" class="size-chip ${chosen[n]===v?'on':''}" role="radio" aria-checked="${chosen[n]===v}" onclick="pickItemOptionIdx('${item.id}', ${gi}, ${vi})">${escapeAttr(v)}</button>`).join('')}</div>
+  </div>`).join('');
+}
+function pickItemOptionIdx(itemId, gi, vi){ const it = DB.items.find(i=>i.id===itemId); if(!it) return; const o = itemOptions(it), n = Object.keys(o)[gi]; if(n) pickItemOption(itemId, n, o[n][vi]); }
+// Seller: options editor in Add / Edit item. Suggested names for the
+// category, any the item already has, and one free row for a new option.
+function optionsEditorHTML(prefix, cat, opts){
+  opts = opts || {};
+  const names = [...new Set([...(CATEGORY_OPTIONS[cat] || ['Option']), ...Object.keys(opts)])];
+  return `<div class="opt-editor" id="${prefix}_opts" data-cat="${escapeAttr(cat||'')}">
+    <div class="opt-head"><strong>Options (optional)</strong><span class="muted">Customers pick one of each before adding to cart. Leave empty if there's no choice.</span></div>
+    ${names.map(n=>`<div class="opt-row"><label>${escapeAttr(n)}</label><input data-opt-name="${escapeAttr(n)}" value="${escapeAttr((opts[n]||[]).join(', '))}" placeholder="${escapeAttr(OPTION_HINTS[n] ? 'e.g. '+OPTION_HINTS[n] : 'Values separated by commas')}"></div>`).join('')}
+    <div class="opt-row opt-custom"><input data-opt-custom-name placeholder="Another option, e.g. Scent" aria-label="Option name"><input data-opt-custom-vals placeholder="Values, e.g. Rose, Oud" aria-label="Option values"></div>
   </div>`;
+}
+function readOptionsEditor(prefix){
+  const box = document.getElementById(prefix+'_opts'); const out = {};
+  if(!box) return out;
+  box.querySelectorAll('input[data-opt-name]').forEach(inp=>{ const list = parseOptValues(inp.value); if(list.length) out[inp.getAttribute('data-opt-name')] = list; });
+  const cn = box.querySelector('input[data-opt-custom-name]'), cv = box.querySelector('input[data-opt-custom-vals]');
+  if(cn && cv){ const n = tidyOptName(cn.value), list = parseOptValues(cv.value); if(n && list.length) out[n] = list; }
+  return out;
+}
+function refreshOptionsEditor(sel){
+  const prefix = sel.id.replace(/_cat$/,''); const box = document.getElementById(prefix+'_opts'); if(!box) return;
+  const current = readOptionsEditor(prefix);
+  box.outerHTML = optionsEditorHTML(prefix, sel.value, current);
 }
 function addToCart(itemId){
   if(sb && !state.authed){ state.pendingCartItemId = itemId; openSheet('signIn', {intent:'cart'}); return; }
   const item = DB.items.find(i=>i.id===itemId);
   if(!item) return;
-  const sizes = itemSizes(item);
-  const size = sizes.length ? ((state.pickedSize||{})[itemId] || '') : '';
-  if(sizes.length && !size){
-    // quick "+" on a card: open the item so a size can be chosen
+  const missing = missingOptions(item);
+  if(missing.length){
+    // quick "+" on a card: open the item so the options can be chosen
     if(state.screen!=='custItem' || state.viewItemId!==itemId){ openItemDetail(itemId); }
-    toast('Choose a size first','bad'); return;
+    toast(`Choose ${missing.map(n=>n.toLowerCase()).join(' and ')} first`,'bad'); return;
   }
+  const opts = hasOptions(item) ? pickedOptsFor(itemId) : {};
   const max = item.stock!=null ? item.stock : Infinity;
   if(cartQtyForItem(itemId) >= max){ toast('No more in stock','bad'); return; }
-  const key = cartKey(itemId, size);
+  const key = cartKey(itemId, opts);
   state.cart[key] = (state.cart[key]||0)+1;
   closeSheet();
-  toast(size ? `Added size ${size} to cart` : 'Added to cart');
+  toast(optsLabel(opts) ? `Added (${optsLabel(opts)}) to cart` : 'Added to cart');
   render();
 }
 function changeQty(key, d){
   const { itemId } = parseCartKey(key);
   const item = DB.items.find(i=>i.id===itemId);
   const max = item && item.stock!=null ? item.stock : Infinity;
-  const others = cartQtyForItem(itemId) - (state.cart[key]||0);   // stock is shared by all sizes
+  const others = cartQtyForItem(itemId) - (state.cart[key]||0);   // stock is shared by all option combinations
   state.cart[key] = Math.min(Math.max(0, max - others), Math.max(0,(state.cart[key]||0)+d));
   if(state.cart[key]===0) delete state.cart[key];
   render();
@@ -8936,7 +9033,7 @@ function cartItemRowHTML(l){
       <div class="item-thumb">${itemThumbHTML(l.it)}</div>
       <div class="item-info">
         <h3>${l.it.name}</h3>
-        ${l.size ? `<p class="cart-size">Size: <strong>${escapeAttr(l.size)}</strong></p>` : ''}
+        ${Object.keys(l.opts||{}).length ? `<p class="cart-size">${Object.entries(l.opts).map(([k,v])=>`${escapeAttr(k)}: <strong>${escapeAttr(v)}</strong>`).join(' · ')}</p>` : ''}
         <p class="muted" style="font-size:.85em;">${money(effectivePrice(l.it))} each</p>
         ${itemDeliveryNoteHTML(l.it)}
       </div>
@@ -10266,7 +10363,7 @@ async function placeStoreOrder(bizId){
   const entries = Object.entries(state.cart);
   const allCartLines = cartLinesFromState();
   const cartLines = cartCheckoutLines(allCartLines).filter(l=>l.it.businessId===bizId);
-  const lines = cartLines.map(l=>({itemId:l.it.id, name: l.size ? `${l.it.name} (Size ${l.size})` : l.it.name, size: l.size || undefined, price:effectivePrice(l.it), qty:l.qty}));
+  const lines = cartLines.map(l=>({itemId:l.it.id, name: optsLabel(l.opts) ? `${l.it.name} (${optsLabel(l.opts)})` : l.it.name, options: Object.keys(l.opts||{}).length ? l.opts : undefined, price:effectivePrice(l.it), qty:l.qty}));
   const itemsTotal = lines.reduce((s,l)=>s+l.price*l.qty,0);
   const name = val('c_name')||state.customerName; const phone = val('c_phone');
   if(!lines.length){ toast('No items to place for this store','bad'); return; }

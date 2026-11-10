@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- Add-to-Home-Screen: makes the app launch full-screen (no browser
      address bar / toolbar) when opened from a home-screen icon, on both
      iOS (the apple-mobile-web-app-* tags) and Android/Chrome (the
@@ -39,25 +39,27 @@
      --night-coral, --ink, --channel, --ground, --shallow, ...) are kept as
      aliases because inline styles in the script use them. */
   :root{
-    --sand-bg:#F7F5F0;       /* page ground */
+    --sand-bg:#F3F7F6;       /* page ground: white sand under clear water */
     --surface:#FFFFFF;       /* cards */
-    --sand-2:#F1EEE7;        /* chips, inner fills */
-    --sand-3:#E9E4DA;
-    --edge:#E6E1D7;          /* hairlines */
-    --edge-2:#D7D0C3;
+    --sand-2:#EAF1EF;        /* chips, inner fills */
+    --sand-3:#DDE7E4;
+    --edge:#DCE6E3;          /* hairlines */
+    --edge-2:#C6D4D0;
+    --island:#F7E7BF;        /* real sand, used on the island only */
 
     --lagoon-500:#0FA3A3;    /* active / selected */
     --lagoon-600:#0B8A8C;
     --lagoon-700:#086A70;
     --lagoon-50:#E4F6F4;
     --ocean:#1E6FD9;         /* secondary blue */
-    --sunset:#FF6A4D;        /* primary action, prices */
-    --sunset-dk:#E8502F;
+    --sunset:#E24A24;        /* primary action (white text passes AA) */
+    --sunset-dk:#C23B17;     /* prices and coral text */
+    --sunset-glow:#FF7A57;
     --ink-900:#0D2B33;       /* text */
-    --ink-600:#5A6E74;
-    --ink-400:#8D9CA0;
-    --amber:#B7700F;
-    --palm:#108A5A;
+    --ink-600:#4F646A;
+    --ink-400:#64777C;
+    --amber:#8A5300;
+    --palm:#0B6E47;
     --red:#D93A44;
 
     /* aliases kept for inline styles and older rules */
@@ -96,13 +98,13 @@
     --danger:var(--red);
     --good:var(--palm);
     --warn:var(--amber);
-    --link:var(--lagoon-600);
+    --link:var(--lagoon-700);
 
     --radius:20px;
     --shadow:0 1px 2px rgba(13,43,51,.05), 0 6px 20px rgba(13,43,51,.06);
     --shadow-lift:0 2px 6px rgba(13,43,51,.06), 0 18px 44px rgba(13,43,51,.14);
     --glow-cyan:0 6px 16px rgba(15,163,163,.25);
-    --glow-coral:0 8px 22px rgba(255,106,77,.32);
+    --glow-coral:0 8px 22px rgba(226,74,36,.28);
     --display:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif;
     --fs:14px;
     font-size:var(--fs);
@@ -113,6 +115,7 @@
      Horizontal strips scroll inside their own box. */
   html,body{height:100%; max-width:100%; overflow-x:hidden; overscroll-behavior-x:none;}
   html{background:var(--sand-bg);}
+  ::selection{background:rgba(15,163,163,.22);}
   body{
     margin:0;
     font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -126,7 +129,7 @@
   }
   h1,h2,h3,.display{letter-spacing:-.015em; text-wrap:balance;}
   h1{font-family:var(--display); font-size:1.75em; font-weight:800; margin:0; line-height:1.1;}
-  h2{font-family:var(--display); font-size:1.2em; font-weight:700; margin:0 0 .7em; letter-spacing:-.01em;}
+  h2{font-family:var(--display); font-size:1.25em; font-weight:700; margin:0 0 .7em; letter-spacing:-.02em; line-height:1.2;}
   h3{font-size:1em; font-weight:700; margin:0;}
   p{margin:0; line-height:1.5;}
   button{font-family:inherit; cursor:pointer; color:inherit;}
@@ -203,7 +206,7 @@
 
   main{padding:0 16px;}
   .section{margin-bottom:28px;}
-  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:14px;}
   .section-head h2{margin:0;}
   .link-btn{color:var(--link); font-size:.92em; font-weight:700; background:none; border:none; padding:4px;}
 
@@ -253,14 +256,14 @@
     transition:transform .12s ease, background .15s ease, box-shadow .2s ease;
   }
   .btn:active{transform:scale(.97);}
-  .btn-primary{background:var(--sunset); color:#fff; box-shadow:var(--glow-coral);}
+  .btn-primary{background:linear-gradient(180deg, var(--sunset-glow) -40%, var(--sunset) 60%); color:#fff; box-shadow:var(--glow-coral), inset 0 1px 0 rgba(255,255,255,.25);}
   .btn-primary:hover{background:var(--sunset-dk);}
   .btn-ghost{background:var(--sand-2); color:var(--ink); border:1px solid var(--edge);}
   .btn-ghost:hover{background:var(--sand-3);}
   .btn-outline{background:var(--surface); border:1.5px solid var(--lagoon-500); color:var(--lagoon-700);}
   .btn-outline:hover{background:var(--lagoon-50);}
-  .btn-good{background:var(--lagoon-500); color:#fff; box-shadow:var(--glow-cyan);}
-  .btn-good:hover{background:var(--lagoon-600);}
+  .btn-good{background:var(--lagoon-700); color:#fff; box-shadow:var(--glow-cyan);}
+  .btn-good:hover{background:#06575C;}
   .btn-sm{padding:9px 16px; font-size:.9em; width:auto; border-radius:12px;}
   .btn[disabled]{opacity:.45; pointer-events:none;}
 
@@ -294,7 +297,7 @@
     transition:background .2s ease, color .2s ease;
   }
   .navbtn .ic{position:relative; display:inline-flex; line-height:0; padding:4px 16px; border-radius:99px; transition:background .2s ease;}
-  .navbtn.active{color:var(--lagoon-700);}
+  .navbtn.active{color:var(--lagoon-700); font-weight:800;}
   .navbtn.active .ic{background:var(--lagoon-50);}
   .navbtn:active{transform:scale(.95);}
   .nav-badge{
@@ -550,13 +553,14 @@
   .top-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   @media (min-width:440px){ .top-grid{grid-template-columns:1fr 1fr 1fr;} }
   .store-grid-expanded .top-grid{grid-template-columns:1fr 1fr;}
-  .top-card{border-radius:20px; overflow:hidden; background:var(--surface); border:1px solid var(--edge); box-shadow:var(--shadow); cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; min-width:0; padding:6px;}
-  .top-card:hover{transform:translateY(-3px); box-shadow:var(--shadow-lift); border-color:var(--edge-2);}
+  .top-card{border-radius:0; overflow:visible; background:none; border:none; box-shadow:none; cursor:pointer; min-width:0; padding:0;}
+  .top-card .img-wrap{transition:transform .25s cubic-bezier(.2,.9,.3,1), box-shadow .25s ease;}
+  .top-card:hover .img-wrap{transform:translateY(-3px); box-shadow:0 14px 30px rgba(13,43,51,.12);}
   .top-card:active{transform:scale(.98);}
   /* Glyph sized on the art only, so badges/buttons in the tile keep text size. */
   .top-card .img-wrap{
     position:relative; aspect-ratio:1/1; max-width:100%; display:flex; align-items:center; justify-content:center; font-size:1em;
-    background:var(--lagoon-50); border-radius:15px; overflow:hidden;
+    background:var(--lagoon-50); border-radius:22px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(13,43,51,.04);
   }
   .top-card .img-wrap > div:first-child{font-size:2.6em;}
   .top-card .img-wrap img{width:100%; height:100%; object-fit:contain; background:#fff;}
@@ -600,10 +604,10 @@
     border-radius:8px; padding:4px 12px; white-space:nowrap;
     color:#fff; background:var(--red); font-weight:800; font-size:.76em;
   }
-  .top-card .info{padding:10px 8px 8px;}
+  .top-card .info{padding:10px 4px 2px;}
   .biz-label{font-size:.8em; color:var(--ink-dim); font-weight:600;}
-  .top-card h3{font-size:.94em; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 0 .2em;}
-  .top-card .price{font-size:1.05em;}
+  .top-card h3{font-size:.95em; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 0 .2em;}
+  .top-card .price{font-size:1.02em; letter-spacing:-.01em;}
   .discount-badge{font-size:.74em; font-weight:800; color:#fff; background:var(--palm); padding:2px 7px; border-radius:6px; white-space:nowrap; flex-shrink:0;}
   .featured-scroll .top-card{flex:0 0 44%; scroll-snap-align:start;}
 
@@ -744,8 +748,11 @@
 
     .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:20px;}
     .featured-scroll .top-card{flex:0 0 240px;}
+    .top-card .img-wrap > div:first-child{font-size:3.8em;}
+    .top-card h3{font-size:1em;}
     .featured-card{flex:0 0 46%; min-height:260px;}
-    .cat-scroll{gap:16px; flex-wrap:wrap;}
+    .cat-scroll{display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:18px 12px; overflow:visible; margin:0 !important; padding:2px 0 8px !important;}
+    .cat-pill{justify-self:center;}
     .cat-pill{width:84px;}
     .cat-circle{width:76px; height:76px; border-radius:24px; font-size:1.8em;}
     .cat-label{max-width:84px;}
@@ -771,6 +778,107 @@
     .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));}
   }
 
+
+  /* ---------- PC website (customer side) ---------- */
+  .site-head, .site-foot{display:none;}
+  @media (min-width:1024px){
+    body.site-desk #app{max-width:1280px; padding:0 40px 0;}
+    .site-wrap{max-width:1200px; margin:0 auto; padding:0 24px;}
+    .site-head{display:block; position:sticky; top:-38px; z-index:40; margin:0 calc(50% - 50vw) 0; background:#fff; border-bottom:1px solid var(--edge);}
+    .site-util{height:38px; font-size:.86em; color:var(--ink-dim); border-bottom:1px solid var(--edge);}
+    .site-util .site-wrap{height:100%; display:flex; align-items:center; justify-content:space-between; gap:20px;}
+    .site-util-left, .site-util-right{display:flex; align-items:center; gap:22px;}
+    .ulink{background:none; border:none; padding:0; color:var(--link); text-decoration:underline; font-weight:600; font-size:1em;}
+    .utext{background:none; border:none; padding:0; color:var(--ink); font-size:1em; font-weight:500;}
+    .utext:hover, .ulink:hover{color:var(--lagoon-700);}
+    .util-ship{color:var(--ink-dim);}
+    .uicon{position:relative; background:none; border:none; padding:6px; color:var(--ink); display:flex;}
+    .uicon .notif-dot{top:3px; right:3px;}
+    .site-main .site-wrap{display:flex; align-items:center; gap:18px; height:84px;}
+    .site-logo{display:flex; align-items:center; gap:10px; background:none; border:none; padding:0; flex-shrink:0;}
+    .site-logo-mark{width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, #19C3B4, var(--ocean));}
+    .site-logo-mark svg{width:36px; height:36px;}
+    .site-logo-mark.small{width:28px; height:28px; border-radius:9px;}
+    .site-logo-mark.small svg{width:22px; height:22px;}
+    .site-logo-word{font-family:var(--display); font-weight:800; font-size:1.65em; letter-spacing:-.03em; color:var(--ink);}
+    .site-search{flex:1; min-width:0; display:flex; align-items:center; height:50px; border:2px solid var(--ink-900); border-radius:999px; background:#fff; padding:0 6px 0 18px; transition:border-color .2s ease, box-shadow .2s ease;}
+    .site-search:focus-within{border-color:var(--lagoon-600); box-shadow:0 0 0 4px rgba(15,163,163,.15);}
+    .ss-ic{color:var(--ink-dim); display:flex; margin-right:10px;}
+    .site-search input{flex:1; min-width:0; border:none; outline:none; background:none; font-size:16px; color:var(--ink); padding:0;}
+    .site-search input::placeholder{color:var(--ink-400);}
+    .site-search select{border:none; border-left:1px solid var(--edge); border-radius:0; background:none; padding:0 14px; height:30px; font-size:.95em; color:var(--ink); max-width:190px; cursor:pointer;}
+    .site-search-btn{height:50px; padding:0 34px; border:none; border-radius:999px; background:var(--lagoon-700); color:#fff; font-weight:800; font-size:1.02em; flex-shrink:0;}
+    .site-search-btn:hover{background:#06575C;}
+    .site-acts{display:flex; align-items:center; gap:2px; flex-shrink:0;}
+    .site-act{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; padding:6px 10px; border-radius:12px; color:var(--ink); font-size:.78em; font-weight:700;}
+    .site-act:hover{background:var(--sand-2);}
+    .site-act.on{color:var(--lagoon-700); background:var(--lagoon-50);}
+    .site-act .nav-badge{top:0; right:4px;}
+    .site-av{width:24px; height:24px; border-radius:8px; background:linear-gradient(135deg, var(--lagoon-500), var(--ocean)); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:800; font-size:.95em;}
+    .site-cats{border-top:1px solid var(--edge);}
+    .site-cats .site-wrap{display:flex; align-items:center; gap:4px; height:46px; overflow-x:auto; scrollbar-width:none;}
+    .sc-link{background:none; border:none; padding:7px 12px; border-radius:10px; color:var(--ink); font-size:.92em; font-weight:500; white-space:nowrap;}
+    .sc-link:hover{background:var(--sand-2);}
+    .sc-link.type{font-weight:700;}
+    .sc-link.on{color:var(--lagoon-700); background:var(--lagoon-50); font-weight:700;}
+    .sc-sep{width:1px; height:20px; background:var(--edge); margin:0 8px; flex-shrink:0;}
+    body.site-desk .topbar{position:static; margin:22px 0 18px; padding:0 0 14px; background:none !important; -webkit-backdrop-filter:none; backdrop-filter:none;}
+    body.site-desk .topbar .iconbtn[aria-label="Menu"]{display:none;}
+    body.site-desk .cart-checkout-bar{bottom:28px;}
+    body.site-desk main{min-height:calc(100vh - 170px);}
+
+    .desk-home{padding-top:22px;}
+    .desk-banner{position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); align-items:center; gap:32px; min-height:340px; padding:44px 56px 64px; border-radius:28px 28px 0 0; color:#fff; overflow:hidden; margin-bottom:44px;}
+    .desk-banner.tone-lagoon{background:radial-gradient(90% 70% at 100% 0%, rgba(255,255,255,.25), transparent 60%), linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
+    .desk-banner.tone-sunset{background:radial-gradient(80% 70% at 100% 0%, rgba(255,214,140,.45), transparent 60%), linear-gradient(150deg, #FF8A5C 0%, #E24A24 55%, #B8306A 100%);}
+    .desk-banner.tone-ocean{background:radial-gradient(80% 70% at 100% 0%, rgba(160,230,255,.35), transparent 60%), linear-gradient(150deg, #1E6FD9 0%, #1650A8 55%, #0D2B6B 100%);}
+    .desk-banner h1{font-size:2.9em; font-weight:800; letter-spacing:-.03em; line-height:1.04; color:#fff; max-width:15ch;}
+    .desk-banner p{font-size:1.08em; line-height:1.55; margin:14px 0 24px; max-width:44ch; color:rgba(255,255,255,.92);}
+    .db-cta{border:none; border-radius:999px; padding:13px 26px; background:#fff; color:var(--ink-900); font-weight:800; font-size:1em; box-shadow:0 6px 18px rgba(0,0,0,.12);}
+    .db-cta:hover{transform:translateY(-1px);}
+    .db-cta.dark{background:var(--ink-900); color:#fff; box-shadow:none;}
+    .db-art{display:flex; align-items:center; justify-content:center; min-height:220px;}
+    .db-art .hero-scene{height:230px; width:100%; margin:0;}
+    .db-emoji{font-size:9em; filter:drop-shadow(0 18px 30px rgba(0,0,0,.25));}
+    .db-ctrl{position:absolute; right:40px; bottom:40px; display:flex; align-items:center; gap:8px; z-index:2;}
+    .db-arrow{width:38px; height:38px; border-radius:50%; border:none; background:#fff; color:var(--ink); font-size:1.4em; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+    .db-dot{width:9px; height:9px; border-radius:50%; border:none; padding:0; background:rgba(255,255,255,.5);}
+    .db-dot.on{background:#fff; width:24px; border-radius:99px;}
+    .desk-banner .hero-shore{height:36px;}
+
+    .desk-sec{margin-bottom:48px; scroll-margin-top:150px;}
+    .desk-sec h2{font-size:1.65em; letter-spacing:-.025em; margin-bottom:18px;}
+    .desk-sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px;}
+    .desk-sec-head h2{margin:0;}
+    .desk-sec-head p{margin-top:4px;}
+    .desk-tiles{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:26px 18px;}
+    .desk-tile{background:none; border:none; padding:0; text-align:left; display:flex; flex-direction:column; gap:10px; color:var(--ink);}
+    .dt-art{width:100%; max-width:124px; margin:0 auto; aspect-ratio:1/1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.9em; transition:transform .25s cubic-bezier(.2,.9,.3,1), box-shadow .25s ease;}
+    .desk-tile:hover .dt-art{transform:translateY(-4px); box-shadow:0 14px 28px rgba(13,43,51,.12);}
+    .dt-label{font-weight:650; font-size:.98em; text-align:center;}
+    .desk-row{display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:20px;}
+    .desk-grid{grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)) !important; gap:28px 20px !important;}
+    .desk-promos{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:48px;}
+    .desk-promo{display:flex; align-items:center; justify-content:space-between; gap:20px; padding:30px 34px; border-radius:24px; overflow:hidden;}
+    .desk-promo h3{font-family:var(--display); font-size:1.5em; font-weight:800; letter-spacing:-.02em;}
+    .desk-promo p{margin:8px 0 18px; color:var(--ink-dim); max-width:40ch;}
+    .desk-promo.p-sell{background:#FFF1D9;}
+    .desk-promo.p-ride{background:#E3F4E7;}
+    .dp-art{font-size:5.5em; flex-shrink:0;}
+
+    .site-foot{display:block; margin:24px calc(50% - 50vw) 0; background:#fff; border-top:1px solid var(--edge); padding:44px 0 28px;}
+    .sf-cols{display:grid; grid-template-columns:repeat(4, 1fr); gap:28px;}
+    .sf-cols h4{font-size:.98em; margin:0 0 12px; color:var(--ink);}
+    .sf-cols button{display:block; background:none; border:none; padding:5px 0; color:var(--ink-dim); font-size:.92em; text-align:left;}
+    .sf-cols button:hover{color:var(--lagoon-700); text-decoration:underline;}
+    .sf-base{display:flex; align-items:center; gap:10px; margin-top:34px; padding-top:20px; border-top:1px solid var(--edge); color:var(--ink-dim); font-size:.86em;}
+  }
+  @media (min-width:1024px) and (max-width:1279px){
+    .desk-tiles{grid-template-columns:repeat(5, minmax(0,1fr));}
+    .desk-row{grid-template-columns:repeat(4, minmax(0,1fr));}
+    .desk-row > .top-card:nth-child(n+5){display:none;}
+    .util-ship{display:none;}
+  }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition-duration:.01ms !important; animation:none !important;}
   }
@@ -3834,7 +3942,7 @@ function iconCheckCircle(checked){
 function topbar(title, sub, opts={}){
   return `
   <div class="topbar glass">
-    <button class="iconbtn" style="margin-left:-10px;" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
+    <button class="iconbtn" aria-label="Menu" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
     <div class="titles">
       <h1>${title}</h1>
       ${sub? `<div class="sub">${sub}</div>`:''}
@@ -3954,11 +4062,14 @@ function bottomNav(role, active){
 }
 
 function wrapShell(role, active, contentHTML, extra=''){
+  const site = role==='customer' && isDesktop();
+  document.body.classList.toggle('site-desk', site);
   return `
     <div class="overlay ${state.drawerOpen?'show':''}" onclick="toggleDrawer(false)"></div>
     ${drawerHTML(role)}
+    ${site ? siteHeaderHTML(active) : ''}
     <main>${contentHTML}</main>
-    ${bottomNav(role, active)}
+    ${site ? siteFooterHTML() : bottomNav(role, active)}
     ${extra}
     ${sheetHTML()}
   `;
@@ -5953,7 +6064,7 @@ function addressCardHTML(a){
         <div class="row" style="gap:6px; align-items:center;"><h3 style="font-size:.95em;">${escapeAttr(line1||'Untitled')}</h3>${a.isDefault?'<span class="badge pro">Default</span>':''}</div>
         <p class="muted" style="font-size:.8em; margin-top:2px;">${line2||'—'}</p>
       </div>
-      <button class="iconbtn" style="width:32px; height:32px; font-size:.9em; flex-shrink:0;" onclick="deleteAddressEntry('${a.id}','${a.category}')" title="Remove">🗑️</button>
+      <button class="iconbtn" style="width:32px; height:32px; font-size:.9em; flex-shrink:0;" onclick="deleteAddressEntry('${a.id}','${a.category}')" title="Remove" aria-label="Remove address">🗑️</button>
     </div>
     ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
   </div>`;
@@ -7308,6 +7419,7 @@ function sheetItemDetail(){
 }
 function renderCustHome(){
   settleExpiredAuctions(DB.items);
+  if(isDesktop()) return renderDeskHome();
   const filtered = homeFilteredItems();
   const featured = filtered.slice(0, 8);
   // Fixed master list (see MARKETPLACE_CATEGORIES) rather than only categories that
@@ -7353,6 +7465,150 @@ function renderCustHome(){
   ensureCountdownTimer();
   updateHomeLogoScroll();
   restoreHomeScrollPositions();
+}
+
+// ---------- PC website (customer side, screens >= 1024px) ----------
+// On a computer the customer side is laid out like a shopping website: a
+// top strip (sign in, island, alerts, cart), a main bar (logo, big search
+// with a category picker, account, cart), a row of category links, a wide
+// promo banner, category tiles, product rows and a footer. Phones keep the
+// app layout. Same data and actions as the phone screens.
+var DESK_MQ = window.matchMedia ? window.matchMedia('(min-width:1024px)') : null;
+function isDesktop(){ return !!(window.matchMedia && window.matchMedia('(min-width:1024px)').matches); }
+if(DESK_MQ){ const onDeskChange = ()=>{ try{ render(); }catch(e){} }; DESK_MQ.addEventListener ? DESK_MQ.addEventListener('change', onDeskChange) : DESK_MQ.addListener(onDeskChange); }
+function deskCartCount(){ return (sb && !state.authed) ? 0 : Object.values(state.cart||{}).reduce((a,b)=>a+b,0); }
+function deskSearch(v){ if(state.screen!=='custHome'){ state.screen='custHome'; } updateHomeSearch(v); }
+function deskPickCategory(c){ state.homeCategory = c; if(state.screen!=='custHome') state.screen='custHome'; render(); const g=document.getElementById('deskGrid'); if(g && c!=='All') g.scrollIntoView({behavior:'smooth', block:'start'}); }
+function deskListing(t){ state.screen='custHome'; setHomeListingType(t); }
+function deskScrollTo(id){ const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth', block:'start'}); }
+function siteHeaderHTML(active){
+  const notifs = customerNotifications();
+  const hasUnread = notifs.some(n=>!state.notifSeenIds[n.id]);
+  const cartN = deskCartCount();
+  const navCats = MARKETPLACE_CATEGORIES.slice(0, 8);
+  return `
+  <header class="site-head">
+    <div class="site-util"><div class="site-wrap">
+      <div class="site-util-left">
+        ${state.authed
+          ? `<span>Hi, <strong>${escapeAttr((state.customerEmail||'').split('@')[0])}</strong></span>`
+          : `<span>Hi! <button class="ulink" onclick="openSheet('signIn')">Sign in</button> or <button class="ulink" onclick="openSheet('signIn')">register</button></span>`}
+        <button class="utext" onclick="deskListing('auction')">Auctions</button>
+        <button class="utext" onclick="deskListing('rental')">Rentals</button>
+        <button class="utext" onclick="enterRole('business')">Sell on Maldexpress</button>
+        <button class="utext" onclick="enterRole('delivery')">Deliver with us</button>
+      </div>
+      <div class="site-util-right">
+        <span class="util-ship">⛴️ Shipping from Malé to every inhabited island</span>
+        <div style="position:relative;">
+          <button class="uicon" aria-label="Notifications" onclick="event.stopPropagation(); toggleNotifDropdown()">${ICON_BELL}${hasUnread?`<span class="notif-dot"></span>`:''}</button>
+          ${state.notifOpen ? notifDropdownHTML(notifs) : ''}
+        </div>
+      </div>
+    </div></div>
+    <div class="site-main"><div class="site-wrap">
+      <button class="site-logo" onclick="go('custHome')" aria-label="Maldexpress home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maldexpress</span></button>
+      <div class="site-search">
+        <span class="ss-ic" aria-hidden="true">${ICON_SEARCH}</span>
+        <input id="homeSearchInput" placeholder="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="deskSearch(this.value)" aria-label="Search">
+        <select aria-label="Category" onchange="deskPickCategory(this.value)">
+          <option value="All" ${state.homeCategory==='All'?'selected':''}>All categories</option>
+          ${MARKETPLACE_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}" ${state.homeCategory===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <button class="site-search-btn" onclick="deskScrollTo('deskGrid')">Search</button>
+      <div class="site-acts">
+        <button class="site-act ${active==='custFavourites'?'on':''}" onclick="go('custFavourites')">${NAV_ICONS.custFavourites}<span>Saved</span></button>
+        <button class="site-act ${active==='custOrders'?'on':''}" onclick="go('custOrders')">${NAV_ICONS.custOrders}<span>Orders</span></button>
+        <button class="site-act" onclick="toggleDrawer(true)">${state.authed?`<span class="site-av">${escapeAttr((state.customerEmail||'?')[0].toUpperCase())}</span>`:ICON_HAMBURGER}<span>Account</span></button>
+        <button class="site-act cart ${active==='custCart'?'on':''}" onclick="go('custCart')">${NAV_ICONS.custCart}${cartN?`<span class="nav-badge">${cartN>99?'99+':cartN}</span>`:''}<span>Cart</span></button>
+      </div>
+    </div></div>
+    <nav class="site-cats" aria-label="Categories"><div class="site-wrap">
+      ${Object.keys(LISTING_TYPE_META).map(k=>`<button class="sc-link type ${state.homeListingType===k && active==='custHome'?'on':''}" onclick="deskListing('${k}')">${LISTING_TYPE_META[k].label}</button>`).join('')}
+      <span class="sc-sep"></span>
+      ${navCats.map(c=>`<button class="sc-link ${state.homeCategory===c && active==='custHome'?'on':''}" onclick="deskPickCategory('${escapeAttr(c)}')">${c}</button>`).join('')}
+      <button class="sc-link" onclick="go('custStores')">All stores</button>
+    </div></nav>
+  </header>`;
+}
+// Promo banners on the PC home page: arrows switch between them; nothing
+// moves by itself.
+const DESK_BANNERS = [
+  { tone:'lagoon', title:'Shop Malé. Get it on your island.', text:'Stores in Malé send by boat to every inhabited island. Pay safely with Swipe once the store accepts your order.', cta:'Start shopping', act:"deskScrollTo('deskGrid')", art:'scene' },
+  { tone:'sunset', title:'Bid on it before the timer runs out.', text:'Auctions from stores across the Maldives. The highest bid when time is up wins.', cta:'See auctions', act:"deskListing('auction')", art:'🔨' },
+  { tone:'ocean', title:'Rent it for the weekend.', text:'Snorkel gear, tools, party kit and more. Book the days you need and pick it up or have it delivered.', cta:'Browse rentals', act:"deskListing('rental')", art:'🤿' },
+];
+let _deskBanner = 0;
+function deskBannerStep(d){ _deskBanner = (_deskBanner + d + DESK_BANNERS.length) % DESK_BANNERS.length; render(); }
+function deskBannerGo(i){ _deskBanner = i; render(); }
+function deskBannerHTML(){
+  const b = DESK_BANNERS[_deskBanner];
+  return `
+  <section class="desk-banner tone-${b.tone}" aria-roledescription="carousel">
+    <div class="db-copy">
+      <h1>${b.title}</h1>
+      <p>${b.text}</p>
+      <button class="db-cta" onclick="${b.act}">${b.cta}</button>
+    </div>
+    <div class="db-art">${b.art==='scene' ? HERO_SCENE_SVG : `<span class="db-emoji">${b.art}</span>`}</div>
+    <div class="db-ctrl">
+      <button class="db-arrow" aria-label="Previous banner" onclick="deskBannerStep(-1)">‹</button>
+      ${DESK_BANNERS.map((_,i)=>`<button class="db-dot ${i===_deskBanner?'on':''}" aria-label="Banner ${i+1}" onclick="deskBannerGo(${i})"></button>`).join('')}
+      <button class="db-arrow" aria-label="Next banner" onclick="deskBannerStep(1)">›</button>
+    </div>
+    <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
+  </section>`;
+}
+const DESK_TILE_TINTS = ['#DDF5F2','#FFE6DE','#E2ECFF','#E3F4E7','#FFF1D9','#F0E6FF','#E4F1FA','#FCE7F0'];
+function renderDeskHome(){
+  const filtered = homeFilteredItems();
+  const allOfType = DB.items.filter(i=>(i.listingType||'buy_now')===(state.homeListingType||'buy_now'));
+  const picks = allOfType.filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>!(i.discountPercent>0))).slice(0, 6);
+  const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
+  const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
+  const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? 'More to love' : typeLabel;
+  document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    <div class="desk-home">
+      ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
+      ${state.homeSearch || state.homeCategory!=='All' ? '' : `
+      <section class="desk-sec">
+        <h2>Shop by category</h2>
+        <div class="desk-tiles">
+          ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
+        </div>
+      </section>
+      ${picks.length ? `
+      <section class="desk-sec">
+        <div class="desk-sec-head"><div><h2>Today’s picks</h2><p class="muted">${state.homeListingType==='buy_now'?'Paid by Swipe, delivered by riders on your island':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
+        <div class="desk-row">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
+      </section>` : ''}
+      <section class="desk-promos">
+        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you directly through Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
+      </section>`}
+      ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `
+      <section class="desk-sec" id="deskGrid">
+        <div class="desk-sec-head"><h2>${gridTitle}</h2>${state.homeCategory!=='All'||state.homeSearch?`<button class="link-btn" onclick="state.homeSearch=''; deskPickCategory('All')">Clear filter</button>`:''}</div>
+        <div class="top-grid desk-grid">
+          ${filtered.length ? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>Nothing here yet. Try another category or clear the search.</div>`}
+        </div>
+      </section>`}
+    </div>
+  `);
+  ensureCountdownTimer();
+}
+function siteFooterHTML(){
+  return `
+  <footer class="site-foot"><div class="site-wrap">
+    <div class="sf-cols">
+      <div><h4>Shop</h4><button onclick="deskListing('buy_now')">Buy now</button><button onclick="deskListing('auction')">Auctions</button><button onclick="deskListing('rental')">Rentals</button><button onclick="go('custStores')">All stores</button><button onclick="go('custFavourites')">Saved items</button></div>
+      <div><h4>Sell</h4><button onclick="enterRole('business')">Open a store</button><button onclick="enterRole('business')">Free for 30 days, then Pro for MVR 500</button></div>
+      <div><h4>Deliver</h4><button onclick="enterRole('delivery')">Become a rider</button><button onclick="enterRole('delivery')">Jobs on your island</button></div>
+      <div><h4>Your account</h4>${state.authed?`<button onclick="go('custOrders')">My orders</button>`:`<button onclick="openSheet('signIn')">Sign in or register</button>`}<button onclick="go('custCart')">Cart</button><button onclick="openSheet('custSettings')">Settings</button></div>
+    </div>
+    <div class="sf-base"><span class="site-logo-mark small">${BRAND_MARK_SVG}</span><span>© ${new Date().getFullYear()} Maldexpress · Malé, Maldives</span></div>
+  </div></footer>`;
 }
 // The category dropdown under a store's listing-type tabs (see
 // renderCustStore()) - only the categories that actually have an item of

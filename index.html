@@ -899,6 +899,27 @@
   .adm-group{grid-column:1/-1;}
   .cap-bar{height:10px; border-radius:99px; background:var(--sand-3); overflow:hidden; margin-top:10px;}
   .cap-bar span{display:block; height:100%; background:linear-gradient(90deg, var(--lagoon-500), var(--ocean)); border-radius:99px;}
+  /* Featured: larger cards on a gold and light-blue panel */
+  .feat-panel{position:relative; margin-left:-6px; margin-right:-6px; padding:18px 14px 14px; border-radius:26px;
+    background:radial-gradient(120% 90% at 0% 0%, #FFE8A3 0%, rgba(255,232,163,0) 55%), radial-gradient(120% 100% at 100% 100%, #CDEBFF 0%, rgba(205,235,255,0) 60%), linear-gradient(135deg, #FFF4D1 0%, #EAF6FF 100%);
+    border:1px solid #F1D58A; box-shadow:0 10px 30px rgba(200,150,30,.12);}
+  .feat-title{color:#7A5200;}
+  .feat-panel .featured-scroll .top-card{flex:0 0 68%;}
+  .feat-panel .top-card .img-wrap{box-shadow:0 0 0 2px #F3C94F, 0 8px 22px rgba(160,110,10,.18);}
+  .feat-panel .top-card .img-wrap > div:first-child{font-size:3.4em;}
+  .feat-panel .top-card h3{font-size:1em;}
+  .feat-panel .top-card .price{font-size:1.12em;}
+  .feat-panel .dot.active{background:#D9A520;}
+  .feat-panel .muted{color:#6B5A2E;}
+  @media (min-width:1024px){
+    .desk-sec.feat-panel{margin-left:0; margin-right:0; padding:30px 32px 32px; border-radius:30px;}
+    .feat-panel .desk-row-feat{grid-template-columns:repeat(4, minmax(0,1fr)); gap:26px;}
+    .feat-panel .desk-row-feat > .top-card:nth-child(n+9){display:none;}
+    .feat-panel .top-card .img-wrap > div:first-child{font-size:4.6em;}
+    .feat-panel .top-card h3{font-size:1.08em;}
+    .feat-panel .top-card .price{font-size:1.2em;}
+  }
+  @media (min-width:1024px) and (max-width:1279px){ .feat-panel .desk-row-feat{grid-template-columns:repeat(3, minmax(0,1fr));} .feat-panel .desk-row-feat > .top-card:nth-child(n+7){display:none;} }
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -8393,8 +8414,8 @@ function renderCustHome(){
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
       ${featured.length ? `
-      <div class="section">
-        <h2 style="margin-bottom:12px;">Featured</h2>
+      <div class="section feat-panel">
+        <h2 class="feat-title">⭐ Featured</h2>
           <div class="featured-scroll" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
           </div>
@@ -8511,7 +8532,8 @@ function renderDeskHome(){
   const filtered = homeFilteredItems();
   const allOfType = DB.items.filter(i=>(i.listingType||'buy_now')===(state.homeListingType||'buy_now'));
   const featNow = featuredItemsNow(state.homeListingType||'buy_now');
-  const picks = featNow.length ? featNow.slice(0, 12) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
+  const featShow = featNow.length > 4 ? Math.min(8, featNow.length - featNow.length % 4) : featNow.length;   // full rows of 4
+  const picks = featNow.length ? featNow.slice(0, featShow) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
   const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
   const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? 'More to love' : typeLabel;
@@ -8526,8 +8548,8 @@ function renderDeskHome(){
         </div>
       </section>
       ${picks.length ? `
-      <section class="desk-sec">
-        <div class="desk-sec-head"><div><h2>${featNow.length?'Featured':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
+      <section class="desk-sec${featNow.length?' feat-panel':''}">
+        <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'⭐ Featured':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">

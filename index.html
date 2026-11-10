@@ -710,6 +710,58 @@
   @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
     .glass, .top-card, .bottomnav .bar, .cat-circle, .tabs{background:rgba(14,26,60,.92);}
   }
+  /* ---------- Desktop web app (PC) ----------
+     Phones keep the single column + floating bottom capsule. On a computer
+     the app widens into a web layout: a fixed side navigation, a wide content
+     area with multi-column product grids, and popups as centred dialogs. */
+  @media (min-width:1024px){
+    #app{max-width:1320px; padding:0 32px 48px; border:none !important; background:none !important;}
+    #app:has(.bottomnav){padding-left:296px;}
+    .bottomnav, .bottomnav.compact{
+      top:24px; bottom:24px; left:max(24px, calc(50% - 636px)); right:auto; width:240px; max-width:none; margin:0; padding:0; transform:none;
+      display:flex; flex-direction:column;
+    }
+    .bottomnav .bar, .bottomnav.compact .bar{
+      flex-direction:column; justify-content:flex-start; gap:4px; padding:18px 12px; border-radius:28px; flex:1; overflow:visible;
+    }
+    .bottomnav .bar::before{
+      content:"Maldexpress"; display:block; padding:6px 14px 20px; margin-bottom:8px; border-bottom:1px solid var(--glass-brd);
+      font-family:var(--display); font-weight:700; font-size:1.15em; letter-spacing:.02em;
+      background:linear-gradient(100deg, var(--star) 30%, var(--plankton)); -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .navbtn, .bottomnav.compact .navbtn, .bottomnav.compact .navbtn.active{
+      flex:none; flex-direction:row; justify-content:flex-start; gap:14px; padding:13px 16px; font-size:.98em; border-radius:16px; white-space:nowrap;
+    }
+    .bottomnav.compact .navbtn:not(.active) .navlbl{display:inline;}
+    .navbtn:not(.active):hover{background:var(--glass); color:var(--ink);}
+    .bottomnav.compact .navbtn .ic:has(.nav-badge){margin-right:0;}
+    .nav-badge{right:-10px;}
+
+    .topbar{margin:0 -16px 16px; padding:20px 16px 16px; border-radius:0 0 22px 22px;}
+    .topbar.glass{background:rgba(5,10,28,.6);}
+    .home-hero{border-radius:32px; margin-top:24px;}
+    .home-hero .hero-line{font-size:2.4em; max-width:22ch;}
+
+    .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:18px;}
+    .featured-scroll .top-card{flex:0 0 230px;}
+    .featured-scroll{scrollbar-width:thin;}
+
+    /* popups: centred dialogs instead of bottom sheets */
+    .sheet-wrap{align-items:center; padding:32px;}
+    .sheet{max-width:640px; max-height:88vh; padding:14px 28px 28px; transform:translateY(16px) scale(.98);}
+    .sheet.glass{border-radius:28px; border-bottom:1px solid var(--glass-brd);}
+    .sheet-wrap.show .sheet{transform:none;}
+    .sheet .handle{display:none;}
+
+    .cart-checkout-bar{left:auto; right:max(32px, calc(50% - 628px)); transform:none; bottom:28px; width:440px; max-width:440px;}
+    .fab{right:max(32px, calc(50% - 628px)); bottom:32px;}
+    .landing{max-width:620px; margin:0 auto;}
+    .drawer{max-width:360px;}
+  }
+  @media (min-width:1440px){
+    .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));}
+  }
+
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition-duration:.01ms !important; animation:none !important;}
   }

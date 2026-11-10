@@ -503,11 +503,15 @@
   .notif-section-head.open .chev{transform:rotate(180deg);}
 
   .home-search-wrap{
-    flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:0 6px 0 18px;
-    border-radius:16px; background:#fff; border:none; color:var(--ink); box-shadow:0 6px 18px rgba(8,60,80,.18);
+    flex:1; min-width:0; height:44px; display:flex; align-items:center; gap:8px; padding:0 6px 0 14px;
+    border-radius:999px; background:rgba(255,255,255,.96); border:1px solid rgba(255,255,255,.7); color:var(--ink); box-shadow:0 4px 14px rgba(8,60,80,.14);
   }
-  .home-search-wrap:focus-within{box-shadow:0 0 0 4px rgba(255,255,255,.45), 0 6px 18px rgba(8,60,80,.18);}
-  .home-search-wrap input{flex:1; min-width:0; border:none; background:transparent; padding:14px 0; color:var(--ink); outline:none;}
+  .home-search-wrap:focus-within{box-shadow:0 0 0 3px rgba(255,255,255,.5), 0 4px 14px rgba(8,60,80,.14);}
+  .home-search-wrap .hs-ic{display:flex; color:var(--lagoon-700); flex-shrink:0;}
+  .home-search-wrap .hs-ic svg{width:17px; height:17px;}
+  .home-search-wrap input{flex:1; min-width:0; height:100%; border:none; background:transparent; padding:0; color:var(--ink); outline:none; font-size:.95em; -webkit-appearance:none; appearance:none;}
+  .home-search-wrap input::-webkit-search-cancel-button{display:none;}
+  .hs-clear{flex-shrink:0; width:28px; height:28px; border-radius:50%; border:none; background:var(--sand-2); color:var(--ink-dim); font-size:.75em; display:flex; align-items:center; justify-content:center;}
   .home-search-wrap input::placeholder{color:var(--ink-400);}
   .field-icon{flex-shrink:0; border:none; background:var(--sunset); color:#fff; width:40px; height:40px; border-radius:12px; padding:0; cursor:pointer; display:flex; align-items:center; justify-content:center;}
 
@@ -516,7 +520,20 @@
     display:flex; align-items:center; gap:6px; padding:12px 14px; border-radius:14px;
     background:var(--surface); border:1px solid var(--edge); color:var(--ink); font-weight:700; font-size:.88em; white-space:nowrap;
   }
-  .switcher-pill.accent{background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.4); color:#fff;}
+  .switcher-pill.accent{background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); color:#fff;}
+  .search-row .switcher-pill.accent{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em;}
+  .search-row .sw-ic{font-size:1.05em; line-height:1;}
+  .home-mini{position:fixed; top:0; left:0; right:0; z-index:60; display:flex; align-items:center; gap:8px; padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
+    background:rgba(255,255,255,.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 2px 14px rgba(8,60,80,.12);
+    transform:translateY(-110%); transition:transform .22s ease; pointer-events:none;}
+  .home-mini.show{transform:none; pointer-events:auto;}
+  .home-mini .mini-mark{flex-shrink:0; width:38px; height:38px; padding:0; border:none; border-radius:11px; background:linear-gradient(135deg, #19C3B4, var(--ocean)); display:flex; align-items:center; justify-content:center;}
+  .home-mini .mini-mark svg{width:26px; height:26px; display:block;}
+  .home-mini .search-row{flex:1; min-width:0;}
+  .home-mini .home-search-wrap{height:38px; background:var(--sand-2); border-color:var(--edge); box-shadow:none;}
+  .home-mini .home-search-wrap:focus-within{box-shadow:0 0 0 2px var(--lagoon-500);}
+  .home-mini .switcher-pill.accent{height:38px; background:var(--lagoon-50); border-color:var(--lagoon-500); color:var(--lagoon-700);}
+  @media (min-width:1024px){ .home-mini{display:none;} }
   .switcher-pill:active{transform:scale(.96);}
   .switcher-caret{font-size:.85em; opacity:.85; transition:transform .15s ease; display:inline-block;}
   .switcher-dropdown{position:absolute; top:calc(100% + 8px); right:0; z-index:40; width:max-content; min-width:100%; display:flex; flex-direction:column; gap:2px; padding:6px; border-radius:16px; background:var(--surface) !important; box-shadow:var(--shadow-lift) !important;}
@@ -8302,7 +8319,7 @@ function handleEdgeSwipeEnd(){
   } else {
     app.style.transition = 'transform .2s ease-out';
     app.style.transform = 'translateX(0)';
-    setTimeout(()=>{ if(!_edgeSwipeActive) app.style.transition = 'none'; }, 200);
+    setTimeout(()=>{ if(!_edgeSwipeActive){ app.style.transition = 'none'; app.style.transform = ''; } }, 200);   // no transform left behind: it would pin position:fixed headers to #app
   }
   _edgeSwipeDx = 0;
 }
@@ -8314,29 +8331,51 @@ const LISTING_TYPE_META = {
   auction: { icon:'🔨', label:'Auctions' },
   rental:  { icon:'🔁', label:'Rentals' }
 };
-function homeSearchRowHTML(){
+// where = 'hero' (the search under the island scene) or 'mini' (the small
+// header that slides in once Home is scrolled past the hero).
+function homeSearchRowHTML(where='hero'){
   const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
   const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);
+  const inputId = where==='mini' ? 'homeSearchMini' : 'homeSearchInput';
+  const open = state.homeSwitcherOpen === where;
   return `
-  <div class="row" style="gap:8px;">
+  <div class="row search-row ${where}" style="gap:8px;">
     <div class="home-search-wrap">
-      <input id="homeSearchInput" placeholder="Search items or stores…" value="${state.homeSearch||''}" oninput="updateHomeSearch(this.value)">
-      <button type="button" class="field-icon" style="${state.homeSearch?'opacity:1;':''}" onclick="dismissHomeSearchKeyboard()" title="Search" aria-label="Search">${ICON_SEARCH}</button>
+      <span class="hs-ic" aria-hidden="true">${ICON_SEARCH}</span>
+      <input id="${inputId}" type="search" enterkeyhint="search" placeholder="Search items or stores" aria-label="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="updateHomeSearch(this.value, '${inputId}')" onkeydown="if(event.key==='Enter') this.blur()">
+      ${state.homeSearch ? `<button type="button" class="hs-clear" aria-label="Clear search" onclick="updateHomeSearch('', '${inputId}')">✕</button>` : ''}
     </div>
     <div class="switcher-wrap">
-      <button class="switcher-pill accent" onclick="toggleHomeSwitcher()">
-        <span>${cur.icon}</span>
+      <button class="switcher-pill accent" aria-haspopup="true" aria-expanded="${open}" onclick="toggleHomeSwitcher('${where}')">
+        <span class="sw-ic" aria-hidden="true">${cur.icon}</span>
         <span>${cur.label}</span>
-        <span class="switcher-caret" style="${state.homeSwitcherOpen?'transform:rotate(180deg);':''}">▾</span>
+        <span class="switcher-caret" style="${open?'transform:rotate(180deg);':''}">▾</span>
       </button>
-      ${state.homeSwitcherOpen ? `
+      ${open ? `
       <div class="switcher-dropdown glass">
         ${others.map(k=>`<button class="switcher-pill" onclick="setHomeListingType('${k}')"><span>${LISTING_TYPE_META[k].icon}</span><span>${LISTING_TYPE_META[k].label}</span></button>`).join('')}
       </div>` : ''}
     </div>
   </div>`;
 }
-function toggleHomeSwitcher(){ state.homeSwitcherOpen = !state.homeSwitcherOpen; render(); }
+function toggleHomeSwitcher(where='hero'){ state.homeSwitcherOpen = state.homeSwitcherOpen===where ? false : where; render(); }
+// Small sticky header on the phone Home: logo, search and the Buy now switcher.
+const MINI_HEADER_AT = 170;   // px scrolled before it shows (about the hero's height)
+function homeScrollY(){ return document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0; }
+function homeMiniHeaderHTML(){
+  const show = homeScrollY() > MINI_HEADER_AT || state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  return `<div class="home-mini ${show?'show':''}" id="homeMini">
+    <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
+    ${homeSearchRowHTML('mini')}
+  </div>`;
+}
+function updateHomeMiniHeader(){
+  const el = document.getElementById('homeMini'); if(!el) return;
+  const show = homeScrollY() > MINI_HEADER_AT || state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  el.classList.toggle('show', show);
+}
+document.body.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
+window.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
 // Switching Buy Now/Auction/Rental resets the category filter back to "All" -
 // a category picked while looking at one listing type (say "Bakery" under
 // Rentals) can easily have nothing in it under a different one, which would
@@ -8368,10 +8407,10 @@ function dismissHomeSearchKeyboard(){
   const el = document.getElementById('homeSearchInput');
   if(el) el.blur();
 }
-function updateHomeSearch(v){
+function updateHomeSearch(v, inputId='homeSearchInput'){
   state.homeSearch = v;
   render();
-  const el = document.getElementById('homeSearchInput');
+  const el = document.getElementById(inputId);
   if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 // The exact same card component as Top Selling (just narrower, via the
@@ -8745,10 +8784,11 @@ function renderCustHome(){
   // any business has listed anything there yet, same as a real marketplace app.
   const cats = [...MARKETPLACE_CATEGORIES, 'All'];
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    ${homeMiniHeaderHTML()}
     <div class="home-hero">
       ${homeHeaderHTML()}
       ${HERO_SCENE_SVG}
-      ${homeSearchRowHTML()}
+      ${homeSearchRowHTML('hero')}
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">

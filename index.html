@@ -523,16 +523,16 @@
   .switcher-pill.accent{background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); color:#fff;}
   .search-row .switcher-pill.accent{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em;}
   .search-row .sw-ic{font-size:1.05em; line-height:1;}
-  .home-mini{position:fixed; top:0; left:0; right:0; z-index:60; display:flex; align-items:center; gap:8px; padding:calc(8px + env(safe-area-inset-top)) 12px 8px;
-    background:rgba(255,255,255,.94); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 2px 14px rgba(8,60,80,.12);
-    transform:translateY(-110%); transition:transform .22s ease; pointer-events:none;}
-  .home-mini.show{transform:none; pointer-events:auto;}
-  .home-mini .mini-mark{flex-shrink:0; width:38px; height:38px; padding:0; border:none; border-radius:11px; background:linear-gradient(135deg, #19C3B4, var(--ocean)); display:flex; align-items:center; justify-content:center;}
-  .home-mini .mini-mark svg{width:26px; height:26px; display:block;}
+  .home-mini{--p:0; position:fixed; top:0; left:0; right:0; z-index:60; display:flex; align-items:center; gap:calc(8px * var(--p)); padding:calc(8px + env(safe-area-inset-top)) 16px 8px;
+    color:#fff; background:
+      radial-gradient(60% 140% at 100% 0%, rgba(255,255,255,.22), transparent 60%),
+      linear-gradient(100deg, #19C3B4 0%, #0FA3A3 45%, #1E6FD9 100%);
+    box-shadow:0 4px 16px rgba(8,60,80,calc(.22 * var(--p)));
+    visibility:hidden; pointer-events:none;}
+  .home-mini.show{visibility:visible; pointer-events:auto;}
+  .home-mini .mini-mark{flex-shrink:0; width:calc(40px * var(--p)); height:40px; opacity:var(--p); padding:0; overflow:hidden; border-radius:12px;}
+  .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
   .home-mini .search-row{flex:1; min-width:0;}
-  .home-mini .home-search-wrap{height:38px; background:var(--sand-2); border-color:var(--edge); box-shadow:none;}
-  .home-mini .home-search-wrap:focus-within{box-shadow:0 0 0 2px var(--lagoon-500);}
-  .home-mini .switcher-pill.accent{height:38px; background:var(--lagoon-50); border-color:var(--lagoon-500); color:var(--lagoon-700);}
   @media (min-width:1024px){ .home-mini{display:none;} }
   .switcher-pill:active{transform:scale(.96);}
   .switcher-caret{font-size:.85em; opacity:.85; transition:transform .15s ease; display:inline-block;}
@@ -8359,20 +8359,31 @@ function homeSearchRowHTML(where='hero'){
   </div>`;
 }
 function toggleHomeSwitcher(where='hero'){ state.homeSwitcherOpen = state.homeSwitcherOpen===where ? false : where; render(); }
-// Small sticky header on the phone Home: logo, search and the Buy now switcher.
-const MINI_HEADER_AT = 170;   // px scrolled before it shows (about the hero's height)
-function homeScrollY(){ return document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0; }
+// Small sticky header on the phone Home: logo, search and the Buy now switcher,
+// in the hero's lagoon colours. The hero scrolls up with the page; when its
+// search row reaches the top it "locks" there (the small header takes over at
+// exactly that spot), then over the next MINI_GROW px the logo slides in
+// beside the search and the shadow fades in.
+const MINI_GROW = 60;
+let _miniP = -1;   // -1 hidden, 0..1 locked and growing; kept across render()s
 function homeMiniHeaderHTML(){
-  const show = homeScrollY() > MINI_HEADER_AT || state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
-  return `<div class="home-mini ${show?'show':''}" id="homeMini">
-    <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
+  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  const p = keep ? Math.max(_miniP, 1) : _miniP;
+  return `<div class="home-mini ${p>=0?'show':''}" id="homeMini" style="--p:${Math.max(0,p)}">
+    <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>${BRAND_MARK_SVG}</button>
     ${homeSearchRowHTML('mini')}
   </div>`;
 }
 function updateHomeMiniHeader(){
   const el = document.getElementById('homeMini'); if(!el) return;
-  const show = homeScrollY() > MINI_HEADER_AT || state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
-  el.classList.toggle('show', show);
+  const row = document.querySelector('.search-row.hero'); if(!row) return;
+  const lockAt = parseFloat(getComputedStyle(el).paddingTop) || 8;   // where the small header's search sits
+  const past = lockAt - row.getBoundingClientRect().top;               // px the hero search has gone above that
+  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  _miniP = keep ? 1 : (past < 0 ? -1 : Math.min(1, past / MINI_GROW));
+  el.classList.toggle('show', _miniP >= 0);
+  el.style.setProperty('--p', String(Math.max(0, _miniP)));
+  const mark = el.querySelector('.mini-mark'); if(mark) mark.tabIndex = _miniP < 0.5 ? -1 : 0;
 }
 document.body.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
 window.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
@@ -8783,6 +8794,7 @@ function renderCustHome(){
   // already have an item in them - so a shopper can browse into a category before
   // any business has listed anything there yet, same as a real marketplace app.
   const cats = [...MARKETPLACE_CATEGORIES, 'All'];
+  setTimeout(updateHomeMiniHeader, 0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${homeMiniHeaderHTML()}
     <div class="home-hero">

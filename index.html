@@ -1030,6 +1030,7 @@
   .sup-reply{display:flex; gap:8px; align-items:flex-end; margin-top:12px;}
   .sup-reply textarea{flex:1; min-width:0; resize:vertical;}
   .slip-gone{background:var(--sand-2); margin-top:10px;}
+  .bank-need{background:linear-gradient(150deg,#FFF4EC,#FFE6D8); border:1px solid #F7C9B3; margin-bottom:14px;}
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -2933,6 +2934,7 @@ DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
     DB.featuredRequests = (fr.data||[]).map(featReqFromRow).sort((a,b2)=>b2.createdAt-a.createdAt);
     if(ps.data) DB.settings = settingsFromRow(ps.data);
+    await loadRiderBanks();
     mergeCustomCategories();
     // Ids only - credentials never leave the server (see business_swipe_accounts).
     const { data: swipeIds, error: swipeErr } = await sb.rpc('swipe_connected_business_ids');
@@ -3054,6 +3056,7 @@ let _ckPay = {};                  // checkout: chosen payment per store id
 function ckPayFor(biz){ if(!bizTakesSwipe(biz)) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
 function setCkPay(bizId, m){ _ckPay[bizId] = m; refreshCheckoutCards(); }
 async function approveOrderRequest(id){
+  if(!requireStoreBank()) return;
   const o = DB.orders.find(x=>x.id===id);
   if(o && o.paymentMethod==='swipe') return approveSwipeOrder(id);
   let charge = null;
@@ -5019,6 +5022,8 @@ function sheetDelSignup(){
     <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 1</span><strong>MVR 20</strong></div>
     <div class="row between" style="font-size:.85em; margin-top:4px;"><span>Hulhumalé Phase 2</span><strong>MVR 25</strong></div>
   </div>
+  <p class="muted" style="font-size:.78em; font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin:18px 0 8px;">Your bank account (stores pay you here)</p>
+  ${bankFieldsHTML('d')}
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitDelSignup()">Start delivering</button>`;
 }
 async function submitDelSignup(){
@@ -5028,10 +5033,12 @@ async function submitDelSignup(){
   if(!phone){ toast('Please enter your phone number','bad'); return; }
   const island = pickedIsland('d_isl');
   if(!island){ toast('Pick the island you deliver on','bad'); return; }
+  const bank = readBankFields('d'); if(!bank) return;
   if(!state.customerPhone) state.customerPhone = phone;
   const d = {id:uid('del'), userId:state.customerId, name, phone, island, online:false, lat:null, lng:null, locationUpdatedAt:null};
   DB.delivery.push(d);
   if(await saveDB('delivery', [d]) === false){ DB.delivery = DB.delivery.filter(x=>x!==d); return; }
+  if(!(await saveRiderBank(d, bank))) toast('Profile made. Add your bank account in Settings to take jobs','bad');
   closeSheet();
   state.role='delivery';
   go('delHome', {activeDelId:d.id});
@@ -5214,6 +5221,52 @@ async function supportSendSlip(id){
 }
 function isAdminView(){ return !!(typeof isAdminMode === 'function' ? isAdminMode() : state.adminMode); }
 
+
+/* =================== BANK ACCOUNTS (stores + riders) =================== */
+// Stores and riders must give a bank account before doing anything on the app,
+// so payments to each other go straight to an account: the store pays riders'
+// delivery fees to the rider's account and Maldexpress's fees to Maldexpress.
+// Riders never collect cash, so they never owe a store anything.
+// Riders' accounts are in rider_bank_accounts (readable by the rider, admins,
+// and stores the rider has delivered for), not on the public rider row.
+DB.riderBanks = DB.riderBanks || {};
+async function loadRiderBanks(){
+  if(!sb) return;
+  const { data, error } = await sb.from('rider_bank_accounts').select('*');
+  if(!error) DB.riderBanks = Object.fromEntries((data||[]).map(r=>[r.rider_id, { accountName:r.account_name, accountNumber:r.account_number, bankName:r.bank_name||'' }]));
+}
+function bizHasBank(b){ return !!(b && String(b.accountNumber||'').trim() && String(b.accountName||'').trim()); }
+function riderHasBank(d){ const a = d && (DB.riderBanks||{})[d.id]; return !!(a && String(a.accountNumber||'').trim() && String(a.accountName||'').trim()); }
+function bankFieldsHTML(prefix, acc){
+  acc = acc || {};
+  return `<div class="field"><label for="${prefix}_accname">Account name</label><input id="${prefix}_accname" value="${escapeAttr(acc.accountName||'')}" placeholder="Name on the bank account" autocomplete="name"></div>
+  <div class="field"><label for="${prefix}_acc">Account number</label><input id="${prefix}_acc" inputmode="numeric" value="${escapeAttr(acc.accountNumber||'')}" placeholder="e.g. 7730000123456"></div>
+  <div class="field"><label for="${prefix}_bank">Bank</label><select id="${prefix}_bank">${['Bank of Maldives','Maldives Islamic Bank','State Bank of India','Commercial Bank of Maldives','HSBC','Mauritius Commercial Bank','Habib Bank','Other'].map(b=>`<option ${acc.bankName===b?'selected':''}>${b}</option>`).join('')}</select></div>`;
+}
+function readBankFields(prefix){
+  const accountName = val(prefix+'_accname').trim(), accountNumber = val(prefix+'_acc').replace(/\s+/g,'').trim(), bankName = val(prefix+'_bank');
+  if(accountName.length < 2){ toast('Enter the name on the bank account','bad'); return null; }
+  if(!/^[0-9-]{6,30}$/.test(accountNumber)){ toast('Enter a valid account number (digits only)','bad'); return null; }
+  return { accountName, accountNumber, bankName };
+}
+async function saveRiderBank(d, acc){
+  if(sb){
+    const { error } = await sb.from('rider_bank_accounts').upsert({ rider_id:d.id, account_name:acc.accountName, account_number:acc.accountNumber, bank_name:acc.bankName||null });
+    if(error){ toast('Could not save the bank account: '+error.message,'bad'); return false; }
+  }
+  (DB.riderBanks = DB.riderBanks || {})[d.id] = { ...acc }; return true;
+}
+function bankNeededCardHTML(who){
+  return `<div class="card bank-need"><div class="row" style="gap:12px; align-items:flex-start;"><div style="font-size:1.5em;">🏦</div><div style="flex:1;">
+    <strong>Add your bank account to start</strong>
+    <p class="muted" style="font-size:.85em; margin-top:4px;">${who==='rider' ? 'Stores pay your delivery fees straight to this account. You can take jobs once it is added.' : 'Customers pay you and you pay riders using bank accounts. You can add items and take orders once it is added.'}</p>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="openSheet('${who==='rider'?'delSettings':'bizSettings'}')">Add bank account</button></div></div></div>`;
+}
+// Gatekeepers: return true when the action can go ahead.
+function requireStoreBank(){ const b = currentBiz(); if(bizHasBank(b)) return true; toast('Add your bank account first','bad'); openSheet('bizSettings'); return false; }
+function requireRiderBank(){ const d = currentDel(); if(riderHasBank(d) || !sb) return true; toast('Add your bank account first','bad'); openSheet('delSettings'); return false; }
+function bankErrText(msg){ return /rider_bank_required/.test(msg||'') ? 'Add your bank account in Settings before taking jobs' : /store_bank_required/.test(msg||'') ? 'Add your store bank account in Settings first' : msg; }
+
 /* =================== BUSINESS SIDE =================== */
 function currentBiz(){ return DB.businesses.find(b=>b.id===state.activeBizId); }
 
@@ -5264,6 +5317,7 @@ function renderBizHome(biz,t){
   document.getElementById('app').innerHTML = wrapShell('business','bizHome', `
     ${topbar(biz.name, biz.category, {badge})}
     <div style="padding:4px 16px 0;">
+      ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
       <div class="row" style="gap:10px; margin:14px 0 18px;">
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
@@ -5437,7 +5491,7 @@ function renderBizItems(biz,t){
   document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
     ${topbar('My items', `${myItems.length} / ${t.limit} listed`)}
     <div style="padding:4px 16px 0;">
-      ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="_bulk=null; _bulkPhotos={}; openSheet('bulkItems')">Upload a list</button></div>` : ''}
+      ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="if(requireStoreBank()){ _bulk=null; _bulkPhotos={}; openSheet('bulkItems'); }">Upload a list</button></div>` : ''}
       ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
       <div class="items-head">
         <div class="tabs" style="margin-bottom:0;">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
@@ -5608,7 +5662,7 @@ let _itemPhotoFile = null;
 const PHOTO_MAX = 5;
 let _photoSlots = [];   // [{url}] saved, or [{file, preview}] new
 function itemImages(it){ return it && it.images && it.images.length ? it.images : (it && it.imageUrl ? [it.imageUrl] : []); }
-function startAddItem(){ _itemPhotoFile = null; _photoSlots = []; openSheet('addItem'); }
+function startAddItem(){ if(!requireStoreBank()) return; _itemPhotoFile = null; _photoSlots = []; openSheet('addItem'); }
 function startEditItem(id){ const it = DB.items.find(i=>i.id===id); _itemPhotoFile = null; _photoSlots = itemImages(it).map(url=>({url})); openSheet('editItem', id); }
 function photoSlotsHTML(){
   return `<div class="photo-slots" id="photoSlots">
@@ -6950,6 +7004,7 @@ async function offerOrderToRider(orderId, riderId){
   toast(`Sent to ${riderName} — waiting for them to accept`); render();
 }
 async function acceptDeliveryOffer(orderId){
+  if(!requireRiderBank()) return;
   const updated = await callOrderRpc('accept_delivery_offer', { p_order_id: orderId }, orderId,
     "Couldn't accept this — it may have been withdrawn already");
   if(!updated) return;
@@ -7139,7 +7194,8 @@ function renderBizPayouts(biz){
           const d = DB.delivery.find(x=>x.id===rid);
           return `<div class="glass card">
             <div class="row between"><h3>${escapeAttr(r.name)}</h3><span class="status-pill mid">You owe ${money(r.total)}</span></div>
-            <p class="muted" style="font-size:.84em; margin-top:4px;">Delivery fee for ${r.orders.length} deliver${r.orders.length===1?'y':'ies'}. Pay the rider directly, then mark it paid.</p>
+            <p class="muted" style="font-size:.84em; margin-top:4px;">Delivery fee for ${r.orders.length} deliver${r.orders.length===1?'y':'ies'}. Transfer to the rider's account, then mark it paid.</p>
+            ${(DB.riderBanks||{})[rid] ? `<div class="acct-box" style="margin-top:10px;"><div class="lbl">Pay ${money(r.total)} to${DB.riderBanks[rid].bankName?' · '+escapeAttr(DB.riderBanks[rid].bankName):''}</div><div class="val">${acctValHTML(DB.riderBanks[rid].accountName, DB.riderBanks[rid].accountNumber)}</div></div>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">This rider hasn't added a bank account yet. Contact them.</p>`}
             ${d && d.phone ? contactHTML(d.phone, r.name) : ''}
             <details class="owe-list"><summary>Deliveries (${r.orders.length})</summary>
               ${r.orders.map(o=>`<div class="owe-row"><span>#${o.id.slice(-5).toUpperCase()} · ${money(payoutAmountFor(o))}</span><button class="link-btn" onclick="markPayoutPaid('${o.id}')">Mark paid</button></div>`).join('')}
@@ -7225,8 +7281,8 @@ function sheetBizSettings(){
     ${catChecklistHTML('s_cat', biz.category)}
   </div>
   ${settingsSectionLabel('Payment')}
-  <div class="field"><label>Account holder name</label><input id="s_accname" value="${biz.accountName}"></div>
-  <div class="field"><label>Account number</label><input id="s_acc" value="${biz.accountNumber}"></div>
+  <div class="field"><label>Account holder name</label><input id="s_accname" value="${escapeAttr(biz.accountName||'')}"></div>
+  <div class="field"><label>Account number</label><input id="s_acc" inputmode="numeric" value="${escapeAttr(biz.accountNumber||'')}"></div>
   <button class="btn btn-primary" onclick="saveBizSettings()">Save changes</button>
   ${settingsSectionLabel('Item settings')}
   <button class="btn btn-outline" style="width:100%;" onclick="closeSheet(); openSheet('bizBulkImport')">📄 Bulk add items from a spreadsheet</button>
@@ -7263,8 +7319,10 @@ async function saveBizSettings(){
   biz.address = val('s_address');
   biz.category = getCatChecklistValue('s_cat')||biz.category;
   biz.categoryOtherName = biz.category.split(',').map(s=>s.trim()).includes('Other') ? (getCatOtherName('s_cat')||'') : '';
-  biz.accountName = val('s_accname')||biz.accountName;
-  biz.accountNumber = val('s_acc')||biz.accountNumber;
+  const accName = val('s_accname').trim(), accNo = val('s_acc').replace(/\s+/g,'').trim();
+  if(accName.length < 2 || !/^[0-9-]{6,30}$/.test(accNo)){ toast('Enter your bank account name and number. They are needed to take orders and pay riders','bad'); return; }
+  biz.accountName = accName;
+  biz.accountNumber = accNo;
   biz.island = pickedIsland('s_isl') || biz.island || 'Malé';
   if(await saveDB('businesses', [biz]) === false) return;
   maybeSubmitCategoryRequest('s_cat', biz);
@@ -7449,6 +7507,9 @@ function sheetDelSettings(){
   <h2>Delivery settings</h2>
   <div class="field"><label>Full name</label><input id="ds_name" value="${d.name}"></div>
   <div class="field"><label>Phone</label><input id="ds_phone" value="${d.phone||''}"></div>
+  ${settingsSectionLabel('Bank account (stores pay you here)')}
+  ${riderHasBank(d) ? '' : `<p class="muted" style="font-size:.84em; margin-bottom:8px;">Needed before you can take jobs.</p>`}
+  ${bankFieldsHTML('ds', (DB.riderBanks||{})[d.id])}
   <button class="btn btn-primary" onclick="saveDelSettings()">Save changes</button>
   <div class="divider"></div>
   ${fontSizeControl()}
@@ -7461,8 +7522,10 @@ async function saveDelSettings(){
   const d = currentDel();
   const name = val('ds_name');
   if(!name){ toast('Enter your name','bad'); return; }
+  const bank = readBankFields('ds'); if(!bank) return;
   d.name = name; d.phone = val('ds_phone');
   if(await saveDB('delivery', [d]) === false) return;
+  if(!(await saveRiderBank(d, bank))) return;
   closeSheet(); toast('Settings saved'); render();
 }
 
@@ -7703,6 +7766,7 @@ function startRiderTracking(d){
 function stopRiderTracking(){ if(_riderWatchId!=null && navigator.geolocation){ navigator.geolocation.clearWatch(_riderWatchId); } _riderWatchId = null; }
 async function toggleRiderOnline(){
   const d = currentDel(); if(!d) return;
+  if(!d.online && !requireRiderBank()) return;
   if(d.online){
     d.online = false; stopRiderTracking();
     await saveRiderFields(d, { online:false });
@@ -7764,6 +7828,7 @@ function renderDelHome(d){
   document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
     ${topbar(d.name, d.island ? `Delivering on ${d.island}` : 'Pick your island below')}
     <div style="padding:4px 16px 0;">
+      ${sb && !riderHasBank(d) ? bankNeededCardHTML('rider') : ''}
       ${riderStatusCardHTML(d)}
       ${offers.length? `
       <div class="section" style="margin-bottom:22px;">
@@ -7811,6 +7876,7 @@ function renderDelHome(d){
 // rather than trusted as a plain column a rider could set to anything.
 async function claimJob(id){
   if(!requireOnline()) return;
+  if(!requireRiderBank()) return;
   const order = DB.orders.find(o=>o.id===id);
   if(order && order.rentalItemId){
     const updated = await callOrderRpc('claim_rental_job', { p_order_id: id }, id,
@@ -7823,7 +7889,7 @@ async function claimJob(id){
   const { data, error } = await sb.from('orders')
     .update({ delivery_person_id: d.id, delivery_person_name: d.name })
     .eq('id', id).select();
-  if(error){ toast('Could not accept job: '+error.message, 'bad'); return; }
+  if(error){ toast('Could not accept job: '+bankErrText(error.message), 'bad'); return; }
   if(!data || !data.length){ toast('This job may have already been accepted by someone else', 'bad'); return; }
   const updated = fromDbRow('orders', data[0]);
   await decryptOrderRow(updated, data[0]);
@@ -7891,9 +7957,6 @@ function delJobCard(o){
     ${o.paymentMethod==='transfer' && o.paymentStatus==='pending_transfer' ? `
       <div class="acct-box"><div class="lbl">Store account (for customer reference)</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
       <p class="muted" style="font-size:.78em; margin-top:8px;">Visible until the customer transfers and uploads their slip - the business takes it from there.</p>
-    ` : ''}
-    ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='cash_collected' ? `
-      <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:8px;"><p style="font-size:.82em;">${cashCut>0 ? `You owe the store ${money(o.total-Math.round(cashCut))} after your ${money(Math.round(cashCut))} cut.` : `No delivery fee was collected, so you owe the store the full ${money(o.total)} — the store pays your ${money(Math.round(payoutAmt))} payout separately.`}</p></div>
     ` : ''}
     ${o.status!=='out_for_delivery' ? `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for the store to hand this over.</p></div>`
       : o.deliveryTargetType==='boat' ? `<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); openDelOrderDetail('${o.id}')">📸 Take photo to mark delivered</button>`

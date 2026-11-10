@@ -15,4 +15,5 @@ yarn-error.log*
 .eslintcache
 .cache
 dist
-out
+out# test screenshots written when a test script gets no output folder
+undefined/

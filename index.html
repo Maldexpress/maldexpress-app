@@ -838,6 +838,51 @@
   .bulk-photo-acts .link-btn{padding:4px 0; font-size:.86em;}
   .bulk-thumb{width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; border:1px solid var(--edge);}
   .bulk-thumb.none{display:flex; align-items:center; justify-content:center; background:var(--sand-2); font-size:1.2em; border:none;}
+  /* ---------- Item page ---------- */
+  .item-page{padding:8px 0 28px;}
+  .ip-top{display:flex; align-items:center; gap:10px; padding:calc(8px + env(safe-area-inset-top)) 0 10px;}
+  .ip-back{font-size:1.6em; line-height:1; width:40px; height:40px; border-radius:12px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .ip-crumbs{display:flex; align-items:center; gap:6px; min-width:0; font-size:.86em; color:var(--ink-dim); white-space:nowrap; overflow:hidden;}
+  .ip-crumbs button{background:none; border:none; padding:0; color:var(--link); font-size:1em; font-weight:600;}
+  .ip-crumb-cur{overflow:hidden; text-overflow:ellipsis;}
+  .ip-main{display:flex; flex-direction:column; gap:18px;}
+  .ip-photo{position:relative; aspect-ratio:1/1; width:100%; border-radius:24px; overflow:hidden; background:var(--lagoon-50); display:flex; align-items:center; justify-content:center; font-size:5em;}
+  .ip-photo img{width:100%; height:100%; object-fit:contain; background:#fff;}
+  .ip-photo > div:first-child{font-size:1em;}
+  .ip-store-row{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .ip-store{background:none; border:none; padding:0; color:var(--link); font-weight:700; font-size:.95em; text-decoration:underline; text-underline-offset:3px;}
+  .ip-type{font-size:.76em; font-weight:800; color:var(--lagoon-700); background:var(--lagoon-50); padding:3px 9px; border-radius:99px;}
+  .ip-name{font-size:1.6em; line-height:1.15; margin:10px 0 10px; letter-spacing:-.02em;}
+  .ip-price-row{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .ip-price{font-family:var(--display); font-size:1.9em;}
+  .ip-was{color:var(--ink-dim); text-decoration:line-through;}
+  .ip-stock{margin:10px 0 14px;}
+  .ip-ship{margin-top:14px; padding:12px 14px; border-radius:14px; background:var(--lagoon-50); color:var(--ink); font-size:.88em; line-height:1.5;}
+  .ip-lower{display:grid; gap:16px; margin-top:24px;}
+  .ip-card{background:var(--surface); border:1px solid var(--edge); border-radius:20px; padding:18px;}
+  .ip-card h2{margin-bottom:12px;}
+  .idr{display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-bottom:1px solid var(--edge); font-size:.94em;}
+  .idr:last-child{border-bottom:none;}
+  .idr-k{color:var(--ink-dim);}
+  .idr-v{text-align:right; font-weight:600;}
+  .ip-desc{line-height:1.65; white-space:normal; max-width:70ch;}
+  .ip-seller{display:flex; align-items:center; gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid var(--edge);}
+  .ip-related{margin-top:32px;}
+  .ip-related h2{margin-bottom:14px;}
+  @media (min-width:1024px){
+    .item-page{padding:10px 0 20px;}
+    .ip-back{display:none;}
+    .ip-main{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:44px; align-items:start;}
+    .ip-media{position:sticky; top:150px;}
+    .ip-photo{border-radius:28px; font-size:8em;}
+    .ip-name{font-size:2.1em;}
+    .ip-price{font-size:2.3em;}
+    .ip-actions .btn{padding:16px 20px; font-size:1.05em;}
+    .ip-lower{grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; margin-top:40px;}
+    .ip-card{padding:24px 26px;}
+    .ip-related{margin-top:48px;}
+    .ip-grid{grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)) !important; gap:28px 20px !important;}
+  }
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -1017,10 +1062,26 @@ function fbErrorText(e){
   if(c==='auth/invalid-email') return "That email address doesn't look right";
   if(c==='auth/weak-password') return 'Use a password with at least 6 characters';
   if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Incorrect mobile/email or password. New here? Sign up below';
-  if(c==='auth/too-many-requests') return 'Too many tries. Wait a few minutes and try again';
+  if(c==='auth/too-many-requests') return 'Firebase paused emails for this account after several tries. Wait about 15 minutes, then tap Resend email';
+  if(c==='auth/quota-exceeded') return 'The daily email limit was reached. Try again tomorrow, or contact Maldexpress';
+  if(c==='auth/internal-error') return 'The sign-in service had a problem sending the email. Try Resend email in a minute';
   if(c==='auth/network-request-failed') return "Can't reach the sign-in service. Check your connection";
   if(c==='auth/unauthorized-continue-uri' || c==='auth/unauthorized-domain') return "This site address isn't allowed in Firebase yet (Authentication > Settings > Authorized domains)";
-  return (e && e.message) || 'Something went wrong';
+  return ((e && e.message) || 'Something went wrong') + (c ? ` (${c})` : '');
+}
+// Last reason a verification email couldn't be sent, shown on the
+// Confirm your email screen; and a cooldown so Resend isn't hammered (Firebase
+// blocks the account for a while after too many sends).
+let _verifySendError = '', _verifyResendAt = 0, _verifyTimer = null;
+function startVerifyCooldown(sec){
+  _verifyResendAt = Date.now() + sec*1000;
+  clearInterval(_verifyTimer);
+  _verifyTimer = setInterval(()=>{
+    const el = document.getElementById('resendVerifyBtn'); const left = Math.ceil((_verifyResendAt-Date.now())/1000);
+    if(!el){ clearInterval(_verifyTimer); return; }
+    if(left<=0){ el.disabled=false; el.textContent='Resend email'; clearInterval(_verifyTimer); }
+    else { el.disabled=true; el.textContent=`Resend email in ${left}s`; }
+  }, 1000);
 }
 /* ---- SQL to run once in Supabase → SQL Editor ----
 create extension if not exists "pgcrypto";
@@ -3677,7 +3738,7 @@ function toast(msg, kind='good'){
 let _screenHistory = [];
 function go(screen, extra={}){
   if(state.screen && state.screen !== screen){
-    _screenHistory.push({ role:state.role, screen:state.screen, activeBizId:state.activeBizId, activeDelId:state.activeDelId, browseBizId:state.browseBizId, storeTab:state.storeTab, homeListingType:state.homeListingType, homeCategory:state.homeCategory, homeSearch:state.homeSearch });
+    _screenHistory.push({ role:state.role, screen:state.screen, activeBizId:state.activeBizId, activeDelId:state.activeDelId, browseBizId:state.browseBizId, storeTab:state.storeTab, homeListingType:state.homeListingType, homeCategory:state.homeCategory, homeSearch:state.homeSearch, viewItemId:state.viewItemId });
   }
   Object.assign(state, extra);
   state.screen = screen;
@@ -7091,6 +7152,7 @@ function renderDelHistory(d){
 function renderCustomer(){
   if(state.screen==='custHome') return renderCustHome();
   if(state.screen==='custStores') return renderCustStoresList();
+  if(state.screen==='custItem') return renderCustItem();
   if(state.screen==='custStore') return renderCustStore();
   if(state.screen==='custFavourites') return renderCustFavourites();
   if(state.screen==='custCart') return renderCustCart();
@@ -7806,7 +7868,170 @@ function storeItemCardHTML(item, qty){
 // in the app (Featured, Top selling, a store's Buy Now grid, or an auction card)
 // - those cards only ever show a name/price/thumbnail, so this is where "show
 // everything about it" (stock, category, delivery, full auction status) lives.
-function openItemDetail(itemId){ openSheet('itemDetail', itemId); }
+function openItemDetail(itemId){
+  state.sheet = null; state.sheetData = null;
+  if(state.screen==='custItem' && state.viewItemId===itemId){ render(); return; }
+  if(state.screen==='custItem'){
+    // item -> related item: remember this item so Back returns to it
+    _screenHistory.push({ role:state.role, screen:state.screen, activeBizId:state.activeBizId, activeDelId:state.activeDelId, browseBizId:state.browseBizId, storeTab:state.storeTab, homeListingType:state.homeListingType, homeCategory:state.homeCategory, homeSearch:state.homeSearch, viewItemId:state.viewItemId });
+    state.viewItemId = itemId; state.drawerOpen = false; state.notifOpen = false; render();
+  } else go('custItem', { viewItemId:itemId });
+  document.body.scrollTop = 0; document.documentElement.scrollTop = 0;
+}
+// ---------- Item page ----------
+// A full page for one item: big photo, price and the buy / rent / bid
+// buttons, every detail the seller entered, the store, and related products
+// (same category first, then more from the same store) underneath.
+function itemDetailRowsHTML(item){
+  const biz = DB.businesses.find(b=>b.id===item.businessId);
+  const isAuction = item.listingType==='auction', isRental = item.listingType==='rental';
+  const auction = isAuction ? auctionForItem(item.id) : null;
+  const ended = auction && (auction.status!=='active' || Date.now()>=auction.endTime);
+  const from = bizIsland(biz);
+  const rows = [];
+  const add = (k,v)=>{ if(v!==undefined && v!==null && v!=='') rows.push([k,v]); };
+  add('Type', isAuction ? 'Auction' : isRental ? 'Rental' : 'Buy now');
+  add('Category', item.category==='Other' && item.categoryOtherName ? `${escapeAttr(item.categoryOtherName)} (Other)` : escapeAttr(item.category||'General'));
+  if(!isAuction && !isRental){
+    add('Price', money(item.price));
+    if(item.discountPercent>0){ add('Discount', `${item.discountPercent}% off`); add('You pay', money(effectivePrice(item))); }
+    add('In stock', isOutOfStock(item) ? 'Out of stock' : (item.stock!=null ? `${item.stock} available` : 'Yes'));
+  }
+  if(isRental){
+    const soon = isRentalSoon(item); const booked = !soon ? currentBookingBlock(item.id) : null;
+    add(item.rentalRatePeriod==='month' ? 'Monthly rate' : 'Daily rate', money(item.price));
+    if(item.rentalDeposit) add(item.category==='Home & Living' ? 'Deposit / advance payment' : 'Refundable deposit', money(item.rentalDeposit));
+    add('Units to rent', item.stock!=null ? String(item.stock) : '');
+    add('Availability', soon ? `Available from ${fmtDateShort(item.availableFrom)}` : booked ? `Booked until ${fmtDateShort(isoDateStr(booked.end))}` : isOutOfStock(item) ? 'Not available right now' : 'Available now');
+    add('How you get it', item.rentalFulfillment==='pickup' ? 'Pick up from the store' : 'Delivered by the store');
+    if(item.rentalFulfillment==='pickup') add(item.category==='Home & Living' ? 'Location' : 'Pickup location', escapeAttr(item.pickupLocation||''));
+  }
+  if(isAuction && auction){
+    add('Starting price', money(auction.startingPrice));
+    add('Current bid', auction.currentHighestBid!=null ? money(auction.currentHighestBid) : 'No bids yet');
+    add('Bid increment', money(auction.bidIncrement));
+    add('Bids so far', String(auction.bidCount||0));
+    add(ended ? 'Auction ended' : 'Ends', new Date(auction.endTime).toLocaleString([], {dateStyle:'medium', timeStyle:'short'}));
+    if(!ended) add('Time left', `<span data-auction-end="${auction.endTime}" data-auction-id="${auction.id}">${fmtCountdown(auction.endTime-Date.now())}</span>`);
+  }
+  if(!isRental){
+    add('Delivery', item.freeDelivery!==false ? 'Free delivery in Greater Malé zones' : 'Delivery fee by zone at checkout');
+    if(item.extraDeliveryFee>0) add('Extra delivery fee', `+${money(item.extraDeliveryFee)}`);
+    add('Ships from', escapeAttr(from));
+    add('Delivers to', isGreaterMale(from) ? 'Greater Malé, and by boat to every inhabited island' : `${escapeAttr(from)}, and by boat to Malé`);
+  } else if(item.extraDeliveryFee>0) add('Extra fee', `+${money(item.extraDeliveryFee)}`);
+  return rows.map(([k,v])=>`<div class="idr"><span class="idr-k">${k}</span><span class="idr-v">${v}</span></div>`).join('');
+}
+function relatedItemsFor(item, n){
+  const pool = DB.items.filter(i=>i.id!==item.id);
+  const sameCat = pool.filter(i=>(i.category||'General')===(item.category||'General'));
+  const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
+  return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
+}
+function renderCustItem(){
+  const item = DB.items.find(i=>i.id===state.viewItemId);
+  if(!item){ go('custHome'); return; }
+  settleExpiredAuctions([item]);
+  const biz = DB.businesses.find(b=>b.id===item.businessId);
+  const isAuction = item.listingType==='auction', isRental = item.listingType==='rental';
+  const related = relatedItemsFor(item, 12);
+  const relIds = new Set(related.map(i=>i.id));
+  const moreFromStore = DB.items.filter(i=>i.businessId===item.businessId && i.id!==item.id && !relIds.has(i.id)).slice(0, 12);
+  const typeLbl = isAuction ? 'Auction' : isRental ? 'Rental' : 'Buy now';
+  document.getElementById('app').innerHTML = wrapShell('customer','custItem', `
+    <div class="item-page">
+      <div class="ip-top">
+        <button class="iconbtn ip-back" aria-label="Back" onclick="goBackScreen()">‹</button>
+        <nav class="ip-crumbs" aria-label="Breadcrumb"><button onclick="goHomeFromLogo()">Home</button><span>›</span><button onclick="deskPickCategory('${escapeAttr(item.category||'General')}')">${escapeAttr(item.category||'General')}</button><span>›</span><span class="ip-crumb-cur">${escapeAttr(item.name)}</span></nav>
+      </div>
+      <div class="ip-main">
+        <div class="ip-media">
+          <div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>
+        </div>
+        <div class="ip-info">
+          <div class="ip-store-row">
+            <button class="ip-store" onclick="openFeedItem('${item.id}')">${escapeAttr(biz?biz.name:'Store')}</button>
+            ${biz && biz.rating!=null ? `<span class="rating-badge-static">⭐ ${Number(biz.rating).toFixed(1)}</span>` : ''}
+            <span class="ip-type">${typeLbl}</span>
+          </div>
+          <h1 class="ip-name">${escapeAttr(item.name)}</h1>
+          <div class="ip-price-row">
+            <span class="price ip-price">${itemPriceLine(item)}</span>
+            ${!isAuction && !isRental && item.discountPercent>0 ? `<span class="ip-was">${money(item.price)}</span><span class="discount-badge">${item.discountPercent}% OFF</span>` : ''}
+          </div>
+          <p class="ip-stock">${isAuction ? '' : isOutOfStock(item) ? '<span class="status-pill bad">Out of stock</span>' : isRental ? '' : `<span class="status-pill ok">In stock${item.stock!=null?` · ${item.stock} left`:''}</span>`}</p>
+          <div class="ip-actions">${itemActionsHTML(item)}</div>
+          <div class="ip-ship">⛴️ ${isRental ? (item.rentalFulfillment==='pickup' ? `Pick up from ${escapeAttr(biz?biz.name:'the store')}` : `Delivered by ${escapeAttr(biz?biz.name:'the store')}`) : `Ships from ${escapeAttr(bizIsland(biz))}. ${item.freeDelivery!==false?'Free delivery in Greater Malé zones; boat and island delivery is set by the store.':'Delivery fee is added at checkout.'}`}</div>
+        </div>
+      </div>
+      <div class="ip-lower">
+        <section class="ip-card">
+          <h2>Item details</h2>
+          <div class="idr-list">${itemDetailRowsHTML(item)}</div>
+        </section>
+        <section class="ip-card">
+          <h2>About this item</h2>
+          ${item.description ? `<p class="ip-desc">${escapeAttr(item.description).replace(/\n/g,'<br>')}</p>` : `<p class="muted">The store hasn't added a description.</p>`}
+          ${biz ? `
+          <div class="ip-seller">
+            <span class="admin-av">${escapeAttr((biz.name||'?').trim().charAt(0).toUpperCase())}</span>
+            <div style="flex:1; min-width:0;"><strong>${escapeAttr(biz.name)}</strong><p class="muted" style="font-size:.86em;">${escapeAttr(bizIsland(biz))}${biz.category?` · ${escapeAttr(String(biz.category).split(',').slice(0,3).join(', '))}`:''}</p></div>
+            <button class="btn btn-outline btn-sm" onclick="openFeedItem('${item.id}')">Visit store</button>
+          </div>` : ''}
+        </section>
+      </div>
+      ${related.length ? `
+      <section class="ip-related">
+        <h2>Related products</h2>
+        <div class="top-grid ip-grid">${related.map(i=>topSellingCardHTML(i)).join('')}</div>
+      </section>` : ''}
+      ${moreFromStore.length ? `
+      <section class="ip-related">
+        <h2>More from ${escapeAttr(biz?biz.name:'this store')}</h2>
+        <div class="top-grid ip-grid">${moreFromStore.map(i=>topSellingCardHTML(i)).join('')}</div>
+      </section>` : ''}
+    </div>
+  `);
+  ensureCountdownTimer();
+}
+// Buy / rent / bid buttons for an item, shared by the item page and popup.
+function itemActionsHTML(item){
+  const biz = DB.businesses.find(b=>b.id===item.businessId);
+  const isAuction = item.listingType==='auction';
+  const isRental = item.listingType==='rental';
+  const soonRental = isRental && isRentalSoon(item);
+  const bookedNow = isRental && !soonRental ? currentBookingBlock(item.id) : null;
+  const auction = isAuction ? auctionForItem(item.id) : null;
+  const ended = auction && (auction.status!=='active' || Date.now()>=auction.endTime);
+  return `
+  <div class="stack">
+    ${!isAuction && !isRental ? (isOutOfStock(item)
+      ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Out of stock</button>`
+      : (state.cart[item.id]>0
+        ? `<div class="qty-ctrl" style="justify-content:center; padding:6px 0;">
+             <button onclick="changeQty('${item.id}',-1)">−</button><strong style="font-size:1.1em; min-width:26px; text-align:center;">${state.cart[item.id]}</strong><button ${item.stock!=null && state.cart[item.id]>=item.stock?'disabled style="opacity:.35;"':''} onclick="changeQty('${item.id}',1)">+</button>
+           </div>`
+        : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart</button>`)) : ''}
+    ${isRental ? (soonRental
+      ? `<button class="btn btn-primary" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for ${fmtDateShort(item.availableFrom)}</button>`
+      : `
+        ${bookedNow
+          ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</button>`
+          : isOutOfStock(item)
+            ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Not available to rent</button>`
+            : `<button class="btn btn-primary" onclick="openRentItem('${item.id}')">Rent this item</button>`}
+        <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for a future date</button>
+      `) : ''}
+    ${isAuction && !ended && auction ? `
+      <div class="row" style="gap:8px; align-items:center;">
+        <div class="field" style="margin:0; flex:1;"><input type="number" id="bidInput_${auction.id}" placeholder="Min ${money(auctionMinNextBid(auction))}"></div>
+        <button class="btn btn-primary" style="width:auto; flex-shrink:0; padding:0 24px;" onclick="placeBid('${auction.id}')">Bid</button>
+      </div>
+      <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>
+    ` : ''}
+    ${!isAuction || ended ? `<button class="btn btn-outline" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>` : ''}
+  </div>`;
+}
 function sheetItemDetail(){
   const item = DB.items.find(i=>i.id===state.sheetData);
   if(!item) return `<h2>Item not found</h2>`;
@@ -7855,33 +8080,7 @@ function sheetItemDetail(){
     ${item.extraDeliveryFee>0?`<div class="divider"></div><div class="row between"><span class="muted">Extra delivery fee</span><span>+${money(item.extraDeliveryFee)}</span></div>`:''}
     ${item.description ? `<div class="divider"></div><p class="muted" style="font-size:.85em; margin-top:8px; text-align:left;">${item.description}</p>` : ''}
   </div>
-  <div class="stack">
-    ${!isAuction && !isRental ? (isOutOfStock(item)
-      ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Out of stock</button>`
-      : (state.cart[item.id]>0
-        ? `<div class="qty-ctrl" style="justify-content:center; padding:6px 0;">
-             <button onclick="changeQty('${item.id}',-1)">−</button><strong style="font-size:1.1em; min-width:26px; text-align:center;">${state.cart[item.id]}</strong><button ${item.stock!=null && state.cart[item.id]>=item.stock?'disabled style="opacity:.35;"':''} onclick="changeQty('${item.id}',1)">+</button>
-           </div>`
-        : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart</button>`)) : ''}
-    ${isRental ? (soonRental
-      ? `<button class="btn btn-primary" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for ${fmtDateShort(item.availableFrom)}</button>`
-      : `
-        ${bookedNow
-          ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</button>`
-          : isOutOfStock(item)
-            ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Not available to rent</button>`
-            : `<button class="btn btn-primary" onclick="openRentItem('${item.id}')">Rent this item</button>`}
-        <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for a future date</button>
-      `) : ''}
-    ${isAuction && !ended && auction ? `
-      <div class="row" style="gap:8px; align-items:center;">
-        <div class="field" style="margin:0; flex:1;"><input type="number" id="bidInput_${auction.id}" placeholder="Min ${money(auctionMinNextBid(auction))}"></div>
-        <button class="btn btn-primary" style="width:auto; flex-shrink:0; padding:0 24px;" onclick="placeBid('${auction.id}')">Bid</button>
-      </div>
-      <button class="btn btn-outline" style="margin-top:8px;" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>
-    ` : ''}
-    ${!isAuction || ended ? `<button class="btn btn-outline" onclick="closeSheet(); openFeedItem('${item.id}');">Visit ${biz?biz.name:'store'}</button>` : ''}
-  </div>`;
+  ${itemActionsHTML(item)}`;
 }
 function renderCustHome(){
   settleExpiredAuctions(DB.items);
@@ -9223,7 +9422,8 @@ async function signInWithIdentifierPassword(){
     // Signed in to Firebase but not verified yet: the database treats this
     // as signed out, so finish verification first.
     _pendingVerifyEmail = email; _pendingSignupPassword = pass;
-    try{ await fbSendVerification(u); }catch(e){ console.warn(e); }
+    _verifySendError = '';
+    if(Date.now() >= _verifyResendAt){ try{ await fbSendVerification(u); startVerifyCooldown(60); }catch(e){ console.warn(e); _verifySendError = fbErrorText(e); } }
     openSheet('verifyEmail');
     return;
   }
@@ -9302,8 +9502,9 @@ async function submitSignUp(){
   // The account exists from here on: a failed name/email step shouldn't
   // strand the user, they can resend from the next screen.
   try{ await cred.user.updateProfile({ displayName: name }); }catch(e){ console.warn(e); }
-  try{ await fbSendVerification(cred.user); }
-  catch(e){ console.warn(e); toast("Account created, but the email didn't send. Tap Resend email", 'bad'); }
+  _verifySendError = '';
+  try{ await fbSendVerification(cred.user); startVerifyCooldown(60); }
+  catch(e){ console.warn(e); _verifySendError = fbErrorText(e); toast("Account created, but the email didn't send: "+_verifySendError, 'bad'); }
   _pendingVerifyEmail = email;
   _signupInFlight = false;
   _pendingSignupPassword = pass;
@@ -9446,14 +9647,16 @@ function sheetPolicy(){
 function sheetVerifyEmail(){
   return `
   <h2>Confirm your email</h2>
-  <p class="muted">We sent an email to <strong>${_pendingVerifyEmail}</strong>.</p>
+  ${_verifySendError
+    ? `<div class="card tight notice-warn"><p style="font-size:.88em;"><strong>The email to ${escapeAttr(_pendingVerifyEmail||'')} didn't send.</strong> ${escapeAttr(_verifySendError)}</p></div>`
+    : `<p class="muted">We sent an email to <strong>${escapeAttr(_pendingVerifyEmail||'')}</strong>. It can take a few minutes.</p>`}
   <ol class="verify-steps">
     <li>Open it and tap the link to verify your email.</li>
     <li>Come back here and tap the button below.</li>
   </ol>
   <button class="btn btn-primary" onclick="confirmedSignIn()">I've confirmed my email</button>
-  <button class="link-btn" style="margin-top:12px; padding-left:0;" onclick="resendVerifyCode()">Resend email</button>
-  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam folder. It comes from noreply@maldexpress.firebaseapp.com.</p>`;
+  <button class="link-btn" id="resendVerifyBtn" style="margin-top:12px; padding-left:0;" onclick="resendVerifyCode()" ${Date.now()<_verifyResendAt?'disabled':''}>${Date.now()<_verifyResendAt?`Resend email in ${Math.ceil((_verifyResendAt-Date.now())/1000)}s`:'Resend email'}</button>
+  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam or junk folder and search for "maldexpress". It comes from noreply@maldexpress.firebaseapp.com.</p>`;
 }
 async function resendVerifyCode(){
   if(!requireOnline()) return;
@@ -9462,7 +9665,9 @@ async function resendVerifyCode(){
     try{ u = (await fbAuth.signInWithEmailAndPassword(_pendingVerifyEmail, _pendingSignupPassword)).user; }catch(e){ toast(fbErrorText(e),'bad'); return; }
   }
   if(!u){ toast('Sign in again to resend the email','bad'); return; }
-  try{ await fbSendVerification(u); }catch(e){ toast(fbErrorText(e),'bad'); return; }
+  if(Date.now() < _verifyResendAt){ toast('Wait a moment before sending another email','bad'); return; }
+  try{ await fbSendVerification(u); }catch(e){ _verifySendError = fbErrorText(e); render(); toast(_verifySendError,'bad'); return; }
+  _verifySendError = ''; startVerifyCooldown(60); render();
   toast('Email sent again. Check your inbox and spam folder');
 }
 function sheetSetupMobile(){

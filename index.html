@@ -2815,6 +2815,67 @@ function swipeFeeBreakdown(o){
 // the whole flow can be tried; a configured app that's offline refuses.
 const SWIPE_PREVIEW = !SB_CONFIGURED;
 function swipeOrderNeedsPayment(o){ return o && o.paymentMethod==='swipe' && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'; }
+// Buy now orders can be paid by Swipe (if the store connected it) or by bank
+// transfer to the store's account. Either way the store approves the order
+// first, and it goes to a rider only once it's paid.
+function isBuyNowOrder(o){ return o && !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id); }
+function buyNowNeedsPayment(o){ return swipeOrderNeedsPayment(o) || (o && o.paymentMethod==='transfer' && isBuyNowOrder(o) && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'); }
+function bizHasBankAccount(biz){ return !!(biz && String(biz.accountNumber||'').trim()); }
+function bizCanTakeOrders(biz){ return !!(biz && (biz.swipeConnected || bizHasBankAccount(biz))); }
+const TRANSFER_FEE_RATE = 0.05;   // Maldexpress fee on Buy now bank-transfer orders (no Swipe charge to split)
+let _ckPay = {};                  // checkout: chosen payment per store id
+function ckPayFor(biz){ if(!biz.swipeConnected) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
+function setCkPay(bizId, m){ _ckPay[bizId] = m; refreshCheckoutCards(); }
+async function approveOrderRequest(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(o && o.paymentMethod==='swipe') return approveSwipeOrder(id);
+  let charge = null;
+  if(o && routeNeedsStoreCharge(o.route)){
+    const raw = val('ap_charge_'+id);
+    charge = Number(raw);
+    if(raw==='' || !isFinite(charge) || charge<0 || charge>10000){ toast('Enter the delivery charge first (0 if free)','bad'); return; }
+  }
+  if(SWIPE_PREVIEW){
+    if(o){ o.paymentStatus='pending_transfer'; if(charge!=null){ o.deliveryFee = charge; o.deliveryPartnerPayout = charge; o.total = Math.max(0,(o.itemsTotal||0)-(o.discountAmount||0)) + charge + (o.extraDeliveryFee||0); } }
+    toast('Order approved. The customer can now pay by bank transfer'); render(); return;
+  }
+  const updated = await callOrderRpc('approve_transfer_order', { p_order_id: id, p_delivery_charge: charge }, id, "Couldn't approve this order. It may have changed");
+  if(!updated) return;
+  toast('Order approved. The customer can now pay by bank transfer'); render();
+}
+async function declineOrderRequest(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(SWIPE_PREVIEW){ if(o){ o.status='declined'; } toast('Order declined'); render(); return; }
+  const updated = await callOrderRpc('decline_order_request', { p_order_id: id }, id, "Couldn't decline this order. It may already be paid");
+  if(!updated) return;
+  toast('Order declined'); render();
+}
+// Store: approve / decline a new Buy now order (Swipe or transfer).
+function orderApprovalHTML(o){
+  const who = o.customerName || 'The customer';
+  const how = o.paymentMethod==='swipe' ? 'pay with Swipe' : 'pay by bank transfer';
+  return `
+    ${routeNeedsStoreCharge(o.route) ? `
+    <div class="card tight notice-info"><p style="font-size:.88em;"><strong>${routeLabel(o)}.</strong> Set the delivery charge${o.route!=='local'?' (rider to the jetty plus the boat)':''}. It's added to ${money(Math.max(0,(o.itemsTotal||0)-(o.discountAmount||0))+(o.extraDeliveryFee||0))} for the customer.</p></div>
+    <div class="field" style="margin-top:10px;"><label for="ap_charge_${o.id}">Delivery charge (MVR)</label><input id="ap_charge_${o.id}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 50"></div>` : ''}
+    <div class="card tight notice-warn"><p style="font-size:.88em;">New order${o.paymentMethod==='transfer'?' (bank transfer)':''}. Check the items${routeNeedsStoreCharge(o.route)?', set the delivery charge,':' and total,'} then approve it so ${who} can ${how}.</p></div>
+    <div class="row" style="gap:8px; margin-top:10px;">
+      <button class="btn btn-primary" style="flex:2;" onclick="approveOrderRequest('${o.id}')">Approve order</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="declineOrderRequest('${o.id}')">Decline</button>
+    </div>`;
+}
+function transferFeeRowsHTML(o){
+  const total = Number(o.total)||0;
+  const due = o.platformFeeDue!=null ? o.platformFeeDue : round2(total*TRANSFER_FEE_RATE);
+  return `
+  <div class="glass card tight fee-card" style="margin-top:10px;">
+    <div class="row between"><span class="muted">Customer paid by transfer</span><span>${money(total)}</span></div>
+    <div class="row between"><span class="muted">Maldexpress fee (5%)</span><span>−${money(due)}</span></div>
+    <div class="divider" style="margin:8px 0;"></div>
+    <div class="row between"><strong>You keep</strong><strong>${money(round2(total-due))}</strong></div>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maldexpress fee settled ✓' : `You owe Maldexpress ${money(due)} for this order.`}</p>
+  </div>`;
+}
 async function approveSwipeOrder(id){
   const o = DB.orders.find(x=>x.id===id);
   let charge = null;
@@ -2907,22 +2968,21 @@ function swipeFeeRowsHTML(o){
 function swipeBizActionHTML(o){
   const who = o.customerName || 'The customer';
   if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
-  if(o.paymentStatus==='awaiting_approval') return `
-    ${routeNeedsStoreCharge(o.route) ? `
-    <div class="card tight notice-info"><p style="font-size:.88em;"><strong>${routeLabel(o)}.</strong> Set the delivery charge${o.route!=='local'?' (rider to the jetty plus the boat)':''}. It's added to ${money(Math.max(0,(o.itemsTotal||0)-(o.discountAmount||0))+(o.extraDeliveryFee||0))} for the items.</p></div>
-    <div class="field" style="margin-top:10px;"><label for="ap_charge_${o.id}">Delivery charge (MVR)</label><input id="ap_charge_${o.id}" type="number" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 50"></div>` : ''}
-    <div class="card tight notice-warn"><p style="font-size:.88em;">New order. Check the items${routeNeedsStoreCharge(o.route)?', set the delivery charge,':' and total,'} then approve it so ${who} can pay with Swipe.</p></div>
-    <div class="row" style="gap:8px; margin-top:10px;">
-      <button class="btn btn-primary" style="flex:2;" onclick="approveSwipeOrder('${o.id}')">Approve order</button>
-      <button class="btn btn-outline" style="flex:1;" onclick="declineSwipeOrder('${o.id}')">Decline</button>
-    </div>`;
+  if(o.paymentStatus==='awaiting_approval') return orderApprovalHTML(o);
   const isBuyNow = !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id);
   if(o.paymentStatus==='awaiting_swipe') return `
     <div class="card tight notice-info"><p style="font-size:.88em;">${isBuyNow?'Approved. ':''}Waiting for ${who} to pay ${money(o.total)} with Swipe. You can hand it over once it's paid.</p></div>
-    ${isBuyNow ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineSwipeOrder('${o.id}')">Cancel order</button>` : ''}`;
+    ${isBuyNow ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineOrderRequest('${o.id}')">Cancel order</button>` : ''}`;
   return `<div class="status-pill ok" style="display:inline-block;">Paid with Swipe ✓</div>${swipeFeeRowsHTML(o)}`;
 }
 function custSwipeHTML(o, inCard){
+  if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
+    const b = DB.businesses.find(x=>x.id===o.businessId); const st = b ? b.name : 'The store';
+    if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} couldn't take this order. You haven't paid anything.</p>`;
+    if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${st} to confirm your order${routeNeedsStoreCharge(o.route)?' and set the delivery charge':''}. Then you'll transfer the total to their account and upload the slip.</p>`;
+    if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} confirmed your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
+    return '';
+  }
   if(o.paymentMethod!=='swipe') return '';
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const store = biz ? biz.name : 'The store';
@@ -4478,14 +4538,14 @@ function renderBusiness(){
 
 function renderBizHome(biz,t){
   const myOrders = DB.orders.filter(o=>o.businessId===biz.id);
-  const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentMethod==='swipe' && o.paymentStatus==='awaiting_approval' && o.status!=='declined')).length;
+  const pendingApproval = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentStatus==='awaiting_approval' && o.status!=='declined')).length;
   const activeOrders = myOrders.filter(o=>o.status!=='delivered' && o.status!=='declined').length;
   const feesDue = round2(myOrders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).reduce((s,o)=>s+o.platformFeeDue,0));
   // A normal order sits here until you pick how it's getting delivered (see
   // markOrderReadyForPickup()/markOrderSelfDelivery()) - surfaced alongside
   // slip approvals so a placed order never just quietly waits unnoticed.
   const needsFulfillmentChoice = myOrders.filter(o=>!o.rentalItemId && !o.deliveryPersonId && o.status!=='delivered' && !o.readyForPickup && !o.selfDelivery && o.paymentStatus!=='awaiting_completion' && o.status!=='declined' && !swipeOrderNeedsPayment(o));
-  const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentMethod==='swipe' && o.paymentStatus==='awaiting_approval' && o.status!=='declined') || needsFulfillmentChoice.includes(o));
+  const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentStatus==='awaiting_approval' && o.status!=='declined') || needsFulfillmentChoice.includes(o));
   const myItems = DB.items.filter(i=>i.businessId===biz.id);
   const badge = biz.tier==='pro'
     ? `<span class="badge pro">PRO</span>`
@@ -4520,7 +4580,7 @@ function renderBizHome(biz,t){
       </div>
 
       <div class="section">
-        <div class="section-head"><h2>Swipe payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
+        <div class="section-head"><h2>Payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
         ${biz.swipeConnected ? `
         <div class="glass card">
           <div class="row between"><span class="muted">Status</span><span class="status-pill ok">Connected</span></div>
@@ -4528,10 +4588,16 @@ function renderBizHome(biz,t){
           <div class="row between"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>
           <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you directly through Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
         </div>` : `
-        <div class="card notice-warn">
-          <h3>Connect Swipe to take orders</h3>
-          <p style="font-size:.88em; margin-top:4px;">Customers can only order from you once your Swipe merchant account is connected.</p>
-          <button class="btn btn-primary" style="margin-top:12px;" onclick="openSheet('connectSwipe')">Connect Swipe</button>
+        <div class="card ${bizHasBankAccount(biz)?'notice-info':'notice-warn'}">
+          <h3>${bizHasBankAccount(biz) ? 'Taking orders by bank transfer' : 'Add your bank account to take orders'}</h3>
+          <p style="font-size:.88em; margin-top:4px;">${bizHasBankAccount(biz)
+            ? 'Customers transfer to your account below and upload the slip; you check it and approve. Maldexpress keeps 5% of each order. Connect Swipe too if you want customers to be able to pay in the Swipe app.'
+            : 'Customers can order once you add a bank account (Settings) or connect Swipe.'}</p>
+          ${feesDue>0 ? `<div class="row between" style="margin-top:10px;"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>` : ''}
+          <div class="row" style="gap:8px; margin-top:12px; flex-wrap:wrap;">
+            ${bizHasBankAccount(biz) ? '' : `<button class="btn btn-primary btn-sm" onclick="openSheet('bizSettings')">Add bank account</button>`}
+            <button class="btn ${bizHasBankAccount(biz)?'btn-outline':'btn-ghost'} btn-sm" onclick="openSheet('connectSwipe')">Connect Swipe (optional)</button>
+          </div>
         </div>`}
       </div>
       <div class="section">
@@ -4648,6 +4714,10 @@ function orderCardBiz(o){
   </div>`;
 }
 function paymentStatusPill(o){
+  if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
+    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
+  }
   if(o.paymentMethod==='swipe'){
     if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
     if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
@@ -5646,8 +5716,13 @@ function orderDetailBizBody(o){
   } else if(o.paymentMethod==='swipe'){
     actionArea = swipeBizActionHTML(o);
   } else if(o.paymentMethod==='transfer'){
-    if(o.paymentStatus==='pending_transfer'){
-      actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">Waiting for customer to transfer & upload slip.</p></div>`;
+    if(o.status==='declined'){
+      actionArea = `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+    } else if(o.paymentStatus==='awaiting_approval'){
+      actionArea = orderApprovalHTML(o);
+    } else if(o.paymentStatus==='pending_transfer'){
+      actionArea = `<div class="card tight" style="background:rgba(255,207,92,.1);"><p style="font-size:.85em;">${isBuyNowOrder(o)?'Approved. ':''}Waiting for ${o.customerName||'the customer'} to transfer ${money(o.total)} to your account and upload the slip.${isBuyNowOrder(o)?' Hand it over once you\u2019ve approved the slip.':''}</p></div>
+        ${isBuyNowOrder(o) ? `<button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="declineOrderRequest('${o.id}')">Cancel order</button>` : ''}`;
     } else if(o.paymentStatus==='slip_uploaded'){
       actionArea = `
         <div class="card tight" style="background:rgba(34,184,200,.12);">
@@ -5656,7 +5731,7 @@ function orderDetailBizBody(o){
         </div>
         <button class="btn btn-good" style="margin-top:12px;" onclick="approveOrderPayment('${o.id}')">Mark payment received ✓</button>`;
     } else {
-      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>`;
+      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>${isBuyNowOrder(o) && (o.paymentStatus==='paid'||o.paymentStatus==='settled') ? transferFeeRowsHTML(o) : ''}`;
     }
   } else if(o.paymentMethod==='cash_on_pickup'){
     // A rental paid in cash goes straight to the renter (you) - no rider ever
@@ -5742,8 +5817,8 @@ function orderDetailBizBody(o){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">${o.rentalFulfillment==='pickup'?'Picked up ✓':'Delivered ✓'}</div>`;
       actionArea += rentalReturnActionHTML(o);
     }
-  } else if(swipeOrderNeedsPayment(o) || o.status==='declined'){
-    // Nothing to hand over: a Swipe order goes out only once it's paid.
+  } else if(buyNowNeedsPayment(o) || o.status==='declined'){
+    // Nothing to hand over: a Buy now order goes out only once it's paid.
   } else if(o.deliveryPersonId){
     if(o.status==='delivered'){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
@@ -8369,17 +8444,22 @@ function storeCheckoutCardHTML(g){
     <div class="row between" style="margin-top:6px;"><strong>Total</strong><strong class="price" id="ck_total_${biz.id}">${money(total)}${zoneRoute||!route?'':' + delivery'}</strong></div>
     ${blocked ? `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} is on ${from}. It can deliver on ${from} or send to Malé by boat, but not to ${dest}.</p></div>`
       : route===undefined ? `<div class="card tight notice-info" style="margin-top:12px;"><p style="font-size:.88em;">Pick your atoll and island above.</p></div>`
-      : `
+      : !bizCanTakeOrders(biz) ? `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't added a way to get paid.</p></div>`
+      : (()=>{ const pay = ckPayFor(biz); const amt = zoneRoute?` <span id="ck_swipe_${biz.id}">${money(total)}</span>`:' the total';
+        const both = biz.swipeConnected && bizHasBankAccount(biz);
+        return `
+    ${both ? `<div class="stack" role="radiogroup" aria-label="How you'll pay ${escapeAttr(biz.name)}" style="margin-top:12px; gap:8px;">
+      <button type="button" class="pay-option${pay==='swipe'?' selected':''}" role="radio" aria-checked="${pay==='swipe'}" onclick="setCkPay('${biz.id}','swipe')"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Pay in the Swipe app after the store confirms</small></div></button>
+      <button type="button" class="pay-option${pay==='transfer'?' selected':''}" role="radio" aria-checked="${pay==='transfer'}" onclick="setCkPay('${biz.id}','transfer')"><div class="ic">🏦</div><div class="txt"><h3>Bank transfer</h3><small>Transfer to the store and upload the slip</small></div></button>
+    </div>` : ''}
     <div class="swipe-note">
-      <span class="swipe-badge" aria-hidden="true">S</span>
+      ${pay==='swipe' ? `<span class="swipe-badge" aria-hidden="true">S</span>` : `<span class="swipe-badge" aria-hidden="true">🏦</span>`}
       <div style="min-width:0;">
-        <strong>Pay with Swipe</strong>
-        <p>${biz.name} confirms your order${zoneRoute?'':' and sets the delivery charge'} first. Then you'll get a Swipe link to pay${zoneRoute?` <span id="ck_swipe_${biz.id}">${money(total)}</span>`:' the total'}.</p>
+        <strong>${pay==='swipe' ? 'Pay with Swipe' : 'Pay by bank transfer'}</strong>
+        <p>${biz.name} confirms your order${zoneRoute?'':' and sets the delivery charge'} first. ${pay==='swipe' ? `Then you'll get a Swipe link to pay${amt}.` : `Then transfer${amt} to ${biz.name}'s bank account and upload the slip. The amount and account number on the slip must match.`}</p>
       </div>
     </div>
-    ${biz.swipeConnected
-      ? `<button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="placeStoreOrder('${biz.id}')">Send order to ${biz.name}</button>`
-      : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't set up Swipe payments.</p></div>`}`}
+    <button class="btn btn-primary" style="margin-top:12px; width:100%;" onclick="placeStoreOrder('${biz.id}')">Send order to ${biz.name}</button>`; })()}
   </div>`;
 }
 // Shared by every checkout-shaped sheet (cart checkout, rent, complete-auction-win) -
@@ -9472,7 +9552,8 @@ async function placeStoreOrder(bizId){
   const deliveryTarget = readDeliveryTargetFields();
   if(!deliveryTarget) return;
   const { deliveryTargetType, receiverName, receiverPhone, receiverAddress, boatDepartureAt } = deliveryTarget;
-  if(!biz.swipeConnected){ toast(`${biz.name} hasn't set up Swipe payments yet, so it can't take orders`, 'bad'); return; }
+  if(!bizCanTakeOrders(biz)){ toast(`${biz.name} hasn't added a way to get paid yet, so it can't take orders`, 'bad'); return; }
+  const payMethod = ckPayFor(biz);
   const originIsland = bizIsland(biz), destIsland = checkoutDestKey();
   if(!destIsland){ toast('Pick the island to deliver to','bad'); return; }
   const route = routeFor(originIsland, destIsland);
@@ -9497,9 +9578,9 @@ async function placeStoreOrder(bizId){
     // whether the buyer was charged for it.
     deliveryPartnerPayout: fee, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
-    // Buy now orders are paid only by Swipe, after the store approves them
-    // (see approveSwipeOrder() / payOrderWithSwipe()).
-    paymentMethod: 'swipe',
+    // Buy now orders are paid by Swipe or bank transfer, after the store
+    // approves them (see approveOrderRequest()).
+    paymentMethod: payMethod,
     paymentStatus: 'awaiting_approval',
     status:'placed', createdAt: Date.now(), slipDataUrl: null
   };
@@ -9524,7 +9605,7 @@ async function placeStoreOrder(bizId){
   for(const l of cartLines){ delete state.cart[l.it.id]; if(state.cartSelected) delete state.cartSelected[l.it.id]; }
   const card = document.getElementById('storeCard_'+bizId);
   if(card) card.remove();
-  toast(`Order sent to ${biz.name}. You'll pay with Swipe once they confirm it`);
+  toast(payMethod==='swipe' ? `Order sent to ${biz.name}. You'll pay with Swipe once they confirm it` : `Order sent to ${biz.name}. Once they confirm it, transfer the total and upload the slip`);
   const remainingEntries = Object.entries(state.cart);
   const remainingLines = remainingEntries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
   if(!cartCheckoutLines(remainingLines).length){ closeSheet(); go('custOrders'); }

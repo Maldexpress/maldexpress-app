@@ -936,6 +936,69 @@
   .desk-cats-menu .dcm-wrap{max-width:1200px; margin:0 auto; padding:0 24px;}
   .desk-cats-menu .cat-grid{grid-template-columns:repeat(9, minmax(0,1fr)); gap:20px 12px;}
   .site-cats{position:relative;}
+  /* Addresses */
+  .addr-note{font-size:.84em; padding:10px 12px; border-radius:12px; background:var(--lagoon-50); color:var(--ink); margin:0 0 12px;}
+  .addr-note.new{background:#FFF6E3; border:1px solid #F5D9A0;}
+  .addr-prompt{display:flex; align-items:center; gap:12px; padding:14px 16px; margin:-6px 0 18px; border-radius:18px; background:#FFF6E3; border:1px solid #F5D9A0; flex-wrap:wrap;}
+  .addr-prompt p{font-size:.84em; margin-top:2px;}
+  .ap-ic{font-size:1.5em;}
+  .ap-x{background:none; border:none; color:var(--ink-dim); font-size:1em; padding:6px;}
+  @media (min-width:1024px){ .addr-prompt{margin:0 0 32px;} }
+  /* Options (sizes, colours, ...) */
+  .opt-editor{margin-bottom:14px; padding:14px; border-radius:16px; background:var(--sand-bg); border:1px solid var(--edge);}
+  .opt-head{display:flex; flex-direction:column; gap:2px; margin-bottom:10px;}
+  .opt-head .muted{font-size:.8em;}
+  .opt-row{display:grid; grid-template-columns:110px minmax(0,1fr); gap:10px; align-items:center; margin-bottom:8px;}
+  .opt-row label{font-weight:600; font-size:.88em;}
+  .opt-row input{width:100%; padding:11px 13px; border-radius:12px; border:1.5px solid var(--edge); background:#fff; color:var(--ink); outline:none;}
+  .opt-row input:focus{border-color:var(--lagoon-500); box-shadow:0 0 0 4px rgba(15,163,163,.14);}
+  .opt-custom{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); margin-top:4px;}
+  .size-pick{margin:0 0 12px;}
+  .size-pick-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:8px;}
+  .size-need{color:var(--sunset-dk); font-weight:700; font-size:.86em;}
+  .size-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .size-chip{min-width:48px; padding:10px 14px; border-radius:12px; border:1.5px solid var(--edge-2); background:var(--surface); color:var(--ink); font-weight:700; font-size:.95em;}
+  .size-chip:hover{border-color:var(--lagoon-500);}
+  .size-chip.on{border-color:var(--lagoon-700); background:var(--lagoon-700); color:#fff;}
+  .cart-size{font-size:.84em; margin:2px 0;}
+  /* Manage listings, photos, option chips */
+  .items-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
+  .items-head .tabs{flex:1; min-width:0;}
+  .sel-bar{position:sticky; top:70px; z-index:20; background:var(--surface); border:1px solid var(--edge); border-radius:16px; padding:12px; margin-bottom:12px; box-shadow:var(--shadow-lift);}
+  .sel-all{display:inline-flex; align-items:center; gap:8px; background:none; border:none; padding:4px 0; font-weight:700; color:var(--ink);}
+  .sel-acts{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:10px;}
+  @media (min-width:700px){ .sel-acts{grid-template-columns:repeat(4,1fr);} }
+  .sel-wrap{position:relative; display:flex; align-items:center; gap:8px;}
+  .sel-wrap > .item-card{flex:1; min-width:0;}
+  .sel-wrap.on > .item-card{border-color:var(--lagoon-500); box-shadow:0 0 0 2px var(--lagoon-500);}
+  .sel-dot{color:var(--lagoon-600); display:flex;}
+  .item-status.paused{color:var(--ink-dim);}
+  .danger-txt{color:var(--red) !important;}
+  .danger-bg{background:var(--red) !important; box-shadow:none !important;}
+  .photo-slots{display:grid; grid-template-columns:repeat(auto-fill, minmax(88px,1fr)); gap:8px;}
+  .ps-tile{position:relative; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:var(--sand-2); border:1px solid var(--edge);}
+  .ps-tile img{width:100%; height:100%; object-fit:cover;}
+  .ps-tile.cover{box-shadow:0 0 0 2px var(--lagoon-500);}
+  .ps-cover{position:absolute; left:6px; bottom:6px; padding:2px 7px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
+  .ps-btn{position:absolute; top:5px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(13,43,51,.7); color:#fff; font-size:.8em; display:flex; align-items:center; justify-content:center;}
+  .ps-x{right:5px;} .ps-star{left:5px;}
+  .ps-add{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; border:1.5px dashed var(--lagoon-500); background:var(--lagoon-50); color:var(--lagoon-700); text-align:center; padding:6px;}
+  .ps-add span{font-size:1.6em; line-height:1;} .ps-add small{font-size:.7em; font-weight:700;}
+  .gal-arrow{font-size:calc(var(--fs)*1.6) !important; position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.92); color:var(--ink); line-height:1; box-shadow:0 2px 8px rgba(13,43,51,.2); display:flex; align-items:center; justify-content:center;}
+  .gal-arrow.prev{left:10px;} .gal-arrow.next{right:10px;}
+  .gal-count{position:absolute; right:10px; bottom:10px; padding:3px 9px; border-radius:99px; background:rgba(13,43,51,.7); color:#fff; font-size:calc(var(--fs)*.8) !important; line-height:1.4; font-weight:700;}
+  .gal-thumbs{display:flex; gap:8px; margin-top:10px; overflow-x:auto; scrollbar-width:none;}
+  .gal-thumb{flex:0 0 64px; height:64px; border-radius:12px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--sand-2);}
+  .gal-thumb img{width:100%; height:100%; object-fit:cover;}
+  .gal-thumb.on{border-color:var(--lagoon-600);}
+  .opt-row-chips{display:block;}
+  .opt-row-chips > label{display:block; margin-bottom:6px;}
+  .opt-chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .opt-chip{padding:7px 12px; border-radius:99px; border:1.5px solid var(--edge-2); background:#fff; color:var(--ink); font-weight:600; font-size:.85em;}
+  .opt-chip.on{background:var(--lagoon-700); border-color:var(--lagoon-700); color:#fff;}
+  .opt-add{display:flex; gap:6px; margin-top:8px;}
+  .opt-add input{flex:1; min-width:0;}
+  .bulk-more{position:absolute; margin:38px 0 0 34px; padding:1px 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -2752,7 +2815,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -2760,11 +2823,11 @@ function toDbRow(part, o){
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
   if(part==='bids') return { id:o.id, auction_id:o.auctionId, bidder_id:o.bidderId, bid_amount:o.bidAmount, created_at:new Date(o.createdAt).toISOString() };
   if(part==='categoryRequests') return { id:o.id, business_id:o.businessId, business_name:o.businessName, category_name:o.categoryName, status:o.status, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
-  if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
+  if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, island:o.island||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -2776,7 +2839,7 @@ function fromDbRow(part, r){
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
   if(part==='bids') return { id:r.id, auctionId:r.auction_id, bidderId:r.bidder_id, bidAmount:Number(r.bid_amount), createdAt:new Date(r.created_at).getTime() };
   if(part==='categoryRequests') return { id:r.id, businessId:r.business_id, businessName:r.business_name, categoryName:r.category_name, status:r.status, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
-  if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
+  if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, island:r.island||'', harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
 }
 
 async function loadDB(){
@@ -2875,7 +2938,7 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
 // store approves) or cash (the store marks it received). Swipe shows only
 // when the store has connected it.
 function payChoiceHTML(biz, cash, label){
-  const swipe = biz && biz.swipeConnected;
+  const swipe = bizTakesSwipe(biz);
   if(!swipe && _selectedPay==='swipe') _selectedPay = 'transfer';
   const on = m => _selectedPay===m ? ' selected' : '';
   return `
@@ -2939,10 +3002,14 @@ function swipeOrderNeedsPayment(o){ return o && o.paymentMethod==='swipe' && o.p
 function isBuyNowOrder(o){ return o && !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id); }
 function buyNowNeedsPayment(o){ return swipeOrderNeedsPayment(o) || (o && o.paymentMethod==='transfer' && isBuyNowOrder(o) && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'); }
 function bizHasBankAccount(biz){ return !!(biz && String(biz.accountNumber||'').trim()); }
-function bizCanTakeOrders(biz){ return !!(biz && (biz.swipeConnected || bizHasBankAccount(biz))); }
+// Swipe is offered only once the admin has switched it on (Admin -> Settings,
+// after the Swipe server keys are added) and the store has connected it.
+function swipeLive(){ return SWIPE_PREVIEW || !!(DB.settings && DB.settings.swipeEnabled); }
+function bizTakesSwipe(biz){ return !!(biz && biz.swipeConnected && swipeLive()); }
+function bizCanTakeOrders(biz){ return !!(biz && (bizTakesSwipe(biz) || bizHasBankAccount(biz))); }
 const TRANSFER_FEE_RATE = 0.05;   // Maldexpress fee on Buy now bank-transfer orders (no Swipe charge to split)
 let _ckPay = {};                  // checkout: chosen payment per store id
-function ckPayFor(biz){ if(!biz.swipeConnected) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
+function ckPayFor(biz){ if(!bizTakesSwipe(biz)) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
 function setCkPay(bizId, m){ _ckPay[bizId] = m; refreshCheckoutCards(); }
 async function approveOrderRequest(id){
   const o = DB.orders.find(x=>x.id===id);
@@ -3233,8 +3300,8 @@ function jobVisibleToRider(o, d){
   if(!d) return false;
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const from = o.originIsland || bizIsland(biz);
-  if(!d.island) return true;   // rider hasn't picked an island yet: show everything
-  const sameArea = isGreaterMale(from) ? isGreaterMale(d.island) : from===d.island;
+  const riderIsland = d.island || 'Malé';   // same rule as the server (rider_can_see_open_order)
+  const sameArea = isGreaterMale(from) ? isGreaterMale(riderIsland) : from===riderIsland;
   if(sameArea) return true;
   if(riderIsLive(d) && biz && biz.lat!=null && biz.lng!=null) return kmBetween(d.lat, d.lng, biz.lat, biz.lng) <= NEARBY_KM;
   return false;
@@ -4100,12 +4167,12 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
-function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved'; }
+function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
 function featuredSlotsUsed(){ return DB.items.filter(isFeaturedNow).length; }
 // Same order for everyone within an hour, a new random order each hour.
@@ -4128,6 +4195,7 @@ function fmtDateTime(ms){ return new Date(ms).toLocaleString([], { day:'numeric'
 
 // Seller: status line on each item card.
 function itemStatusNoteHTML(i){
+  if(i.paused) return `<p class="item-status paused">Paused. Customers can't see it until you resume it</p>`;
   if(i.approvalStatus==='pending') return `<p class="item-status wait">🕓 Waiting for Maldexpress approval. Customers can't see it yet</p>`;
   if(i.approvalStatus==='rejected') return `<p class="item-status bad">✕ Not approved${i.approvalNote?`: ${escapeAttr(i.approvalNote)}`:''}. Edit it to send it again</p>`;
   if(isFeaturedNow(i)) return `<p class="item-status feat">⭐ Featured until ${fmtDateTime(i.featuredUntil)}</p>`;
@@ -4236,7 +4304,7 @@ async function adminSaveSettings(){
   if(!(slots>=1 && slots<=200)){ toast('Featured spots must be 1 to 200','bad'); return; }
   if(!(price>=0)){ toast('Enter a featured price','bad'); return; }
   if(!(days>=1 && days<=60)){ toast('Featured days must be 1 to 60','bad'); return; }
-  const row = { featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
+  const row = { swipe_enabled: !!(document.getElementById('set_swipe')||{}).checked, featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -4332,6 +4400,9 @@ function adminSettingsTab(){
       <div class="field" style="flex:1; min-width:140px;"><label for="set_price">Price (MVR)</label><input id="set_price" type="number" min="0" step="0.01" value="${st.featuredPrice}"></div>
       <div class="field" style="flex:1; min-width:140px;"><label for="set_days">Days featured</label><input id="set_days" type="number" min="1" max="60" value="${st.featuredDays}"></div>
     </div>
+    <h3 style="margin-top:8px;">Swipe payments</h3>
+    <label class="chk-row" style="margin:8px 0 6px;"><input type="checkbox" id="set_swipe" ${st.swipeEnabled?'checked':''}><span class="chk-circle">${'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6l3 3 5-6"/></svg>'}</span><span>Swipe is set up. Offer Swipe at checkout for stores that connected it</span></label>
+    <p class="muted" style="font-size:.84em; margin-bottom:12px;">Turn this on only after the Swipe server keys (SWIPE_TOKEN_URL and SWIPE_API_BASE_URL) are added in Supabase. While it's off, customers pay by bank transfer.</p>
     <h3 style="margin-top:8px;">Maldexpress bank account</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
     <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
@@ -4495,6 +4566,7 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('custFavourites')"><span class="ic">❤️</span> Favourites</button>
       <button class="drawer-item" onclick="go('custCart')"><span class="ic">🛒</span> Cart</button>
       <button class="drawer-item" onclick="go('custOrders')"><span class="ic">🧾</span> My orders</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openMyAddresses()"><span class="ic">📍</span> My addresses</button>
       <button class="drawer-item" onclick="go('custStores')"><span class="ic">🏪</span> Browse stores</button>
       <div class="divider"></div>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
@@ -4636,7 +4708,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -4657,6 +4729,8 @@ function sheetHTML(){
   else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='featureItem') body = sheetFeatureItem();
   else if(state.sheet==='categories') body = sheetCategories();
+  else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
+  else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
@@ -4742,7 +4816,7 @@ function planCompareOverlayHTML(){
     </div>
   </div>`;
 }
-function submitBizSignup(){
+async function submitBizSignup(){
   if(sb && !state.authed){ toast('Sign in first','bad'); return; }
   const name=val('f_name'), owner=val('f_owner'), phone=val('f_phone'), cat=getCatChecklistValue('f_cat'), acc=val('f_acc'), accname=val('f_accname');
   if(!name||!owner||!acc||!accname){ toast('Please fill in store name, owner, and account details','bad'); return; }
@@ -4753,7 +4827,8 @@ function submitBizSignup(){
   // of the seller retyping it every time - see itemCatFieldHTML().
   const catOtherName = cat.split(',').map(s=>s.trim()).includes('Other') ? getCatOtherName('f_cat') : '';
   const biz = {id:uid('biz'), ownerId:state.customerId, island, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
-  DB.businesses.push(biz); saveDB('businesses');
+  DB.businesses.push(biz);
+  if(await saveDB('businesses', [biz]) === false){ DB.businesses = DB.businesses.filter(b=>b!==biz); return; }
   maybeSubmitCategoryRequest('f_cat', biz);
   closeSheet();
   state.role='business';
@@ -4880,7 +4955,7 @@ function sheetDelSignup(){
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitDelSignup()">Start delivering</button>`;
 }
-function submitDelSignup(){
+async function submitDelSignup(){
   if(sb && !state.authed){ toast('Sign in first','bad'); return; }
   const name = state.customerName;
   const phone = state.customerPhone || val('d_phone');
@@ -4889,7 +4964,8 @@ function submitDelSignup(){
   if(!island){ toast('Pick the island you deliver on','bad'); return; }
   if(!state.customerPhone) state.customerPhone = phone;
   const d = {id:uid('del'), userId:state.customerId, name, phone, island, online:false, lat:null, lng:null, locationUpdatedAt:null};
-  DB.delivery.push(d); saveDB('delivery');
+  DB.delivery.push(d);
+  if(await saveDB('delivery', [d]) === false){ DB.delivery = DB.delivery.filter(x=>x!==d); return; }
   closeSheet();
   state.role='delivery';
   go('delHome', {activeDelId:d.id});
@@ -4954,6 +5030,7 @@ function renderBizHome(biz,t){
       </div>
 
       <div class="section">
+        ${biz.swipeConnected && !swipeLive() ? `<div class="card tight notice-info" style="margin-bottom:10px;"><p style="font-size:.86em;">Your Swipe account is saved. Customers will see Swipe once Maldexpress switches Swipe payments on; until then they pay you by bank transfer.</p></div>` : ''}
         <div class="section-head"><h2>Payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
         ${biz.swipeConnected ? `
         <div class="glass card">
@@ -5016,10 +5093,10 @@ function sheetUpgrade(){
         <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
         <div class="txt"><h3 style="font-size:1em;">Bank transfer</h3><small>Upload a slip — reviewed by our team</small></div>
       </button>
-      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('swipe')">
+${swipeLive() ? `      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('swipe')">
         <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💳</div>
         <div class="txt"><h3 style="font-size:1em;">Pay with Swipe</h3><small>Instant activation once payment confirms</small></div>
-      </button>
+      </button>` : ''}
     </div>`;
 }
 async function startProPayment(method){
@@ -5120,10 +5197,14 @@ function renderBizItems(biz,t){
     <div style="padding:4px 16px 0;">
       ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="_bulk=null; _bulkPhotos={}; openSheet('bulkItems')">Upload a list</button></div>` : ''}
       ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
-      <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+      <div class="items-head">
+        <div class="tabs" style="margin-bottom:0;">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+        ${myItems.length ? `<button class="btn btn-ghost btn-sm sel-toggle" onclick="toggleBizSelect()">${state.bizSelect?'Done':'☑ Select'}</button>` : ''}
+      </div>
+      ${state.bizSelect ? bizSelectBarHTML(myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat)) : ''}
       ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
     </div>
-  `, canAdd? `<button class="fab" onclick="_itemPhotoFile=null; openSheet('addItem')">+</button>` : '');
+  `, canAdd && !state.bizSelect ? `<button class="fab" onclick="startAddItem()" aria-label="Add item">+</button>` : '');
   ensureCountdownTimer();
 }
 // Small note on the seller's own item card while an item's "Other" category
@@ -5136,7 +5217,110 @@ function itemCatPendingNoteHTML(i){
   if(i.category!=='Other' || !i.categoryOtherName) return st;
   return `<p class="muted" style="font-size:.76em; margin-top:2px;">🕓 "${i.categoryOtherName}" - pending category approval</p>` + st;
 }
+// ---------- Manage many listings at once ----------
+function toggleBizSelect(){ state.bizSelect = !state.bizSelect; state.bizSel = {}; render(); }
+function bizItemTap(id){
+  if(state.bizSelect){ state.bizSel = state.bizSel || {}; if(state.bizSel[id]) delete state.bizSel[id]; else state.bizSel[id] = true; render(); return; }
+  startEditItem(id);
+}
+function selectedBizIds(){ return Object.keys(state.bizSel||{}).filter(id=>DB.items.some(i=>i.id===id)); }
+function bizVisibleItems(){ const biz = currentBiz(); return DB.items.filter(i=>biz && i.businessId===biz.id && (state.filterCat==='All' || (i.category||'General')===state.filterCat)); }
+function bizSelectAll(){ const ids = bizVisibleItems().map(i=>i.id); const all = ids.length && ids.every(id=>(state.bizSel||{})[id]); state.bizSel = all ? {} : Object.fromEntries(ids.map(id=>[id,true])); render(); }
+function bizSelectBarHTML(list){
+  const n = selectedBizIds().length, all = list.length && list.every(i=>(state.bizSel||{})[i.id]);
+  return `<div class="sel-bar">
+    <div class="row between" style="gap:8px; flex-wrap:wrap;">
+      <button class="sel-all" onclick="bizSelectAll()">${iconCheckCircle(all)} ${all?'Unselect all':`Select all (${list.length})`}</button>
+      <strong>${n} selected</strong>
+    </div>
+    <div class="sel-acts">
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="setItemsPaused(selectedBizIds(), true)">Pause</button>
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="setItemsPaused(selectedBizIds(), false)">Resume</button>
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="openSheet('bulkEdit')">Edit stock, price…</button>
+      <button class="btn btn-ghost btn-sm danger-txt" ${n?'':'disabled'} onclick="askDeleteItems(selectedBizIds())">Delete</button>
+    </div>
+  </div>`;
+}
+async function setItemsPaused(ids, paused){
+  const items = DB.items.filter(i=>ids.includes(i.id) && !!i.paused !== paused);
+  if(!items.length){ toast(paused ? 'Already paused' : 'Already listed'); return; }
+  items.forEach(i=>i.paused = paused);
+  if(await saveDB('items', items) === false){ items.forEach(i=>i.paused = !paused); render(); return; }
+  toast(`${items.length} listing${items.length===1?'':'s'} ${paused?'paused. Customers can\u2019t see them':'resumed'}`); render();
+}
+function deleteBlockReason(i){
+  if(i.listingType==='auction'){ const a = auctionForItem(i.id); if(a && a.status==='active' && (a.bidCount||0)>0) return 'it has bids'; }
+  if(i.listingType==='rental'){ const today = todayISODate(); if(DB.bookings.some(b=>b.itemId===i.id && ['accepted','pending'].includes(b.status) && (b.requestedDate||'')>=today)) return 'it has upcoming bookings'; }
+  if(DB.orders.some(o=>o.rentalItemId===i.id && !['delivered','declined','cancelled'].includes(o.status) && !o.rentalReturnedAt)) return 'it is rented out right now';
+  return '';
+}
+let _pendingDeleteIds = [];
+function askDeleteItems(ids){ _pendingDeleteIds = ids.slice(); openSheet('confirmDelete'); }
+function sheetConfirmDelete(){
+  const items = DB.items.filter(i=>_pendingDeleteIds.includes(i.id));
+  const blocked = items.filter(i=>deleteBlockReason(i));
+  const ok = items.filter(i=>!deleteBlockReason(i));
+  return `<h2>Delete ${items.length===1?'this listing':`${items.length} listings`}?</h2>
+  <p class="muted" style="margin-bottom:12px;">Deleted listings are gone for good. To hide a listing for a while, pause it instead.</p>
+  ${blocked.length ? `<div class="card tight notice-warn"><p style="font-size:.88em;">${blocked.length} can't be deleted: ${blocked.map(i=>`<strong>${escapeAttr(i.name)}</strong> (${deleteBlockReason(i)})`).join(', ')}. You can pause ${blocked.length===1?'it':'them'} instead.</p></div>` : ''}
+  <div class="row" style="gap:8px; margin-top:12px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep</button>
+    <button class="btn btn-primary danger-bg" style="flex:1;" ${ok.length?'':'disabled'} onclick="deleteItemsNow()">Delete ${ok.length}</button>
+  </div>`;
+}
+async function deleteItemsNow(){
+  const ids = DB.items.filter(i=>_pendingDeleteIds.includes(i.id) && !deleteBlockReason(i)).map(i=>i.id);
+  if(!ids.length) return;
+  if(sb){
+    const { error } = await sb.from('items').delete().in('id', ids);
+    if(error){ toast(/item_in_use/.test(error.message) ? "Some listings can't be deleted because they have bids or bookings" : 'Could not delete: '+error.message,'bad'); return; }
+  }
+  DB.items = DB.items.filter(i=>!ids.includes(i.id));
+  DB.auctions = DB.auctions.filter(a=>!ids.includes(a.itemId));
+  ids.forEach(id=>{ if(state.bizSel) delete state.bizSel[id]; });
+  _pendingDeleteIds = []; closeSheet();
+  toast(`${ids.length} listing${ids.length===1?'':'s'} deleted`); render();
+}
+function sheetBulkEdit(){
+  const ids = selectedBizIds(); const items = DB.items.filter(i=>ids.includes(i.id));
+  const buyNow = items.filter(i=>(i.listingType||'buy_now')==='buy_now').length;
+  return `<h2>Edit ${items.length} listing${items.length===1?'':'s'}</h2>
+  <p class="muted" style="margin-bottom:14px;">Leave a field empty to keep it as it is.</p>
+  <div class="field"><label for="be_cat">Category</label><select id="be_cat"><option value="">Keep current</option>${MARKETPLACE_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}">${c}</option>`).join('')}</select></div>
+  ${buyNow ? `
+  <div class="field"><label for="be_stock">Stock quantity${buyNow<items.length?` (${buyNow} Buy now item${buyNow===1?'':'s'})`:''}</label><input id="be_stock" type="number" min="0" inputmode="numeric" placeholder="Keep current"></div>
+  <div class="field"><label for="be_disc">Discount %</label><input id="be_disc" type="number" min="0" max="90" inputmode="numeric" placeholder="Keep current (0 removes it)"></div>
+  <div class="field"><label for="be_price">Change price by %</label><input id="be_price" type="number" min="-90" max="500" inputmode="decimal" placeholder="e.g. 10 for +10%, -10 for -10%"></div>
+  <div class="field">${chkRowHTML('be_free', false, 'Free delivery for buyer')}<p class="muted" style="font-size:.78em; margin-top:4px;">Tick to turn free delivery on for all of them.</p></div>` : ''}
+  <div class="row" style="gap:8px; margin-top:6px;">
+    ${buyNow ? `<button class="btn btn-ghost" style="flex:1;" onclick="bulkEditApply(true)">Mark out of stock</button>` : ''}
+    <button class="btn btn-primary" style="flex:2;" onclick="bulkEditApply(false)">Apply changes</button>
+  </div>`;
+}
+async function bulkEditApply(outOfStock){
+  const ids = selectedBizIds(); const items = DB.items.filter(i=>ids.includes(i.id));
+  const cat = val('be_cat'), stockV = val('be_stock'), discV = val('be_disc'), priceV = val('be_price');
+  const freeEl = document.getElementById('be_free');
+  const before = items.map(i=>({...i}));
+  for(const i of items){
+    if(cat){ i.category = cat; if(cat!=='Other') i.categoryOtherName = ''; }
+    if((i.listingType||'buy_now')!=='buy_now') continue;
+    if(outOfStock) i.stock = 0;
+    else if(stockV!=='' && stockV!=null){ const n = Math.max(0, Math.round(Number(stockV))); if(isFinite(n)) i.stock = n; }
+    if(discV!=='' && discV!=null){ const d = Math.min(90, Math.max(0, Number(discV))); if(isFinite(d)) i.discountPercent = d; }
+    if(priceV!=='' && priceV!=null){ const pct = Number(priceV); if(isFinite(pct) && pct>-90 && pct<=500) i.price = Math.max(0.01, Math.round(i.price*(1+pct/100)*100)/100); }
+    if(freeEl && freeEl.checked) i.freeDelivery = true;
+  }
+  if(await saveDB('items', items) === false){ before.forEach(b=>{ const k = DB.items.findIndex(i=>i.id===b.id); if(k>=0) DB.items[k] = b; }); render(); return; }
+  closeSheet(); toast(outOfStock ? `${items.length} marked out of stock` : `${items.length} listing${items.length===1?'':'s'} updated`); render();
+}
 function bizItemCard(i){
+  const card = bizItemCardInner(i);
+  if(!state.bizSelect) return card;
+  const on = !!(state.bizSel||{})[i.id];
+  return `<div class="sel-wrap ${on?'on':''}"><span class="sel-dot" aria-hidden="true">${iconCheckCircle(on)}</span>${card}</div>`;
+}
+function bizItemCardInner(i){
   const thumb = itemThumbHTML(i);
   if(i.listingType==='auction'){
     const auction = auctionForItem(i.id);
@@ -5144,7 +5328,7 @@ function bizItemCard(i){
     const ended = auction.status!=='active' || Date.now()>=auction.endTime;
     const highBid = auction.currentHighestBid!=null ? auction.currentHighestBid : auction.startingPrice;
     return `
-    <div class="glass item-card" style="align-items:flex-start;" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+    <div class="glass item-card" style="align-items:flex-start;" onclick="bizItemTap('${i.id}')">
       <div class="item-thumb">${thumb}</div>
       <div class="item-info">
         <div class="row between"><h3>${i.name}</h3><span class="badge free" style="white-space:nowrap;">AUCTION</span></div>
@@ -5158,7 +5342,7 @@ function bizItemCard(i){
     const bookedNow = i.rentalAvailability!=='soon' ? currentBookingBlock(i.id) : null;
     const windows = itemBookingWindows(i.id);
     return `
-    <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+    <div class="glass item-card" onclick="bizItemTap('${i.id}')">
       <div class="item-thumb">${thumb}</div>
       <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.rentalAvailability==='soon'?`🕒 Available soon${i.availableFrom?` (from ${fmtDateShort(i.availableFrom)})`:''}`:`${i.stock} available to rent`}${i.rentalDeposit?` · ${money(i.rentalDeposit)} deposit`:''} · ${i.rentalFulfillment==='pickup'?'📦 Pickup':'🚚 You deliver'}</p>
       ${bookedNow?`<p class="muted" style="font-size:.78em; color:var(--coral); margin-top:2px;">🔒 Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</p>`:windows.length?`<p class="muted" style="font-size:.78em; margin-top:2px;">📌 ${windows.length} upcoming booking${windows.length>1?'s':''}</p>`:''}
@@ -5167,7 +5351,7 @@ function bizItemCard(i){
     </div>`;
   }
   return `
-  <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+  <div class="glass item-card" onclick="bizItemTap('${i.id}')">
     <div class="item-thumb">${thumb}</div>
     <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock${i.discountPercent?` · ${i.discountPercent}% off`:''}${i.freeDelivery!==false?` · 🚚 Free delivery`:''}</p>${itemCatPendingNoteHTML(i)}</div>
     <div class="price">${money(i.price)}</div>
@@ -5178,6 +5362,48 @@ function bizItemCard(i){
 const IMAGE_ALLOWED_TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
 const IMAGE_MAX_BYTES = 5*1024*1024;
 let _itemPhotoFile = null;
+// Up to 5 photos per listing; the first is the cover (items.image_url).
+const PHOTO_MAX = 5;
+let _photoSlots = [];   // [{url}] saved, or [{file, preview}] new
+function itemImages(it){ return it && it.images && it.images.length ? it.images : (it && it.imageUrl ? [it.imageUrl] : []); }
+function startAddItem(){ _itemPhotoFile = null; _photoSlots = []; openSheet('addItem'); }
+function startEditItem(id){ const it = DB.items.find(i=>i.id===id); _itemPhotoFile = null; _photoSlots = itemImages(it).map(url=>({url})); openSheet('editItem', id); }
+function photoSlotsHTML(){
+  return `<div class="photo-slots" id="photoSlots">
+    ${_photoSlots.map((ph,i)=>`<div class="ps-tile ${i===0?'cover':''}">
+      <img src="${ph.url||ph.preview}" alt="Photo ${i+1}">
+      ${i===0?`<span class="ps-cover">Cover</span>`:`<button type="button" class="ps-btn ps-star" aria-label="Make photo ${i+1} the cover" onclick="coverPhotoSlot(${i})">★</button>`}
+      <button type="button" class="ps-btn ps-x" aria-label="Remove photo ${i+1}" onclick="removePhotoSlot(${i})">✕</button>
+    </div>`).join('')}
+    ${_photoSlots.length < PHOTO_MAX ? `<label class="ps-tile ps-add" for="itemPhotosInput"><span>＋</span><small>${_photoSlots.length?`Add (${PHOTO_MAX-_photoSlots.length} left)`:`Add up to ${PHOTO_MAX} photos`}</small></label>` : ''}
+  </div>
+  <input type="file" accept="image/*" multiple id="itemPhotosInput" style="display:none;" onchange="onPhotosPicked(event)">`;
+}
+function redrawPhotoSlots(){ const el = document.getElementById('photoSlots'); if(el){ const inp = document.getElementById('itemPhotosInput'); if(inp) inp.remove(); el.outerHTML = photoSlotsHTML(); } }
+function onPhotosPicked(e){
+  const files = [...(e.target.files||[])]; e.target.value = '';
+  const room = PHOTO_MAX - _photoSlots.length;
+  if(files.length > room) toast(`Up to ${PHOTO_MAX} photos per item, so only ${room} more were added`,'bad');
+  files.slice(0, room).forEach(f=>{
+    if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose JPEG, PNG, WEBP or GIF images','bad'); return; }
+    if(f.size > IMAGE_MAX_BYTES){ toast(`${f.name} is over 5MB`,'bad'); return; }
+    const slot = { file:f, preview:'' }; _photoSlots.push(slot);
+    const r = new FileReader(); r.onload = ()=>{ slot.preview = r.result; redrawPhotoSlots(); }; r.readAsDataURL(f);
+  });
+  redrawPhotoSlots();
+}
+function removePhotoSlot(i){ _photoSlots.splice(i,1); redrawPhotoSlots(); }
+function coverPhotoSlot(i){ const [ph] = _photoSlots.splice(i,1); _photoSlots.unshift(ph); redrawPhotoSlots(); }
+async function uploadPhotoSlots(){
+  const out = [];
+  for(const ph of _photoSlots){
+    if(ph.url){ out.push(ph.url); continue; }
+    if(!sb){ out.push(ph.preview); continue; }   // preview without a server
+    const url = await uploadItemPhoto(ph.file);
+    if(url) out.push(url);
+  }
+  return out.slice(0, PHOTO_MAX);
+}
 function previewItemPhoto(e, previewId='itemPhotoPreview'){
   const f = e.target.files[0]; if(!f) return;
   if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose a JPEG, PNG, WEBP, or GIF image','bad'); e.target.value=''; return; }
@@ -5229,6 +5455,7 @@ function itemCatFieldHTML(idPrefix, selectedCat, otherNameVal){
   </div>`;
 }
 function toggleItemCatOther(sel){
+  refreshOptionsEditor(sel);
   const idPrefix = sel.id.replace(/_cat$/,'');
   const wrap = document.getElementById(idPrefix+'_catOtherWrap');
   if(wrap) wrap.style.display = sel.value==='Other' ? '' : 'none';
@@ -5293,6 +5520,7 @@ function sheetAddItem(){
   <div class="field"><label>Item name</label><input id="i_name" placeholder="e.g. Fresh Rice 5kg"></div>
   <div class="field"><label>More details (optional)</label><textarea id="i_desc" rows="3" placeholder="Anything buyers should know - size, ingredients, condition, rental terms, etc."></textarea></div>
   ${itemCatFieldHTML('i', defaultCat, defaultOtherName)}
+  ${optionsEditorHTML('i', defaultCat || MARKETPLACE_CATEGORIES[0], {})}
   <div id="buyNowFields">
     <div class="field"><label>Price (MVR)</label><input id="i_price" type="number" placeholder="0.00"></div>
     <div class="field"><label>Stock quantity</label><input id="i_stock" type="number" placeholder="0"></div>
@@ -5345,10 +5573,9 @@ function sheetAddItem(){
     <p class="muted" style="font-size:.78em; margin-top:6px; display:none;" id="extraFeeNoteRental">Rentals never use the delivery-partner network, so there's no zone fee. Add an amount here only if you want to charge extra on top of the daily rate — it's charged to the renter and comes to you.</p>
   </div>
   <div class="field file">
-    <label>Photo (optional)</label>
-    <input type="file" accept="image/*" id="itemPhotoFile" style="display:none;" onchange="previewItemPhoto(event)">
-    <label for="itemPhotoFile" class="filebtn">📎 Tap to choose an image</label>
-    <img id="itemPhotoPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
+    <label>Photos (up to ${PHOTO_MAX}, optional)</label>
+    ${photoSlotsHTML()}
+    <p class="muted" style="font-size:.78em; margin-top:6px;">The first photo is the cover. Tap ★ to make another one the cover.</p>
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
@@ -5429,8 +5656,9 @@ async function submitAddItem(){
   const extraDeliveryFee = Math.max(0, Number(val('i_extra_fee')||0));
   const description = val('i_desc');
   toast('Saving item…');
-  const imageUrl = await uploadItemPhoto();
-  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now()};
+  const images = await uploadPhotoSlots();
+  const imageUrl = images[0] || null;
+  const item = {id:uid('it'), images, businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -5468,16 +5696,18 @@ const BULK_COLUMNS = [
   ['deposit','Rental only: refundable deposit (optional)'],
   ['pickup_location','Rental only: where renters pick it up (required for rentals)'],
   ['available_from','Rental only: YYYY-MM-DD if not available yet (optional)'],
-  ['photo','Optional. The file name of a photo you pick together with the sheet (e.g. rice.jpg), or a web link to a picture. Leave empty to add a photo later'],
+  ['options','Optional. Choices the customer picks from, e.g. Size: S, M, L; Colour: White, Navy. A column named after an option (Size, Colour, Weight, Flavour, Storage…) works too'],
+  ['photo','Optional. Up to 5 photos separated by | (e.g. shirt-front.jpg | shirt-back.jpg): file names of photos you pick with the sheet, or web links. The first is the cover. Leave empty to add photos later'],
 ];
 let _bulk = null;   // { fileName, rows:[{line, data, item, auction, errors:[], warnings:[]}] }
 function csvCell(v){ v = v==null ? '' : String(v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
 function downloadBulkTemplate(){
   const head = BULK_COLUMNS.map(c=>c[0]);
   const examples = [
-    ['buy_now','Fresh Rice 5kg','Basmati, 5kg bag','Grocery','145','20','10','yes','0','','','','','','','rice.jpg'],
-    ['auction','Vintage dhoni model','Hand-carved, 60cm','Collectibles','500','','','yes','0','25','5','','','','',''],
-    ['rental','Snorkel set','Mask, snorkel and fins','Sports & Outdoors','50','4','','','0','','','day','200','Majeedhee Magu, Malé','',''],
+    ['buy_now','Fresh Rice 5kg','Basmati, 5kg bag','Grocery','145','20','10','yes','0','','','','','','','','rice.jpg'],
+    ['auction','Vintage dhoni model','Hand-carved, 60cm','Collectibles','500','','','yes','0','25','5','','','','','',''],
+    ['rental','Snorkel set','Mask, snorkel and fins','Sports & Outdoors','50','4','','','0','','','day','200','Majeedhee Magu, Malé','','',''],
+    ['buy_now','Linen shirt','Breathable linen, relaxed fit','Fashion','350','12','','yes','0','','','','','','','Size: S, M, L, XL; Colour: White, Navy','shirt.jpg'],
   ];
   const csv = '﻿' + [head, ...examples].map(r=>r.map(csvCell).join(',')).join('\r\n') + '\r\n';
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
@@ -5485,7 +5715,7 @@ function downloadBulkTemplate(){
   a.href = URL.createObjectURL(blob); a.download = 'maldexpress-items-template.csv';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
-  toast('Template downloaded. Replace the 3 example rows with your items.');
+  toast('Template downloaded. Replace the 4 example rows with your items.');
 }
 // Small RFC 4180 parser: quoted cells, doubled quotes, commas/newlines in
 // quotes. Excel in some regions saves with ';' (or tabs), so the separator is
@@ -5557,9 +5787,15 @@ function bulkBuildRow(data, line, bizId){
     if(disc!=null && (isNaN(disc) || disc<0 || disc>90)) errors.push('Discount must be 0 to 90');
     item.price = price; item.stock = stockN||0; item.discountPercent = disc && !isNaN(disc) ? disc : 0;
   }
+  // Options: the options column, plus any column named after an option
+  // (Size, Colour, Weight, ...); if none, "Colour: red, blue" in the details.
+  const opts = parseOptions(g('options'));
+  Object.keys(data).forEach(k=>{ const n = canonOptName(k); if(n && !opts[n]){ const list = parseOptValues(data[k]); if(list.length) opts[n] = list; } });
+  if(!Object.keys(opts).length){ const found = optionsFromText(item.description); if(Object.keys(found).length){ Object.assign(opts, found); warnings.push(`Options found in the details: ${Object.entries(found).map(([n,v])=>`${n} ${v.join(', ')}`).join('; ')}`); } }
+  item.options = opts;
   const photo = g('photo');
   let photoUrl = '';
-  if(/^https?:\/\//i.test(photo)) photoUrl = photo;
+  if(/^https?:\/\//i.test(photo.split('|')[0].trim())) photoUrl = photo.split('|')[0].trim();
   return { line, data, item, auction, errors, warnings, photo, photoUrl };
 }
 // Photos picked together with the sheet, keyed by lower-case file name (with
@@ -5584,7 +5820,7 @@ function bulkPhotoFor(r){
   if(r.override) return { kind:'file', file:r.override, how:'you' };
   if(r.photoUrl) return { kind:'url', url:r.photoUrl, how:'web link' };
   if(r.photo){
-    const k = r.photo.split(/[\\/]/).pop().toLowerCase();
+    const k = r.photo.split('|')[0].trim().split(/[\\/]/).pop().toLowerCase();
     const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
     return f ? { kind:'file', file:f, how:'photo column' } : { kind:'missing', name:r.photo };
   }
@@ -5599,9 +5835,18 @@ function bulkPhotoFor(r){
   return { kind:'none' };
 }
 // Picked photos no row uses, and photos used by more than one row.
+// Extra photos after the first in the photo column: "front.jpg | back.jpg | side.jpg"
+function bulkExtraPhotos(r){
+  if(!r.photo || r.override) return [];
+  return r.photo.split('|').slice(1, PHOTO_MAX).map(x=>x.trim()).filter(Boolean).map(nm=>{
+    if(/^https?:\/\//i.test(nm)) return { kind:'url', url:nm };
+    const k = nm.split(/[\\/]/).pop().toLowerCase(); const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
+    return f ? { kind:'file', file:f } : { kind:'missing', name:nm };
+  });
+}
 function bulkPhotoAudit(rows){
   const use = new Map();
-  rows.forEach(r=>{ const ph = bulkPhotoFor(r); if(ph.kind==='file') use.set(ph.file, [...(use.get(ph.file)||[]), r]); });
+  rows.forEach(r=>{ const ph = bulkPhotoFor(r); if(ph.kind==='file') use.set(ph.file, [...(use.get(ph.file)||[]), r]); bulkExtraPhotos(r).forEach(x=>{ if(x.kind==='file' && !use.has(x.file)) use.set(x.file, [r]); }); });
   const files = [...new Set(Object.values(_bulkPhotos))];
   const usedKeys = new Set([...use.keys()].map(f=>f.name.toLowerCase()+'|'+f.size));
   return { unused: files.filter(f=>!usedKeys.has(f.name.toLowerCase()+'|'+f.size)), shared: [...use.entries()].filter(([,rs])=>rs.length>1) };
@@ -5641,7 +5886,7 @@ function sheetBulkItems(){
   return `
   <h2>Upload a list of items</h2>
   <ol class="bulk-steps">
-    <li><strong>Download the template.</strong> It opens in Excel, Google Sheets or Numbers and has 3 example rows to copy.</li>
+    <li><strong>Download the template.</strong> It opens in Excel, Google Sheets or Numbers and has 4 example rows to copy (one is a fashion item with size and colour options).</li>
     <li><strong>Add one item per row</strong> and save it as a CSV file.</li>
     <li><strong>Upload it here</strong> and check the preview before adding.</li>
   </ol>
@@ -5676,8 +5921,9 @@ function sheetBulkItems(){
     ${_bulk.rows.map((r,idx)=>`
       <div class="bulk-row ${r.errors.length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
+          ${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more">+${ex}</span>` : ''; })()}
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
-          <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}</p></div>
+          <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>
         ${r.errors.map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
@@ -5712,6 +5958,11 @@ async function submitBulkItems(){
       if(url) r.item.imageUrl = url; else photoFails++;
     }
   }
+  for(const r of rows){   // extra photos from the photo column
+    const extra = [];
+    for(const x of bulkExtraPhotos(r)){ if(x.kind==='url') extra.push(x.url); else if(x.kind==='file'){ const u = sb ? await uploadItemPhoto(x.file) : bulkThumbURL(x.file); if(u) extra.push(u); } }
+    r.item.images = [r.item.imageUrl, ...extra].filter(Boolean).slice(0, PHOTO_MAX);
+  }
   const items = rows.map(r=>r.item);
   items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
   DB.items.push(...items);
@@ -5745,6 +5996,7 @@ function sheetEditItem(){
   <div class="field"><label>Item name</label><input id="e_name" value="${item.name}"></div>
   <div class="field"><label>More details (optional)</label><textarea id="e_desc" rows="3">${item.description||''}</textarea></div>
   ${itemCatFieldHTML('e', item.category, item.categoryOtherName)}
+  ${optionsEditorHTML('e', item.category, itemOptions(item))}
   ${!isAuction && !isRental? `
   <div class="field"><label>Price (MVR)</label><input id="e_price" type="number" value="${item.price}"></div>
   <div class="field"><label>Stock quantity</label><input id="e_stock" type="number" value="${item.stock}"></div>
@@ -5797,12 +6049,15 @@ function sheetEditItem(){
       : `<p class="muted" style="font-size:.78em; margin-top:6px;">The MVR 15–25 zone fee is fixed and goes to the delivery partner. Add an extra amount here — for a bulky, fragile, or heavy item — that's charged to the buyer on top and comes to you.</p>`}
   </div>
   <div class="field file">
-    <label>Photo</label>
-    <input type="file" accept="image/*" id="editItemPhoto" style="display:none;" onchange="previewItemPhoto(event,'editItemPreview')">
-    <label for="editItemPhoto" class="filebtn">📎 ${item.imageUrl?'Change photo':'Add a photo'}</label>
-    <img id="editItemPreview" src="${item.imageUrl||''}" style="width:100%; border-radius:14px; margin-top:10px; ${item.imageUrl?'':'display:none;'} max-height:200px; object-fit:cover;">
+    <label>Photos (up to ${PHOTO_MAX})</label>
+    ${photoSlotsHTML()}
+    <p class="muted" style="font-size:.78em; margin-top:6px;">The first photo is the cover. Tap ★ to make another one the cover.</p>
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>
+  <div class="row" style="gap:8px; margin-top:10px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="setItemsPaused(['${item.id}'], ${!item.paused}).then(()=>closeSheet())">${item.paused?'Resume listing':'Pause listing'}</button>
+    <button class="btn btn-ghost danger-txt" style="flex:1;" onclick="askDeleteItems(['${item.id}'])">Delete listing</button>
+  </div>
   ${editItemFeaturedHTML(item)}`;
 }
 async function submitEditItem(itemId){
@@ -5816,6 +6071,7 @@ async function submitEditItem(itemId){
   item.categoryOtherName = item.category==='Other' ? (val('e_cat_other')||'') : '';
   if(item.categoryOtherName) await submitCategoryRequest(currentBiz(), item.categoryOtherName);
   item.description = val('e_desc');
+  if(document.getElementById('e_opts')) item.options = readOptionsEditor('e');
   if(item.listingType==='rental'){
     const price = Number(val('e_rent_rate')), stock = Number(val('e_rent_stock')||0);
     if(!price){ toast('Enter a daily rate','bad'); return; }
@@ -5844,12 +6100,10 @@ async function submitEditItem(itemId){
   const freeDeliveryEl = document.getElementById('e_free_delivery');
   if(freeDeliveryEl) item.freeDelivery = freeDeliveryEl.checked;
   item.extraDeliveryFee = Math.max(0, Number(val('e_extra_fee')||0));
-  if(_itemPhotoFile){
-    toast('Saving…');
-    const url = await uploadItemPhoto();
-    if(url) item.imageUrl = url;
-  }
-  saveDB('items', [item]);
+  if(_photoSlots.some(ph=>ph.file)) toast('Saving photos…');
+  const imgs = await uploadPhotoSlots();
+  item.images = imgs; item.imageUrl = imgs[0] || null;
+  if(await saveDB('items', [item]) === false) return;
   _itemPhotoFile = null;
   closeSheet(); toast('Item updated'); render();
 }
@@ -6651,12 +6905,12 @@ function useStoreLocation(){
   if(!navigator.geolocation){ toast("This device can't share its location",'bad'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     biz.lat = pos.coords.latitude; biz.lng = pos.coords.longitude;
-    saveDB('businesses');
-    const el = document.getElementById('s_loc_txt'); if(el) el.textContent = `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})`;
-    toast('Store location saved');
+    saveDB('businesses', [biz]).then(ok=>{ if(ok===false) return;
+      const el = document.getElementById('s_loc_txt'); if(el) el.textContent = `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})`;
+      toast('Store location saved'); });
   }, err=>toast(err && err.code===1 ? 'Location permission was denied. Allow it in your browser settings' : "Couldn't get your location",'bad'), { enableHighAccuracy:true, timeout:15000 });
 }
-function saveBizSettings(){
+async function saveBizSettings(){
   const biz = currentBiz();
   biz.name = val('s_name')||biz.name;
   biz.ownerName = val('s_owner')||biz.ownerName;
@@ -6667,7 +6921,7 @@ function saveBizSettings(){
   biz.accountName = val('s_accname')||biz.accountName;
   biz.accountNumber = val('s_acc')||biz.accountNumber;
   biz.island = pickedIsland('s_isl') || biz.island || 'Malé';
-  saveDB('businesses');
+  if(await saveDB('businesses', [biz]) === false) return;
   maybeSubmitCategoryRequest('s_cat', biz);
   closeSheet(); toast('Settings saved'); render();
 }
@@ -6858,12 +7112,13 @@ function sheetDelSettings(){
   ${sb ? `<button class="btn btn-outline" style="margin-top:10px;" onclick="signOutCustomer()">Sign out</button>` : ''}
   `;
 }
-function saveDelSettings(){
+async function saveDelSettings(){
   const d = currentDel();
   const name = val('ds_name');
   if(!name){ toast('Enter your name','bad'); return; }
   d.name = name; d.phone = val('ds_phone');
-  saveDB('delivery'); closeSheet(); toast('Settings saved'); render();
+  if(await saveDB('delivery', [d]) === false) return;
+  closeSheet(); toast('Settings saved'); render();
 }
 
 /* =================== CUSTOMER SETTINGS ==================== */
@@ -6898,10 +7153,21 @@ function saveCustSettings(){
 function myAddresses(category){ return DB.addresses.filter(a=>a.customerId===state.customerId && a.category===category).sort((a,b)=>(b.isDefault?1:0)-(a.isDefault?1:0) || b.createdAt-a.createdAt); }
 function defaultAddress(category){ return DB.addresses.find(a=>a.customerId===state.customerId && a.category===category && a.isDefault) || null; }
 function openAddressBook(){ openSheet('addressBook'); }
+let _addrDefaultsApplied = false;
+function addressPromptHTML(){
+  if(!sb || !state.authed || state.addrPromptHidden || myAddresses('own').length) return '';
+  return `<div class="addr-prompt"><span class="ap-ic" aria-hidden="true">📍</span><div style="flex:1; min-width:0;"><strong>Add your delivery address</strong><p class="muted">Save it once and it's filled in at checkout. You can change it any time.</p></div><button class="btn btn-primary btn-sm" onclick="openAddAddress('own')">Add address</button><button class="ap-x" aria-label="Not now" onclick="state.addrPromptHidden=true; render();">✕</button></div>`;
+}
+function openMyAddresses(){
+  if(sb && !state.authed){ openSheet('signIn'); toast('Sign in to save your addresses'); return; }
+  if(!myAddresses('own').length){ openAddAddress('own'); return; }
+  openSheet('addressBook');
+}
+function addrIslandLabel(a){ if(a.island) return isGreaterMale(a.island) && a.zone ? (ZONES[a.zone]?ZONES[a.zone].label:a.island) : a.island; return a.zone && ZONES[a.zone] ? ZONES[a.zone].label : ''; }
 function addressCardHTML(a){
   const isBoat = a.category==='boat';
   const line1 = isBoat ? a.name : a.name;
-  const line2 = isBoat ? [a.phone, a.harbour].filter(Boolean).join(' · ') : [a.phone, a.address, a.zone?ZONES[a.zone].label:null].filter(Boolean).join(' · ');
+  const line2 = isBoat ? [a.phone, a.harbour].filter(Boolean).join(' · ') : [a.phone, a.address, addrIslandLabel(a)||null].filter(Boolean).join(' · ');
   return `
   <div class="glass card tight" style="margin-bottom:10px;">
     <div class="row between" style="align-items:flex-start;">
@@ -6911,7 +7177,10 @@ function addressCardHTML(a){
       </div>
       <button class="iconbtn" style="width:32px; height:32px; font-size:.9em; flex-shrink:0;" onclick="deleteAddressEntry('${a.id}','${a.category}')" title="Remove" aria-label="Remove address">🗑️</button>
     </div>
-    ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
+    <div class="row" style="gap:8px; margin-top:8px;">
+      <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="openEditAddress('${a.id}')">Edit</button>
+      ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="flex:1;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
+    </div>
   </div>`;
 }
 function addressSectionHTML(category, title){
@@ -6924,50 +7193,76 @@ function addressSectionHTML(category, title){
 }
 function sheetAddressBook(){
   return `
-  <h2 style="margin-bottom:14px;">Delivery addresses</h2>
+  <h2 style="margin-bottom:6px;">My addresses</h2>
+  <p class="muted" style="font-size:.86em; margin-bottom:14px;">Your default address is filled in at checkout. You can still change it while ordering.</p>
   ${addressSectionHTML('own', 'Your addresses')}
   ${addressSectionHTML('other', "Other receivers' addresses")}
   ${addressSectionHTML('boat', 'Boats')}
   `;
 }
-let _addAddressCategory = 'own';
-function openAddAddress(category){ _addAddressCategory = category; openSheet('addAddress'); }
+let _addAddressCategory = 'own', _editAddressId = null;
+function openAddAddress(category){ _addAddressCategory = category; _editAddressId = null; openSheet('addAddress'); }
+function openEditAddress(id){ const a = DB.addresses.find(x=>x.id===id); if(!a) return; _addAddressCategory = a.category; _editAddressId = id; openSheet('addAddress'); }
+function onAddrIslandChange(k){ const box = document.getElementById('aa_zone_box'); if(box) box.classList.toggle('hidden', !(k && isGreaterMale(k) && k!=='Villimalé')); const sel=document.getElementById('aa_zone'); if(sel && k==='Malé') sel.value='male'; }
 function sheetAddAddress(){
   const cat = _addAddressCategory;
   const isBoat = cat==='boat';
-  const title = cat==='own' ? 'Add your address' : cat==='other' ? "Add a receiver's address" : 'Add a boat';
+  const a = _editAddressId ? DB.addresses.find(x=>x.id===_editAddressId) : null;
+  const first = !a && cat==='own' && !myAddresses('own').length;
+  const title = a ? 'Edit address' : first ? 'Add your delivery address' : cat==='own' ? 'Add an address' : cat==='other' ? "Add a receiver's address" : 'Add a boat';
+  const isl = a ? (a.island || (a.zone==='male'?'Malé':a.zone?'Hulhumalé':'')) : 'Malé';
+  const showZone = isl && isGreaterMale(isl) && isl!=='Villimalé';
   return `
-  <h2 style="margin-bottom:14px;">${title}</h2>
-  <div class="field"><label>${isBoat?'Boat / vessel name':'Name'}</label><input id="aa_name" placeholder="${isBoat?'e.g. Dhoni Safari 2':'Full name'}"></div>
-  <div class="field"><label>Phone</label><input id="aa_phone" placeholder="7XXXXXX"></div>
+  <h2 style="margin-bottom:6px;">${title}</h2>
+  ${first ? `<p class="muted" style="font-size:.86em; margin-bottom:14px;">This becomes your default address. It's filled in for you at checkout, and you can change it any time.</p>` : '<div style="height:8px;"></div>'}
+  <div class="field"><label for="aa_name">${isBoat?'Boat / vessel name':'Name'}</label><input id="aa_name" placeholder="${isBoat?'e.g. Dhoni Safari 2':'Full name'}" value="${escapeAttr(a ? a.name : (cat==='own' ? (state.customerName||'') : ''))}"></div>
+  <div class="field"><label for="aa_phone">Phone</label><input id="aa_phone" inputmode="tel" placeholder="7XXXXXX" value="${escapeAttr(a ? a.phone : (cat==='own' ? (state.customerPhone||'') : ''))}"></div>
   ${isBoat ? `
-  <div class="field"><label>Harbour / mooring location</label><input id="aa_harbour" placeholder="Where does the boat depart from?"></div>
+  <div class="field"><label for="aa_harbour">Harbour / mooring location</label><input id="aa_harbour" placeholder="Where does the boat depart from?" value="${escapeAttr(a?a.harbour:'')}"></div>
   ` : `
-  <div class="field"><label>Address</label><input id="aa_address" placeholder="House, street, island"></div>
-  <div class="field"><label>Zone</label>
+  <div class="field"><label>Island</label>${islandPickerHTML('aa_isl', isl, 'onAddrIslandChange')}</div>
+  <div class="field ${showZone?'':'hidden'}" id="aa_zone_box"><label for="aa_zone">Area</label>
     <select id="aa_zone">
-      <option value="male">Malé (MVR 15)</option>
-      <option value="hulhumale1">Hulhumalé Phase 1 (MVR 20)</option>
-      <option value="hulhumale2">Hulhumalé Phase 2 (MVR 25)</option>
+      <option value="male" ${a&&a.zone==='male'?'selected':''}>Malé</option>
+      <option value="hulhumale1" ${a&&a.zone==='hulhumale1'?'selected':''}>Hulhumalé Phase 1</option>
+      <option value="hulhumale2" ${a&&a.zone==='hulhumale2'?'selected':''}>Hulhumalé Phase 2</option>
     </select>
-  </div>`}
-  <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">Save address</button>`;
+  </div>
+  <div class="field"><label for="aa_address">House / street</label><input id="aa_address" placeholder="e.g. H. Blue Lagoon, Majeedhee Magu" value="${escapeAttr(a?a.address:'')}"></div>`}
+  ${a && !a.isDefault ? chkRowHTML('aa_default', false, 'Make this my default') : ''}
+  <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">${a?'Save changes':'Save address'}</button>
+  ${a ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="openSheet('addressBook')">Cancel</button>` : !first ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="openSheet('addressBook')">Back to my addresses</button>` : ''}`;
 }
 async function submitAddAddress(){
   if(!requireOnline()) return;
   const cat = _addAddressCategory;
   const isBoat = cat==='boat';
-  const name = val('aa_name'), phone = val('aa_phone');
-  const address = isBoat ? null : val('aa_address');
-  const harbour = isBoat ? val('aa_harbour') : null;
-  const zone = isBoat ? null : (val('aa_zone')||'male');
-  if(!name || !phone || (isBoat ? !harbour : !address)){ toast(isBoat?'Enter the boat name, phone, and harbour':'Enter the name, phone, and address','bad'); return; }
+  const name = val('aa_name').trim(), phone = val('aa_phone').trim();
+  const address = isBoat ? null : val('aa_address').trim();
+  const harbour = isBoat ? val('aa_harbour').trim() : null;
+  let island = null, zone = null;
+  if(!isBoat){
+    island = pickedIsland('aa_isl');
+    if(!island){ toast('Pick the island','bad'); return; }
+    if(isGreaterMale(island)) zone = island==='Malé' || island==='Villimalé' ? 'male' : (val('aa_zone')||'hulhumale1');
+  }
+  if(!name || !phone || (isBoat ? !harbour : !address)){ toast(isBoat?'Enter the boat name, phone, and harbour':'Enter the name, phone, and house / street','bad'); return; }
+  if(_editAddressId){
+    const a = DB.addresses.find(x=>x.id===_editAddressId);
+    const upd = { name, phone, address, harbour, island, zone };
+    const { error } = await sb.from('customer_addresses').update(upd).eq('id', _editAddressId);
+    if(error){ toast('Could not save address: '+error.message, 'bad'); return; }
+    if(a) Object.assign(a, { ...upd, address: address||'', harbour: harbour||'', island: island||'' });
+    if(document.getElementById('aa_default') && document.getElementById('aa_default').checked) await setAddressDefault(_editAddressId, cat);
+    _editAddressId = null; _addrDefaultsApplied = false;
+    toast('Address updated'); openSheet('addressBook'); return;
+  }
   const makeDefault = myAddresses(cat).length===0;
-  const row = { id: uid('addr'), customerId: state.customerId, category: cat, name, phone, address, zone, harbour, isDefault: makeDefault, createdAt: Date.now() };
+  const row = { id: uid('addr'), customerId: state.customerId, category: cat, name, phone, address, zone, island, harbour, isDefault: makeDefault, createdAt: Date.now() };
   const { data, error } = await sb.from('customer_addresses').insert(toDbRow('addresses', row)).select();
   if(error){ toast('Could not save address: '+error.message, 'bad'); return; }
   DB.addresses.push(fromDbRow('addresses', data[0]));
-  toast('Address saved'); openSheet('addressBook');
+  toast(makeDefault ? 'Saved as your default address' : 'Address saved'); openSheet('addressBook');
 }
 async function setAddressDefault(id, category){
   if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return; }
@@ -8228,6 +8523,7 @@ function itemDetailRowsHTML(item){
   const add = (k,v)=>{ if(v!==undefined && v!==null && v!=='') rows.push([k,v]); };
   add('Type', isAuction ? 'Auction' : isRental ? 'Rental' : 'Buy now');
   add('Category', item.category==='Other' && item.categoryOtherName ? `${escapeAttr(item.categoryOtherName)} (Other)` : escapeAttr(item.category||'General'));
+  Object.entries(itemOptions(item)).forEach(([n,vals])=>add(escapeAttr(n), vals.map(z=>escapeAttr(z)).join(' · ')));
   if(!isAuction && !isRental){
     add('Price', money(item.price));
     if(item.discountPercent>0){ add('Discount', `${item.discountPercent}% off`); add('You pay', money(effectivePrice(item))); }
@@ -8251,7 +8547,7 @@ function itemDetailRowsHTML(item){
     if(!ended) add('Time left', `<span data-auction-end="${auction.endTime}" data-auction-id="${auction.id}">${fmtCountdown(auction.endTime-Date.now())}</span>`);
   }
   if(!isRental){
-    add('Delivery', item.freeDelivery!==false ? 'Free delivery in Greater Malé zones' : 'Delivery fee by zone at checkout');
+    add('Delivery', !isGreaterMale(from) ? 'Charge set by the store when it confirms your order' : item.freeDelivery!==false ? 'Free delivery in Greater Malé zones' : 'Delivery fee by zone at checkout');
     if(item.extraDeliveryFee>0) add('Extra delivery fee', `+${money(item.extraDeliveryFee)}`);
     add('Ships from', escapeAttr(from));
     add('Delivers to', isGreaterMale(from) ? 'Greater Malé, and by boat to every inhabited island' : `${escapeAttr(from)}, and by boat to Malé`);
@@ -8263,6 +8559,15 @@ function relatedItemsFor(item, n){
   const sameCat = pool.filter(i=>(i.category||'General')===(item.category||'General'));
   const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
   return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
+}
+function galleryGo(itemId, i){ state.galleryIdx = state.galleryIdx || {}; state.galleryIdx[itemId] = i; render(); }
+function itemGalleryHTML(item){
+  const imgs = itemImages(item);
+  const n = imgs.length; const idx = Math.min(((state.galleryIdx||{})[item.id]||0), Math.max(0,n-1));
+  return `<div class="ip-photo">${n ? `<img src="${imgs[idx]}" alt="${escapeAttr(item.name)} photo ${idx+1} of ${n}">` : itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}
+      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galleryGo('${item.id}', ${(idx-1+n)%n})">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galleryGo('${item.id}', ${(idx+1)%n})">›</button><span class="gal-count">${idx+1} / ${n}</span>` : ''}
+    </div>
+    ${n>1 ? `<div class="gal-thumbs">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
 }
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);
@@ -8282,7 +8587,7 @@ function renderCustItem(){
       </div>
       <div class="ip-main">
         <div class="ip-media">
-          <div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>
+          ${itemGalleryHTML(item)}
         </div>
         <div class="ip-info">
           <div class="ip-store-row">
@@ -8297,7 +8602,7 @@ function renderCustItem(){
           </div>
           <p class="ip-stock">${isAuction ? '' : isOutOfStock(item) ? '<span class="status-pill bad">Out of stock</span>' : isRental ? '' : `<span class="status-pill ok">In stock${item.stock!=null?` · ${item.stock} left`:''}</span>`}</p>
           <div class="ip-actions">${itemActionsHTML(item)}</div>
-          <div class="ip-ship">⛴️ ${isRental ? (item.rentalFulfillment==='pickup' ? `Pick up from ${escapeAttr(biz?biz.name:'the store')}` : `Delivered by ${escapeAttr(biz?biz.name:'the store')}`) : `Ships from ${escapeAttr(bizIsland(biz))}. ${item.freeDelivery!==false?'Free delivery in Greater Malé zones; boat and island delivery is set by the store.':'Delivery fee is added at checkout.'}`}</div>
+          <div class="ip-ship">⛴️ ${isRental ? (item.rentalFulfillment==='pickup' ? `Pick up from ${escapeAttr(biz?biz.name:'the store')}` : `Delivered by ${escapeAttr(biz?biz.name:'the store')}`) : (isGreaterMale(bizIsland(biz)) ? `Ships from ${escapeAttr(bizIsland(biz))}. ${item.freeDelivery!==false?'Free delivery in Greater Malé zones; boat and island delivery is set by the store.':'Delivery fee is added at checkout.'}` : `Ships from ${escapeAttr(bizIsland(biz))}. Delivered on ${escapeAttr(bizIsland(biz))}, or by boat to Malé. The store sets the delivery charge when it confirms your order.`)}</div>
         </div>
       </div>
       <div class="ip-lower">
@@ -8341,13 +8646,25 @@ function itemActionsHTML(item){
   const ended = auction && (auction.status!=='active' || Date.now()>=auction.endTime);
   return `
   <div class="stack">
-    ${!isAuction && !isRental ? (isOutOfStock(item)
-      ? `<button class="btn btn-primary" style="opacity:.5;" disabled>Out of stock</button>`
-      : (state.cart[item.id]>0
-        ? `<div class="qty-ctrl" style="justify-content:center; padding:6px 0;">
-             <button onclick="changeQty('${item.id}',-1)">−</button><strong style="font-size:1.1em; min-width:26px; text-align:center;">${state.cart[item.id]}</strong><button ${item.stock!=null && state.cart[item.id]>=item.stock?'disabled style="opacity:.35;"':''} onclick="changeQty('${item.id}',1)">+</button>
-           </div>`
-        : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart</button>`)) : ''}
+    ${!isAuction && !isRental ? (()=>{
+      if(isOutOfStock(item)) return `<button class="btn btn-primary" style="opacity:.5;" disabled>Out of stock</button>`;
+      const missing = missingOptions(item);
+      const opts = hasOptions(item) ? pickedOptsFor(item.id) : {};
+      const label = optsLabel(opts);
+      const key = cartKey(item.id, opts);
+      const inCart = !missing.length ? (state.cart[key]||0) : 0;
+      const atMax = item.stock!=null && cartQtyForItem(item.id)>=item.stock;
+      return `${optionPickerHTML(item)}
+        ${inCart>0
+          ? `<div class="qty-ctrl" style="justify-content:center; padding:6px 0;">
+               <button onclick="changeQty('${escapeAttr(key)}',-1)">−</button><strong style="font-size:1.1em; min-width:26px; text-align:center;">${inCart}</strong><button ${atMax?'disabled style="opacity:.35;"':''} onclick="changeQty('${escapeAttr(key)}',1)">+</button>
+             </div>${label?`<p class="muted" style="font-size:.82em; text-align:center;">${escapeAttr(label)} in your cart</p>`:''}`
+          : atMax
+            ? `<button class="btn btn-primary" disabled style="opacity:.55;">All ${item.stock} in stock are in your cart</button>`
+          : missing.length
+            ? `<button class="btn btn-primary" disabled style="opacity:.55;">Choose ${escapeAttr(missing.map(n=>n.toLowerCase()).join(' and '))} to add to cart</button>`
+            : `<button class="btn btn-primary" onclick="addToCart('${item.id}')">Add to cart${label?` · ${escapeAttr(label)}`:''}</button>`}`;
+    })() : ''}
     ${isRental ? (soonRental
       ? `<button class="btn btn-primary" onclick="closeSheet(); openBookRentalItem('${item.id}')">Book for ${fmtDateShort(item.availableFrom)}</button>`
       : `
@@ -8435,6 +8752,7 @@ function renderCustHome(){
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">
+      ${addressPromptHTML()}
       <div class="cat-bar">
         <button class="cat-bar-btn" onclick="openSheet('categories')" aria-haspopup="dialog">
           <span class="cbb-ic" aria-hidden="true">▦</span> All categories
@@ -8572,6 +8890,7 @@ function renderDeskHome(){
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     <div class="desk-home">
       ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
+      ${addressPromptHTML()}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `
 
       ${picks.length ? `
@@ -8654,7 +8973,7 @@ function renderCustStore(){
   const filteredBuyNow = catFilter==='All' ? buyNowItems : buyNowItems.filter(i=>(i.category||'General')===catFilter);
   const filteredAuction = catFilter==='All' ? auctionItems : auctionItems.filter(i=>(i.category||'General')===catFilter);
   const filteredRental = catFilter==='All' ? rentalItems : rentalItems.filter(i=>(i.category||'General')===catFilter);
-  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, state.cart[i.id]||0)).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
+  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
   const auctionHTML = filteredAuction.map(i=>{
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
@@ -8735,8 +9054,8 @@ function groupCartLinesByBusiness(lines){
 function sortGroupsByRecency(groups){
   const order = Object.keys(state.cart);
   return groups.slice().sort((a,b)=>{
-    const lastA = Math.max(...a.lines.map(l=>order.indexOf(l.it.id)));
-    const lastB = Math.max(...b.lines.map(l=>order.indexOf(l.it.id)));
+    const lastA = Math.max(...a.lines.map(l=>order.indexOf(l.key || l.it.id)));
+    const lastB = Math.max(...b.lines.map(l=>order.indexOf(l.key || l.it.id)));
     return lastB - lastA;
   });
 }
@@ -8746,20 +9065,180 @@ function sortGroupsByRecency(groups){
 // guest fill a cart they'll only be asked to sign in for at checkout. The item they
 // were adding is remembered (state.pendingCartItemId) and actually added once they
 // finish signing in or signing up — see resolvePendingIntent().
+// ---------- Item options (attributes) ----------
+// Every category has suggested options (Fashion: Size, Colour; Grocery:
+// Weight, Pack size; ...), and sellers can add their own. Stored on the item
+// as { "Size": ["S","M"], "Colour": ["Red"] } (items.options, jsonb). The
+// customer must pick one value of each before Add to cart; the cart key is
+// "itemId::Size=M&Colour=Red", so each combination is its own cart line, and
+// stock is shared by all of them.
+const CATEGORY_OPTIONS = {
+  'Grocery':['Weight','Pack size'], 'Bakery':['Size','Flavour'], 'Café':['Size','Flavour'], 'Fashion':['Size','Colour'],
+  'Electronics':['Storage','Colour'], 'Beauty & Personal Care':['Shade','Volume'], 'Home & Living':['Colour','Size'],
+  'Health & Wellness':['Strength','Pack size'], 'Sports & Outdoors':['Size','Colour'], 'Toys & Games':['Age','Colour'],
+  'Books & Stationery':['Format','Language'], 'Automotive':['Fits','Colour'], 'Pet Supplies':['Size','Flavour'],
+  'Hardware':['Size','Material'], 'Collectibles':['Edition','Condition'], 'Other':['Option'],
+};
+const OPTION_HINTS = { 'Size':'S, M, L, XL  or  36, 38, 40', 'Colour':'Black, White, Red', 'Weight':'500g, 1kg, 5kg', 'Pack size':'1, 6, 12',
+  'Flavour':'Vanilla, Chocolate', 'Storage':'64GB, 128GB, 256GB', 'Shade':'Ivory, Beige, Tan', 'Volume':'50ml, 100ml', 'Strength':'250mg, 500mg',
+  'Age':'3+, 6+, 12+', 'Format':'Paperback, Hardcover', 'Language':'English, Dhivehi', 'Fits':'Honda, Yamaha', 'Material':'Steel, Wood',
+  'Edition':'Standard, Limited', 'Condition':'New, Used', 'Option':'Small, Large' };
+// Words that mean the same option (template headers, "Colour: red" in text).
+const OPTION_ALIASES = { size:'Size', sizes:'Size', size_options:'Size', colour:'Colour', colours:'Colour', color:'Colour', colors:'Colour',
+  weight:'Weight', pack_size:'Pack size', pack:'Pack size', flavour:'Flavour', flavours:'Flavour', flavor:'Flavour', flavors:'Flavour',
+  storage:'Storage', capacity:'Storage', shade:'Shade', shades:'Shade', volume:'Volume', strength:'Strength', dose:'Strength', age:'Age',
+  format:'Format', language:'Language', fits:'Fits', material:'Material', edition:'Edition', condition:'Condition', option:'Option', options_list:'Option' };
+function canonOptName(n){ const k = String(n||'').trim().toLowerCase().replace(/[\s-]+/g,'_'); return OPTION_ALIASES[k] || null; }
+function tidyOptName(n){ const c = canonOptName(n); if(c) return c; const t = String(n||'').trim().replace(/\s+/g,' ').slice(0,24); return t ? t[0].toUpperCase()+t.slice(1) : ''; }
+function parseOptValues(v){
+  if(Array.isArray(v)) v = v.join(',');
+  const out = String(v||'').split(/[,|\/;]+/).map(x=>x.trim()).filter(Boolean).map(x=>x.slice(0,30));
+  return [...new Set(out)].slice(0, 30);
+}
+// Object, JSON text, or "Size: S, M; Colour: Red, Blue" -> { Size:[..], Colour:[..] }
+function parseOptions(v){
+  const out = {};
+  if(!v) return out;
+  if(typeof v === 'string'){ const t = v.trim(); if(t.startsWith('{')){ try{ v = JSON.parse(t); }catch(e){ v = t; } } }
+  if(typeof v === 'object' && !Array.isArray(v)){
+    Object.entries(v).forEach(([k,vals])=>{ const n = tidyOptName(k), list = parseOptValues(vals); if(n && list.length) out[n] = list; });
+    return out;
+  }
+  let last = null;
+  String(v).split(/;|\n/).forEach(part=>{
+    const m = part.match(/^\s*([^:=]+?)\s*[:=]\s*(.+)$/);
+    if(m){ const n = tidyOptName(m[1]), list = parseOptValues(m[2]); if(n && list.length){ out[n] = list; last = n; } }
+    else if(last){ const more = parseOptValues(part); if(more.length) out[last] = [...new Set([...out[last], ...more])]; }   // "Weight: 1kg; 5kg"
+  });
+  return out;
+}
+function itemOptions(it){
+  const o = parseOptions(it && it.options);
+  if(!Object.keys(o).length && it && it.sizes){ const s = parseOptValues(it.sizes); if(s.length) o.Size = s; }
+  return o;
+}
+function hasOptions(it){ return Object.keys(itemOptions(it)).length > 0; }
+// "Colour: black, red." / "Sizes - 36/38/40" inside a description
+function optionsFromText(t){
+  const out = {}, text = String(t||'');
+  const re = /\b(sizes?|colou?rs?|weight|pack size|flavou?rs?|storage|shades?|volume|strength|age|format|language|material|edition|condition)\s*(?:available|options?)?\s*[:\-–]\s*([A-Za-z0-9 ,|\/.+'&]+?)(?=[.;\n]|$)/gi;
+  let m; while((m = re.exec(text))){ const n = canonOptName(m[1]) || tidyOptName(m[1]); const list = parseOptValues(m[2].replace(/\band\b/gi, ',')); if(n && list.length && !out[n]) out[n] = list; }
+  return out;
+}
+function optsLabel(opts){ return Object.entries(opts||{}).filter(([,v])=>v).map(([k,v])=>`${k} ${v}`).join(', '); }
+function cartKey(itemId, opts){
+  const e = Object.entries(opts||{}).filter(([,v])=>v).sort(([a],[b])=>a.localeCompare(b));
+  return e.length ? `${itemId}::${e.map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&')}` : itemId;
+}
+function parseCartKey(k){
+  k = String(k); const n = k.indexOf('::');
+  if(n<0) return { itemId:k, opts:{} };
+  const opts = {}; k.slice(n+2).split('&').forEach(pair=>{ const [a,b] = pair.split('='); if(a && b!==undefined) opts[decodeURIComponent(a)] = decodeURIComponent(b); });
+  return { itemId:k.slice(0,n), opts };
+}
+function cartLinesFromState(){
+  return Object.entries(state.cart||{}).map(([key,qty])=>{
+    const { itemId, opts: raw } = parseCartKey(key); const it = DB.items.find(i=>i.id===itemId); if(!it) return null;
+    const order = Object.keys(itemOptions(it)); const opts = {};   // in the item's own option order (Size, then Colour)
+    [...order, ...Object.keys(raw).filter(k=>!order.includes(k))].forEach(k=>{ if(raw[k]) opts[k] = raw[k]; });
+    return { it, qty, opts, key, size: opts.Size||'' };
+  }).filter(Boolean);
+}
+function cartQtyForItem(itemId){ return Object.entries(state.cart||{}).reduce((s,[k,q])=>s+(parseCartKey(k).itemId===itemId?q:0),0); }
+function pickedOptsFor(itemId){ return (state.pickedOpts||{})[itemId] || {}; }
+function missingOptions(item){ const chosen = pickedOptsFor(item.id); return Object.keys(itemOptions(item)).filter(n=>!chosen[n]); }
+function pickItemOption(itemId, name, value){ state.pickedOpts = state.pickedOpts || {}; state.pickedOpts[itemId] = { ...pickedOptsFor(itemId), [name]: value }; render(); }
+function optionPickerHTML(item){
+  const opts = itemOptions(item), names = Object.keys(opts); if(!names.length) return '';
+  const chosen = pickedOptsFor(item.id);
+  return names.map((n,gi)=>`<div class="size-pick" role="radiogroup" aria-label="${escapeAttr(n)}">
+    <div class="size-pick-head"><strong>${escapeAttr(n)}</strong>${chosen[n]?`<span class="muted">Selected: ${escapeAttr(chosen[n])}</span>`:`<span class="size-need">Choose ${escapeAttr(n.toLowerCase())}</span>`}</div>
+    <div class="size-chips">${opts[n].map((v,vi)=>`<button type="button" class="size-chip ${chosen[n]===v?'on':''}" role="radio" aria-checked="${chosen[n]===v}" onclick="pickItemOptionIdx('${item.id}', ${gi}, ${vi})">${escapeAttr(v)}</button>`).join('')}</div>
+  </div>`).join('');
+}
+function pickItemOptionIdx(itemId, gi, vi){ const it = DB.items.find(i=>i.id===itemId); if(!it) return; const o = itemOptions(it), n = Object.keys(o)[gi]; if(n) pickItemOption(itemId, n, o[n][vi]); }
+// Seller: options editor in Add / Edit item. Suggested names for the
+// category, any the item already has, and one free row for a new option.
+const OPTION_PRESETS = { 'Size':['XS','S','M','L','XL','XXL','3XL'], 'Colour':['Black','White','Grey','Red','Pink','Orange','Yellow','Green','Blue','Navy','Purple','Brown','Beige','Gold','Silver'],
+  'Weight':['250g','500g','1kg','2kg','5kg','10kg'], 'Pack size':['1','2','3','6','12','24'], 'Flavour':['Plain','Vanilla','Chocolate','Strawberry','Coconut','Mango'],
+  'Storage':['32GB','64GB','128GB','256GB','512GB','1TB'], 'Shade':['Fair','Light','Medium','Tan','Deep'], 'Volume':['30ml','50ml','100ml','250ml','500ml','1L'],
+  'Strength':['250mg','500mg','1000mg'], 'Age':['0+','3+','6+','9+','12+'], 'Format':['Paperback','Hardcover','eBook'], 'Language':['English','Dhivehi','Arabic'],
+  'Material':['Steel','Wood','Plastic','Aluminium','Glass'], 'Edition':['Standard','Limited','Signed'], 'Condition':['New','Like new','Used'] };
+// Seller taps ready-made values on / off (and can add their own); the
+// chosen values live in a hidden input per option, read by readOptionsEditor().
+function optChipsHTML(name, chosen){
+  const preset = OPTION_PRESETS[name] || [];
+  const all = [...preset, ...chosen.filter(v=>!preset.includes(v))];
+  return all.map(v=>`<button type="button" class="opt-chip ${chosen.includes(v)?'on':''}" aria-pressed="${chosen.includes(v)}" data-v="${escapeAttr(v)}" onclick="toggleOptChip(this)">${escapeAttr(v)}</button>`).join('');
+}
+function toggleOptChip(btn){
+  const row = btn.closest('.opt-row'); const hid = row.querySelector('input[data-opt-name]');
+  const list = parseOptValues(hid.value); const v = btn.getAttribute('data-v');
+  const k = list.indexOf(v); if(k>=0) list.splice(k,1); else list.push(v);
+  hid.value = list.join(', '); btn.classList.toggle('on', k<0); btn.setAttribute('aria-pressed', String(k<0));
+}
+function addOptValues(btn){
+  const row = btn.closest('.opt-row'); const hid = row.querySelector('input[data-opt-name]'); const inp = row.querySelector('input[data-opt-add]');
+  const more = parseOptValues(inp.value); if(!more.length) return;
+  const list = [...new Set([...parseOptValues(hid.value), ...more])];
+  hid.value = list.join(', '); inp.value = '';
+  row.querySelector('.opt-chips').innerHTML = optChipsHTML(hid.getAttribute('data-opt-name'), list);
+}
+function optionsEditorHTML(prefix, cat, opts){
+  opts = opts || {};
+  const names = [...new Set([...(CATEGORY_OPTIONS[cat] || ['Option']), ...Object.keys(opts)])];
+  return `<div class="opt-editor" id="${prefix}_opts" data-cat="${escapeAttr(cat||'')}">
+    <div class="opt-head"><strong>Options (optional)</strong><span class="muted">Tap the choices this item comes in. Customers pick one of each before adding to cart.</span></div>
+    ${names.map(n=>`<div class="opt-row opt-row-chips"><label>${escapeAttr(n)}</label>
+      <input type="hidden" data-opt-name="${escapeAttr(n)}" value="${escapeAttr((opts[n]||[]).join(', '))}">
+      <div class="opt-chips">${optChipsHTML(n, opts[n]||[])}</div>
+      <div class="opt-add"><input data-opt-add placeholder="${escapeAttr(OPTION_PRESETS[n] ? 'Add another, e.g. '+(n==='Size'?'38':'Teal') : 'Add, e.g. '+(OPTION_HINTS[n]||'Small, Large'))}" aria-label="Add ${escapeAttr(n)} values" onkeydown="if(event.key==='Enter'){event.preventDefault(); addOptValues(this);}"><button type="button" class="btn btn-ghost btn-sm" onclick="addOptValues(this)">Add</button></div>
+    </div>`).join('')}
+    <div class="opt-row opt-custom"><input data-opt-custom-name placeholder="Another option, e.g. Scent" aria-label="Option name"><input data-opt-custom-vals placeholder="Values, e.g. Rose, Oud" aria-label="Option values"></div>
+  </div>`;
+}
+function readOptionsEditor(prefix){
+  const box = document.getElementById(prefix+'_opts'); const out = {};
+  if(!box) return out;
+  box.querySelectorAll('input[data-opt-name]').forEach(inp=>{
+    const row = inp.closest('.opt-row'); const pend = row && row.querySelector('input[data-opt-add]');
+    const list = [...new Set([...parseOptValues(inp.value), ...(pend ? parseOptValues(pend.value) : [])])];   // typed but not added yet counts too
+    if(list.length) out[inp.getAttribute('data-opt-name')] = list; });
+  const cn = box.querySelector('input[data-opt-custom-name]'), cv = box.querySelector('input[data-opt-custom-vals]');
+  if(cn && cv){ const n = tidyOptName(cn.value), list = parseOptValues(cv.value); if(n && list.length) out[n] = list; }
+  return out;
+}
+function refreshOptionsEditor(sel){
+  const prefix = sel.id.replace(/_cat$/,''); const box = document.getElementById(prefix+'_opts'); if(!box) return;
+  const current = readOptionsEditor(prefix);
+  box.outerHTML = optionsEditorHTML(prefix, sel.value, current);
+}
 function addToCart(itemId){
   if(sb && !state.authed){ state.pendingCartItemId = itemId; openSheet('signIn', {intent:'cart'}); return; }
   const item = DB.items.find(i=>i.id===itemId);
   if(!item) return;
-  state.cart[itemId] = (state.cart[itemId]||0)+1;
+  const missing = missingOptions(item);
+  if(missing.length){
+    // quick "+" on a card: open the item so the options can be chosen
+    if(state.screen!=='custItem' || state.viewItemId!==itemId){ openItemDetail(itemId); }
+    toast(`Choose ${missing.map(n=>n.toLowerCase()).join(' and ')} first`,'bad'); return;
+  }
+  const opts = hasOptions(item) ? pickedOptsFor(itemId) : {};
+  const max = item.stock!=null ? item.stock : Infinity;
+  if(cartQtyForItem(itemId) >= max){ toast('No more in stock','bad'); return; }
+  const key = cartKey(itemId, opts);
+  state.cart[key] = (state.cart[key]||0)+1;
   closeSheet();
-  toast('Added to cart');
+  toast(optsLabel(opts) ? `Added (${optsLabel(opts)}) to cart` : 'Added to cart');
   render();
 }
-function changeQty(itemId, d){
+function changeQty(key, d){
+  const { itemId } = parseCartKey(key);
   const item = DB.items.find(i=>i.id===itemId);
   const max = item && item.stock!=null ? item.stock : Infinity;
-  state.cart[itemId] = Math.min(max, Math.max(0,(state.cart[itemId]||0)+d));
-  if(state.cart[itemId]===0) delete state.cart[itemId];
+  const others = cartQtyForItem(itemId) - (state.cart[key]||0);   // stock is shared by all option combinations
+  state.cart[key] = Math.min(Math.max(0, max - others), Math.max(0,(state.cart[key]||0)+d));
+  if(state.cart[key]===0) delete state.cart[key];
   render();
 }
 
@@ -8777,7 +9256,7 @@ function toggleCartSelected(itemId){
   render();
 }
 function cartCheckoutLines(lines){
-  return lines.filter(l=>isCartItemSelected(l.it.id));
+  return lines.filter(l=>isCartItemSelected(l.key || l.it.id));
 }
 // The check circle next to a store's name in the cart (see renderCustCart()) marks
 // or unmarks every item from that store in one tap - already-all-selected flips
@@ -8785,26 +9264,27 @@ function cartCheckoutLines(lines){
 // convention as toggleCartSelected() so isCartItemSelected() reads it correctly.
 function toggleStoreSelected(bizId){
   const entries = Object.entries(state.cart);
-  const storeLines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it && x.it.businessId===bizId);
+  const storeLines = cartLinesFromState().filter(x=>x.it.businessId===bizId);
   if(!storeLines.length) return;
   if(!state.cartSelected) state.cartSelected = {};
-  const allSelected = storeLines.every(l=>isCartItemSelected(l.it.id));
-  for(const l of storeLines) state.cartSelected[l.it.id] = !allSelected;
+  const allSelected = storeLines.every(l=>isCartItemSelected(l.key));
+  for(const l of storeLines) state.cartSelected[l.key] = !allSelected;
   render();
 }
 function cartItemRowHTML(l){
-  const selected = isCartItemSelected(l.it.id);
-  const atMax = l.it.stock!=null && l.qty>=l.it.stock;
+  const selected = isCartItemSelected(l.key);
+  const atMax = l.it.stock!=null && cartQtyForItem(l.it.id)>=l.it.stock;
   return `
     <div class="glass item-card" onclick="openItemDetail('${l.it.id}')">
-      <button class="cart-check-circle" onclick="event.stopPropagation(); toggleCartSelected('${l.it.id}')" title="${selected?'Selected':'Not selected'}">${iconCheckCircle(selected)}</button>
+      <button class="cart-check-circle" onclick="event.stopPropagation(); toggleCartSelected('${escapeAttr(l.key)}')" title="${selected?'Selected':'Not selected'}">${iconCheckCircle(selected)}</button>
       <div class="item-thumb">${itemThumbHTML(l.it)}</div>
       <div class="item-info">
         <h3>${l.it.name}</h3>
+        ${Object.keys(l.opts||{}).length ? `<p class="cart-size">${Object.entries(l.opts).map(([k,v])=>`${escapeAttr(k)}: <strong>${escapeAttr(v)}</strong>`).join(' · ')}</p>` : ''}
         <p class="muted" style="font-size:.85em;">${money(effectivePrice(l.it))} each</p>
         ${itemDeliveryNoteHTML(l.it)}
       </div>
-      <div class="qty-ctrl"><button onclick="event.stopPropagation(); changeQty('${l.it.id}',-1)">−</button><strong>${l.qty}</strong><button ${atMax?'disabled style="opacity:.35;"':''} onclick="event.stopPropagation(); changeQty('${l.it.id}',1)">+</button></div>
+      <div class="qty-ctrl"><button onclick="event.stopPropagation(); changeQty('${escapeAttr(l.key)}',-1)">−</button><strong>${l.qty}</strong><button ${atMax?'disabled style="opacity:.35;"':''} onclick="event.stopPropagation(); changeQty('${escapeAttr(l.key)}',1)">+</button></div>
     </div>`;
 }
 // Items total, delivery fee (broken out on its own line), and the grand total
@@ -8832,7 +9312,7 @@ function renderCustCart(){
     return;
   }
   const entries = Object.entries(state.cart);
-  const lines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const lines = cartLinesFromState();
   // Grouped by store, most-recently-added-to store first (see
   // sortGroupsByRecency()) - with more than one store in the cart, only one
   // store's items show at a time (via horizontally-scrollable tabs) instead
@@ -8870,7 +9350,7 @@ function renderCustCart(){
       ${lines.length? `
         ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
         ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:2px 4px 6px;">
-          <button class="cart-check-circle" onclick="toggleStoreSelected('${activeGroup&&activeGroup.biz?activeGroup.biz.id:''}')" title="${activeLines.every(l=>isCartItemSelected(l.it.id))?'Unmark all from this store':'Mark all from this store'}">${iconCheckCircle(activeLines.every(l=>isCartItemSelected(l.it.id)))}</button>
+          <button class="cart-check-circle" onclick="toggleStoreSelected('${activeGroup&&activeGroup.biz?activeGroup.biz.id:''}')" title="${activeLines.every(l=>isCartItemSelected(l.key))?'Unmark all from this store':'Mark all from this store'}">${iconCheckCircle(activeLines.every(l=>isCartItemSelected(l.it.id)))}</button>
           <p class="muted" style="font-size:.78em; text-transform:uppercase; letter-spacing:.03em; margin:0;">${activeGroup&&activeGroup.biz?activeGroup.biz.name:'Store'}</p>
         </div>`:''}
         ${activeLines.map(cartItemRowHTML).join('')}
@@ -8900,7 +9380,7 @@ function cartExtraFee(lines){
 // moment its payment is settled: a transfer slip attached, or cash confirmed.
 function sheetCheckout(){
   const entries = Object.entries(state.cart);
-  const allLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const allLines = cartLinesFromState();
   const lines = cartCheckoutLines(allLines); // only the selected lines (see toggleCartSelected()), or the whole cart if everything's selected
   const groups = sortGroupsByRecency(groupCartLinesByBusiness(lines));
   if(!_selectedZone) _selectedZone = 'male';
@@ -8938,18 +9418,18 @@ function checkoutDestKey(){
   return _destIsland || '';
 }
 function setDestMode(m){
-  _destMode = m;
+  _destMode = m; setTimeout(applyAutoDeliveryTarget, 0);
   const a = document.getElementById('destTab_male'), b = document.getElementById('destTab_island');
   if(a) a.classList.toggle('active', m==='male'); if(b) b.classList.toggle('active', m==='island');
   const mb = document.getElementById('destMaleBox'), ib = document.getElementById('destIslandBox');
   if(mb) mb.classList.toggle('hidden', m!=='male'); if(ib) ib.classList.toggle('hidden', m!=='island');
   refreshCheckoutCards();
 }
-function setDestIsland(k){ _destIsland = k || ''; refreshCheckoutCards(); }
+function setDestIsland(k){ _destIsland = k || ''; refreshCheckoutCards(); applyAutoDeliveryTarget(); }
 function refreshCheckoutCards(){
   const box = document.getElementById('ckStores'); if(!box) return;
   const entries = Object.entries(state.cart);
-  const allLines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const allLines = cartLinesFromState();
   const groups = sortGroupsByRecency(groupCartLinesByBusiness(cartCheckoutLines(allLines)));
   box.innerHTML = groups.map(g=>storeCheckoutCardHTML(g)).join('');
 }
@@ -8982,7 +9462,7 @@ function storeCheckoutCardHTML(g){
       : route===undefined ? `<div class="card tight notice-info" style="margin-top:12px;"><p style="font-size:.88em;">Pick your atoll and island above.</p></div>`
       : !bizCanTakeOrders(biz) ? `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't added a way to get paid.</p></div>`
       : (()=>{ const pay = ckPayFor(biz); const amt = zoneRoute?` <span id="ck_swipe_${biz.id}">${money(total)}</span>`:' the total';
-        const both = biz.swipeConnected && bizHasBankAccount(biz);
+        const both = bizTakesSwipe(biz) && bizHasBankAccount(biz);
         return `
     ${both ? `<div class="stack" role="radiogroup" aria-label="How you'll pay ${escapeAttr(biz.name)}" style="margin-top:12px; gap:8px;">
       <button type="button" class="pay-option${pay==='swipe'?' selected':''}" role="radio" aria-checked="${pay==='swipe'}" onclick="setCkPay('${biz.id}','swipe')"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Pay in the Swipe app after the store confirms</small></div></button>
@@ -9017,7 +9497,11 @@ function deliveryTargetFieldsHTML(){
   const ownList = myAddresses('own');
   const otherList = myAddresses('other');
   const boatList = myAddresses('boat');
-  if(ownDefault && ownDefault.zone) _selectedZone = ownDefault.zone;
+  if(ownDefault && !_addrDefaultsApplied){
+    if(ownDefault.island && !isGreaterMale(ownDefault.island)){ _destMode = 'island'; _destIsland = ownDefault.island; }
+    else { _destMode = 'male'; if(ownDefault.zone) _selectedZone = ownDefault.zone; }
+  }
+  _addrDefaultsApplied = true;
   const selfName = ownDefault ? ownDefault.name : state.customerName;
   const selfPhone = ownDefault ? ownDefault.phone : (state.customerPhone||'');
   const selfAddress = ownDefault ? ownDefault.address : '';
@@ -9031,14 +9515,14 @@ function deliveryTargetFieldsHTML(){
   <div class="field">
     <label>Deliver to</label>
     <div class="tabs">
-      <button type="button" class="tab active" id="deliverTabPerson" style="flex:1; text-align:center;" onclick="setDeliveryTarget('person')">Deliver to a person</button>
-      <button type="button" class="tab" id="deliverTabBoat" style="flex:1; text-align:center;" onclick="setDeliveryTarget('boat')">Deliver to a boat</button>
+      <button type="button" class="tab ${_deliverTargetMode!=='boat'?'active':''}" id="deliverTabPerson" style="flex:1; text-align:center;" onclick="setDeliveryTarget('person', true)">Deliver to a person</button>
+      <button type="button" class="tab ${_deliverTargetMode==='boat'?'active':''}" id="deliverTabBoat" style="flex:1; text-align:center;" onclick="setDeliveryTarget('boat', true)">Deliver to a boat</button>
     </div>
   </div>
-  <input type="hidden" id="c_delivery_target" value="person">
+  <input type="hidden" id="c_delivery_target" value="${_deliverTargetMode==='boat'?'boat':'person'}">
   <input type="hidden" id="c_recv_mode" value="self">
   <input type="hidden" id="c_recv_self_name" value="${escapeAttr(selfName)}">
-  <div id="personFields">
+  <div id="personFields" class="${_deliverTargetMode==='boat'?'hidden':''}">
     <div id="recvOwnBlock">
       ${ownList.length>1 ? `
       <div class="field">
@@ -9047,6 +9531,9 @@ function deliveryTargetFieldsHTML(){
           ${ownList.map(a=>`<option value="${a.id}" ${a.isDefault?'selected':''}>${escapeAttr(a.name)} — ${escapeAttr(a.address)}</option>`).join('')}
         </select>
       </div>` : ''}
+      ${sb && state.authed ? (ownDefault
+        ? `<p class="addr-note">📍 Your default address is filled in. Change anything for this order; we'll save it as your new default.</p>`
+        : `<p class="addr-note new">📍 Add your delivery address below. We'll save it as your default, so next time it's filled in for you.</p>`) : ''}
       <div class="field"><label>Name</label><input id="c_recv_name" value="${escapeAttr(selfName)}" onfocus="this.select()" oninput="handleRecvNameEdit()"></div>
       <div class="field"><label>Phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(selfPhone)}"></div>
       <div class="field"><label>Address</label><input id="c_recv_address" placeholder="House, street, island" value="${escapeAttr(selfAddress)}"></div>
@@ -9066,7 +9553,8 @@ function deliveryTargetFieldsHTML(){
       <button type="button" class="link-btn" onclick="switchDeliverToSelf()">Deliver to me instead</button>
     </div>
   </div>
-  <div id="boatFields" class="hidden">
+  <div id="boatFields" class="${_deliverTargetMode==='boat'?'':'hidden'}">
+    <p id="boatAutoNote" class="addr-note ${_boatAuto && _deliverTargetMode==='boat'?'':'hidden'}">⛴️ Orders to other islands go by boat, so we switched to <strong>Deliver to a boat</strong>. Enter the boat that will carry it.</p>
     ${boatList.length>1 ? `
     <div class="field">
       <label>Saved boats</label>
@@ -9116,7 +9604,33 @@ function readDeliveryTargetFields(){
 // Switches which set of receiver fields is shown/required - a direct DOM toggle
 // (mirrors setAddItemListingType() in Add Item) rather than a full render(), so any
 // receiver details already typed for the other option aren't wiped by switching back.
-function setDeliveryTarget(type){
+// Island orders that travel by boat (a Greater Malé store sending to an
+// island, or "Another island" picked) switch to "Deliver to a boat" by
+// themselves; going back to Greater Malé switches back if it was automatic.
+let _deliverTargetMode = 'person', _boatAuto = false, _targetByUser = false;
+function checkoutLineGroups(){
+  const entries = Object.entries(state.cart||{});
+  const allLines = cartLinesFromState();
+  return groupCartLinesByBusiness(cartCheckoutLines(allLines));
+}
+function checkoutNeedsBoat(){
+  if(_destMode!=='island') return false;
+  if(!_destIsland) return true;
+  const routes = checkoutLineGroups().map(g=>routeFor(bizIsland(g.biz), _destIsland)).filter(Boolean);
+  if(!routes.length) return true;
+  return routes.some(r=>r==='boat_to_island');
+}
+function applyAutoDeliveryTarget(){
+  if(!document.getElementById('ckStores') || !document.getElementById('c_delivery_target')) return;
+  if(_targetByUser) return;   // the customer picked person / boat themselves
+  const want = checkoutNeedsBoat();
+  if(want && _deliverTargetMode!=='boat'){ setDeliveryTarget('boat'); _boatAuto = true; }
+  else if(!want && _deliverTargetMode==='boat' && _boatAuto){ setDeliveryTarget('person'); _boatAuto = false; }
+  const note = document.getElementById('boatAutoNote'); if(note) note.classList.toggle('hidden', !(_boatAuto && _deliverTargetMode==='boat'));
+}
+function setDeliveryTarget(type, byUser){
+  _deliverTargetMode = type; if(byUser){ _boatAuto = false; _targetByUser = true; }
+  const note = document.getElementById('boatAutoNote'); if(note && byUser) note.classList.add('hidden');
   document.getElementById('c_delivery_target').value = type;
   document.getElementById('deliverTabPerson').classList.toggle('active', type==='person');
   document.getElementById('deliverTabBoat').classList.toggle('active', type==='boat');
@@ -9159,6 +9673,10 @@ function handleRecvNameEdit(){
 function pickSavedAddress(category, id){
   const a = DB.addresses.find(x=>x.id===id);
   if(!a) return;
+  if(category!=='boat' && (a.island || a.zone)){
+    if(a.island && !isGreaterMale(a.island)){ _destIsland = a.island; setDestMode('island'); const at = atollOfIsland(a.island); const as=document.getElementById('dest_atoll'); if(as && at){ as.value = at.code; islandAtollChanged('dest', null); const is=document.getElementById('dest_island'); if(is) is.value = a.island; } refreshCheckoutCards(); }
+    else { if(a.zone && typeof pickZone==='function'){ try{ pickZone('c_zone', a.zone, 'refreshCheckoutTotals'); }catch(e){ _selectedZone = a.zone; } } setDestMode('male'); }
+  }
   if(category==='own'){
     document.getElementById('c_recv_name').value = a.name;
     document.getElementById('c_recv_phone').value = a.phone;
@@ -9189,7 +9707,7 @@ async function rememberDeliveryAddress(deliveryTarget){
   const cat = deliveryTarget.addressCategory;
   const fields = cat==='boat'
     ? { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: null, zone: null, harbour: deliveryTarget.receiverAddress }
-    : { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: deliveryTarget.receiverAddress, zone: _selectedZone, harbour: null };
+    : { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: deliveryTarget.receiverAddress, zone: _destMode==='male' ? _selectedZone : null, island: _destMode==='male' ? (_selectedZone==='male'?'Malé':'Hulhumalé') : (_destIsland||null), harbour: null };
   await saveAddressFromCheckout(cat, fields);
 }
 async function saveAddressFromCheckout(category, fields){
@@ -9198,6 +9716,11 @@ async function saveAddressFromCheckout(category, fields){
     a.name===fields.name && a.phone===fields.phone &&
     (category==='boat' ? a.harbour===fields.harbour : a.address===fields.address));
   if(existing){
+    // Same place: keep its island / zone up to date, and make it the default.
+    if(category!=='boat' && (existing.island!==(fields.island||'') || existing.zone!==fields.zone)){
+      const { error } = await sb.from('customer_addresses').update({ island: fields.island||null, zone: fields.zone||null }).eq('id', existing.id);
+      if(!error){ existing.island = fields.island||''; existing.zone = fields.zone||null; }
+    }
     if(!existing.isDefault) await setAddressDefault(existing.id, category);
     return;
   }
@@ -9217,7 +9740,7 @@ async function saveAddressFromCheckout(category, fields){
 function refreshCheckoutTotals(){
   if(document.getElementById('ckStores')){ refreshCheckoutCards(); return; }
   const entries = Object.entries(state.cart);
-  const allLines = entries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const allLines = cartLinesFromState();
   const lines = cartCheckoutLines(allLines);
   const groups = groupCartLinesByBusiness(lines);
   for(const g of groups){
@@ -9235,6 +9758,7 @@ function refreshCheckoutTotals(){
 function goCheckout(){
   if(sb && !state.authed){ state.pendingItemAction = {type:'checkout'}; openSheet('signIn', {intent:'checkout'}); return; }
   openSheet('checkout');
+  applyAutoDeliveryTarget();   // e.g. default address on another island
 }
 // Renting is a single-item flow (pick a duration, then pickup/deliver + payment),
 // not a cart-quantity flow like Buy Now - modeled on sheetCheckout/placeOrder, but
@@ -9435,8 +9959,8 @@ async function submitRentItem(itemId){
     deliveryPartnerPayout: 0, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
     needsDeliveryPartner: false, rentalPayoutTiming: null,
-    paymentMethod: _selectedPay==='swipe' && biz.swipeConnected ? 'swipe' : _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
-    paymentStatus: _selectedPay==='swipe' && biz.swipeConnected ? 'awaiting_swipe' : _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
+    paymentMethod: _selectedPay==='swipe' && bizTakesSwipe(biz) ? 'swipe' : _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
+    paymentStatus: _selectedPay==='swipe' && bizTakesSwipe(biz) ? 'awaiting_swipe' : _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null,
     rentalDays: _rentDays, rentalItemId: item.id, rentalFulfillment: fulfillment,
     // See mark_rental_fulfilled/mark_delivered's payment_status='paid' gate -
@@ -9730,7 +10254,13 @@ async function sendPasswordReset(){
   if(!fbAuth){ toast("Can't reach the sign-in service. Check your connection",'bad'); return; }
   const id = val('auth_identifier');
   let email = id && id.includes('@') ? id : null;
-  if(id && !email && sb){ const { data } = await sb.rpc('resolve_login_email', { p_phone: id }); email = data || null; }
+  if(id && !email && sb){
+    // Reset by mobile number: the server sends the email; it never tells the
+    // browser which address belongs to the number.
+    const { data, error } = await sb.functions.invoke('phone-login', { body: { action:'reset', phone: id } });
+    if(error){ let m='Could not send the reset email'; try{ const b = await error.context.json(); if(b && b.error) m = b.error; }catch(_){} toast(m,'bad'); return; }
+    toast((data && data.message) || 'If that number has an account, we sent a reset email'); return;
+  }
   if(!email){ toast('Enter your email (or mobile number) above first','bad'); return; }
   try{ await fbSendPasswordReset(email); toast(`Password reset email sent to ${email}`); }
   catch(e){ toast(fbErrorText(e),'bad'); }
@@ -9747,9 +10277,11 @@ async function signInWithIdentifierPassword(){
   if(identifier.includes('@')){
     email = identifier;
   } else {
-    const { data: resolvedEmail, error: lookupErr } = await sb.rpc('resolve_login_email', { p_phone: identifier });
-    if(lookupErr || !resolvedEmail){ toast('No account found for that mobile number','bad'); return; }
-    email = resolvedEmail;
+    // The server checks the password before it says which email the number
+    // belongs to (see supabase/functions/phone-login).
+    const { data, error } = await sb.functions.invoke('phone-login', { body: { action:'signin', phone: identifier, password: pass } });
+    if(error || !data || !data.email){ let m = 'Incorrect mobile/email or password. New here? Sign up below'; try{ const b = error && await error.context.json(); if(b && b.error) m = b.error; }catch(_){} toast(m,'bad'); return; }
+    email = data.email;
   }
   let cred;
   try{ cred = await fbAuth.signInWithEmailAndPassword(email, pass); }
@@ -10076,9 +10608,9 @@ async function placeStoreOrder(bizId){
   const biz = DB.businesses.find(b=>b.id===bizId);
   if(!biz) return;
   const entries = Object.entries(state.cart);
-  const allCartLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const allCartLines = cartLinesFromState();
   const cartLines = cartCheckoutLines(allCartLines).filter(l=>l.it.businessId===bizId);
-  const lines = cartLines.map(l=>({itemId:l.it.id, name:l.it.name, price:effectivePrice(l.it), qty:l.qty}));
+  const lines = cartLines.map(l=>({itemId:l.it.id, name: optsLabel(l.opts) ? `${l.it.name} (${optsLabel(l.opts)})` : l.it.name, options: Object.keys(l.opts||{}).length ? l.opts : undefined, price:effectivePrice(l.it), qty:l.qty}));
   const itemsTotal = lines.reduce((s,l)=>s+l.price*l.qty,0);
   const name = val('c_name')||state.customerName; const phone = val('c_phone');
   if(!lines.length){ toast('No items to place for this store','bad'); return; }
@@ -10144,12 +10676,12 @@ async function placeStoreOrder(bizId){
   DB.orders.push(order);
   // Clear only this store's lines, not the whole cart - any other store, or
   // anything left deselected (see toggleCartSelected()), stays in the cart.
-  for(const l of cartLines){ delete state.cart[l.it.id]; if(state.cartSelected) delete state.cartSelected[l.it.id]; }
+  for(const l of cartLines){ delete state.cart[l.key]; if(state.cartSelected) delete state.cartSelected[l.key]; }
   const card = document.getElementById('storeCard_'+bizId);
   if(card) card.remove();
   toast(payMethod==='swipe' ? `Order sent to ${biz.name}. You'll pay with Swipe once they confirm it` : `Order sent to ${biz.name}. Once they confirm it, transfer the total and upload the slip`);
   const remainingEntries = Object.entries(state.cart);
-  const remainingLines = remainingEntries.map(([id,qty])=>{ const it=DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  const remainingLines = cartLinesFromState();
   if(!cartCheckoutLines(remainingLines).length){ closeSheet(); go('custOrders'); }
 }
 
@@ -10506,9 +11038,19 @@ async function submitSlip(id){
   if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
   if(o && Math.abs(enteredAmount - o.total) > 0.01){ toast(`That amount doesn't match this order's total (${money(o.total)})`, 'bad'); return; }
   if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
-  const updated = await callOrderRpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData }, id);
+  if(sb){
+    const { data, error } = await sb.rpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData, p_amount: enteredAmount, p_account: enteredAccount });
+    if(error){
+      const m = error.message||'';
+      toast(/slip_amount_mismatch/.test(m) ? `That amount doesn't match this order's total (${money(o.total)})` : /slip_account_mismatch/.test(m) ? "That account number doesn't match the store's account" : 'Could not submit the slip: '+m, 'bad');
+      return;
+    }
+    if(!data || !data.length){ toast("This order isn't waiting for a transfer yet. The store has to approve it first",'bad'); return; }
+    const upd = fromDbRow('orders', data[0]); await decryptOrderRow(upd, data[0]);
+    const k = DB.orders.findIndex(x=>x.id===id); if(k>=0) DB.orders[k] = upd;
+  }
+  if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again",'bad'); return; }
   _slipData = null;
-  if(!updated) return;
   closeSheet(); toast('Slip submitted — waiting for store approval'); render();
 }
 // Same shape as sheetUploadSlip()/submitSlip() above, for a rental booking's

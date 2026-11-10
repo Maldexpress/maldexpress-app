@@ -1,10 +1,10 @@
--- Bank slips leave the database 3 hours after the store confirms them, and a
+-- Bank slips leave the database once the store confirms the payment, and a
 -- Live support desk (tickets) where a store can ask for an old slip.
 --
 -- 1. When a store confirms a slip (order -> paid / settled, rental booking
 --    charge -> collected), slip_confirmed_at is stamped.
 -- 2. Every 15 minutes pg_cron calls the purge-slips edge function, which moves
---    each slip confirmed more than 3 hours ago into the private `slip-archive`
+--    each confirmed slip into the private `slip-archive`
 --    bucket (exactly as stored: still encrypted for the customer and the store
 --    when it was encrypted) and clears it from the row.
 -- 3. Support tickets: anyone signed in opens a ticket from the menu; the super
@@ -62,7 +62,7 @@ drop trigger if exists bookings_slip_confirmed on public.rental_bookings;
 create trigger bookings_slip_confirmed before insert or update on public.rental_bookings
   for each row execute function public.bookings_slip_confirmed();
 
--- Slips that were already confirmed before this change start their 3 hours now.
+-- Slips that were already confirmed before this change are removed at the first run.
 update public.orders set slip_confirmed_at = now()
  where slip_confirmed_at is null and payment_status in ('paid','settled') and (slip_url is not null or slip_enc is not null);
 update public.rental_bookings set slip_confirmed_at = now()

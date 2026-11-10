@@ -5031,10 +5031,10 @@ async function submitDelSignup(){
 /* =================== LIVE SUPPORT =================== */
 // Tickets (support_tickets / support_messages). Anyone signed in opens one
 // from the menu; the super admin answers in Admin -> Live support. Bank slips
-// leave the database 3 hours after the store confirms them (purge-slips); a
-// store that needs one asks here and support sends it back into the ticket
-// (support-send-slip), where only the store's own app can open it.
-const SLIP_HOLD_HOURS = 3;
+// leave the app as soon as the payment is confirmed (purge-slips clears them
+// from the database within 15 minutes); a store that needs one asks here and
+// support sends it back into the ticket (support-send-slip), where only the
+// store's own app can open it.
 const SUPPORT_TOPICS = { slip:'Bank slip request', order:'Order problem', payment:'Payment', delivery:'Delivery', account:'My account', other:'Something else' };
 let _support = { tickets:[], msgs:{}, loaded:false, loading:false };
 let _supportPoll = null;
@@ -5202,21 +5202,6 @@ async function supportSendSlip(id){
   await loadTicketMsgs(id); await loadSupport(); redrawTicketThread(id); toast('Slip sent to the ticket');
 }
 function isAdminView(){ return !!(typeof isAdminMode === 'function' ? isAdminMode() : state.adminMode); }
-// Shown to the store once a slip is confirmed: kept for 3 hours, then removed.
-function slipKeptNoteHTML(rec, kind){
-  if(!rec) return '';
-  const ref = kind==='booking' ? { topic:'slip', bookingId:rec.id } : { topic:'slip', orderId:rec.id };
-  if(rec.slipArchivedAt || (rec.slipConfirmedAt && !rec.slipDataUrl && Date.now() - rec.slipConfirmedAt > SLIP_HOLD_HOURS*3600000)){
-    return `<div class="card tight slip-gone"><p style="font-size:.84em;">The bank slip was removed ${SLIP_HOLD_HOURS} hours after you confirmed it. Need a copy?</p>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick='openNewTicket(${JSON.stringify(ref)})'>🎧 Ask Live support for the slip</button></div>`;
-  }
-  if(rec.slipConfirmedAt && rec.slipDataUrl){
-    const until = new Date(rec.slipConfirmedAt + SLIP_HOLD_HOURS*3600000);
-    return `<div class="card tight"><img src="${rec.slipDataUrl}" alt="Bank transfer slip" style="width:100%; border-radius:12px; max-height:200px; object-fit:contain; background:#fff;">
-      <p class="muted" style="font-size:.78em; margin-top:6px;">Kept until ${until.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}, then removed. Save it now if you need it, or ask Live support later.</p></div>`;
-  }
-  return '';
-}
 
 /* =================== BUSINESS SIDE =================== */
 function currentBiz(){ return DB.businesses.find(b=>b.id===state.activeBizId); }
@@ -6479,7 +6464,7 @@ function bookingCardBiz(bk){
         ${bk.slipDataUrl ? `<img src="${bk.slipDataUrl}" style="width:100%; border-radius:12px; max-height:220px; object-fit:contain; background:#fff; border:1px solid var(--glass-brd);">` : `<p class="muted" style="font-size:.8em;">(slip image not available)</p>`}
       </div>
       <button class="btn btn-good btn-sm" style="width:100%; margin-top:10px;" onclick="markBookingChargeCollected('${bk.id}')">Mark charge collected</button>` : ''}
-    ${bk.chargeStatus==='collected' ? `<div class="status-pill ok" style="display:inline-block;">Charge collected</div>${slipKeptNoteHTML(bk, 'booking')}` : ''}
+    ${bk.chargeStatus==='collected' ? `<div class="status-pill ok" style="display:inline-block;">Charge collected</div>` : ''}
   </div>`;
 }
 function sheetAcceptBooking(){
@@ -6672,7 +6657,7 @@ function orderDetailBizBody(o){
         </div>
         <button class="btn btn-good" style="margin-top:12px;" onclick="approveOrderPayment('${o.id}')">Mark payment received ✓</button>`;
     } else {
-      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>${slipKeptNoteHTML(o, 'order')}${isBuyNowOrder(o) && (o.paymentStatus==='paid'||o.paymentStatus==='settled') ? transferFeeRowsHTML(o) : ''}`;
+      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>${isBuyNowOrder(o) && (o.paymentStatus==='paid'||o.paymentStatus==='settled') ? transferFeeRowsHTML(o) : ''}`;
     }
   } else if(o.paymentMethod==='cash_on_pickup'){
     // A rental paid in cash goes straight to the renter (you) - no rider ever

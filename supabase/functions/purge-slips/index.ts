@@ -1,13 +1,13 @@
-// Moves bank slips out of the database 3 hours after the store confirmed them.
+// Moves bank slips out of the database once the store has confirmed the payment.
 // Run by pg_cron every 15 minutes (migration 2026-11-12_slip_expiry_support.sql).
 // Each slip is saved, exactly as stored (still encrypted for the customer and
 // the store if it was), to the private `slip-archive` bucket as
 // <table>/<id>.json, then cleared from the row. Safe to call any time: it only
-// touches slips whose 3 hours are up, so there's nothing to protect it with.
+// touches slips that are already confirmed, so there's nothing to protect it with.
 // Deploy with --no-verify-jwt.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const HOLD_HOURS = 3;
+const HOLD_HOURS = 0;   // remove at the first run after confirmation (every 15 minutes)
 const BATCH = 50;
 
 Deno.serve(async () => {

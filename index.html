@@ -8461,12 +8461,10 @@ function setHomeCategory(cat){ state.homeCategory = cat; render(); }
 function pickCategoryFromSheet(c){ state.sheet = null; state.sheetData = null; state.deskCatsOpen = false; state.homeCategory = c; if(state.screen!=='custHome') state.screen = 'custHome'; render(); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
 function categoryGridHTML(){
   const cats = ['All', ...MARKETPLACE_CATEGORIES];
-  const counts = {}; DB.items.filter(isApprovedItem).forEach(i=>{ const c=i.category||'General'; counts[c]=(counts[c]||0)+1; });
   return `<div class="cat-grid">${cats.map(c=>`
     <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="pickCategoryFromSheet('${escapeAttr(c)}')">
       <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
       <span class="cat-label">${c}</span>
-      ${c!=='All' && counts[c] ? `<span class="cat-count">${counts[c]}</span>` : ''}
     </button>`).join('')}</div>`;
 }
 function sheetCategories(){ return `<h2>Categories</h2>${categoryGridHTML()}`; }

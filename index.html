@@ -936,6 +936,14 @@
   .desk-cats-menu .dcm-wrap{max-width:1200px; margin:0 auto; padding:0 24px;}
   .desk-cats-menu .cat-grid{grid-template-columns:repeat(9, minmax(0,1fr)); gap:20px 12px;}
   .site-cats{position:relative;}
+  /* Addresses */
+  .addr-note{font-size:.84em; padding:10px 12px; border-radius:12px; background:var(--lagoon-50); color:var(--ink); margin:0 0 12px;}
+  .addr-note.new{background:#FFF6E3; border:1px solid #F5D9A0;}
+  .addr-prompt{display:flex; align-items:center; gap:12px; padding:14px 16px; margin:-6px 0 18px; border-radius:18px; background:#FFF6E3; border:1px solid #F5D9A0; flex-wrap:wrap;}
+  .addr-prompt p{font-size:.84em; margin-top:2px;}
+  .ap-ic{font-size:1.5em;}
+  .ap-x{background:none; border:none; color:var(--ink-dim); font-size:1em; padding:6px;}
+  @media (min-width:1024px){ .addr-prompt{margin:0 0 32px;} }
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -2760,7 +2768,7 @@ function toDbRow(part, o){
   if(part==='bookings') return { id:o.id, item_id:o.itemId, item_name:o.itemName, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone||'', requested_date:o.requestedDate, days:o.days||1, note:o.note||null, status:o.status||'pending', booking_charge:o.bookingCharge!=null?o.bookingCharge:null, charge_status:o.chargeStatus||null, created_at:new Date(o.createdAt).toISOString(), decided_at:o.decidedAt?new Date(o.decidedAt).toISOString():null };
   if(part==='bids') return { id:o.id, auction_id:o.auctionId, bidder_id:o.bidderId, bid_amount:o.bidAmount, created_at:new Date(o.createdAt).toISOString() };
   if(part==='categoryRequests') return { id:o.id, business_id:o.businessId, business_name:o.businessName, category_name:o.categoryName, status:o.status, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
-  if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
+  if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, island:o.island||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
@@ -2776,7 +2784,7 @@ function fromDbRow(part, r){
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
   if(part==='bids') return { id:r.id, auctionId:r.auction_id, bidderId:r.bidder_id, bidAmount:Number(r.bid_amount), createdAt:new Date(r.created_at).getTime() };
   if(part==='categoryRequests') return { id:r.id, businessId:r.business_id, businessName:r.business_name, categoryName:r.category_name, status:r.status, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
-  if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
+  if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, island:r.island||'', harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
 }
 
 async function loadDB(){
@@ -4502,6 +4510,7 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('custFavourites')"><span class="ic">❤️</span> Favourites</button>
       <button class="drawer-item" onclick="go('custCart')"><span class="ic">🛒</span> Cart</button>
       <button class="drawer-item" onclick="go('custOrders')"><span class="ic">🧾</span> My orders</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openMyAddresses()"><span class="ic">📍</span> My addresses</button>
       <button class="drawer-item" onclick="go('custStores')"><span class="ic">🏪</span> Browse stores</button>
       <div class="divider"></div>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
@@ -4643,7 +4652,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet) _addrDefaultsApplied = false; state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -6909,10 +6918,21 @@ function saveCustSettings(){
 function myAddresses(category){ return DB.addresses.filter(a=>a.customerId===state.customerId && a.category===category).sort((a,b)=>(b.isDefault?1:0)-(a.isDefault?1:0) || b.createdAt-a.createdAt); }
 function defaultAddress(category){ return DB.addresses.find(a=>a.customerId===state.customerId && a.category===category && a.isDefault) || null; }
 function openAddressBook(){ openSheet('addressBook'); }
+let _addrDefaultsApplied = false;
+function addressPromptHTML(){
+  if(!sb || !state.authed || state.addrPromptHidden || myAddresses('own').length) return '';
+  return `<div class="addr-prompt"><span class="ap-ic" aria-hidden="true">📍</span><div style="flex:1; min-width:0;"><strong>Add your delivery address</strong><p class="muted">Save it once and it's filled in at checkout. You can change it any time.</p></div><button class="btn btn-primary btn-sm" onclick="openAddAddress('own')">Add address</button><button class="ap-x" aria-label="Not now" onclick="state.addrPromptHidden=true; render();">✕</button></div>`;
+}
+function openMyAddresses(){
+  if(sb && !state.authed){ openSheet('signIn'); toast('Sign in to save your addresses'); return; }
+  if(!myAddresses('own').length){ openAddAddress('own'); return; }
+  openSheet('addressBook');
+}
+function addrIslandLabel(a){ if(a.island) return isGreaterMale(a.island) && a.zone ? (ZONES[a.zone]?ZONES[a.zone].label:a.island) : a.island; return a.zone && ZONES[a.zone] ? ZONES[a.zone].label : ''; }
 function addressCardHTML(a){
   const isBoat = a.category==='boat';
   const line1 = isBoat ? a.name : a.name;
-  const line2 = isBoat ? [a.phone, a.harbour].filter(Boolean).join(' · ') : [a.phone, a.address, a.zone?ZONES[a.zone].label:null].filter(Boolean).join(' · ');
+  const line2 = isBoat ? [a.phone, a.harbour].filter(Boolean).join(' · ') : [a.phone, a.address, addrIslandLabel(a)||null].filter(Boolean).join(' · ');
   return `
   <div class="glass card tight" style="margin-bottom:10px;">
     <div class="row between" style="align-items:flex-start;">
@@ -6922,7 +6942,10 @@ function addressCardHTML(a){
       </div>
       <button class="iconbtn" style="width:32px; height:32px; font-size:.9em; flex-shrink:0;" onclick="deleteAddressEntry('${a.id}','${a.category}')" title="Remove" aria-label="Remove address">🗑️</button>
     </div>
-    ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
+    <div class="row" style="gap:8px; margin-top:8px;">
+      <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="openEditAddress('${a.id}')">Edit</button>
+      ${!a.isDefault?`<button class="btn btn-outline btn-sm" style="flex:1;" onclick="setAddressDefault('${a.id}','${a.category}')">Set as default</button>`:''}
+    </div>
   </div>`;
 }
 function addressSectionHTML(category, title){
@@ -6935,50 +6958,76 @@ function addressSectionHTML(category, title){
 }
 function sheetAddressBook(){
   return `
-  <h2 style="margin-bottom:14px;">Delivery addresses</h2>
+  <h2 style="margin-bottom:6px;">My addresses</h2>
+  <p class="muted" style="font-size:.86em; margin-bottom:14px;">Your default address is filled in at checkout. You can still change it while ordering.</p>
   ${addressSectionHTML('own', 'Your addresses')}
   ${addressSectionHTML('other', "Other receivers' addresses")}
   ${addressSectionHTML('boat', 'Boats')}
   `;
 }
-let _addAddressCategory = 'own';
-function openAddAddress(category){ _addAddressCategory = category; openSheet('addAddress'); }
+let _addAddressCategory = 'own', _editAddressId = null;
+function openAddAddress(category){ _addAddressCategory = category; _editAddressId = null; openSheet('addAddress'); }
+function openEditAddress(id){ const a = DB.addresses.find(x=>x.id===id); if(!a) return; _addAddressCategory = a.category; _editAddressId = id; openSheet('addAddress'); }
+function onAddrIslandChange(k){ const box = document.getElementById('aa_zone_box'); if(box) box.classList.toggle('hidden', !(k && isGreaterMale(k) && k!=='Villimalé')); const sel=document.getElementById('aa_zone'); if(sel && k==='Malé') sel.value='male'; }
 function sheetAddAddress(){
   const cat = _addAddressCategory;
   const isBoat = cat==='boat';
-  const title = cat==='own' ? 'Add your address' : cat==='other' ? "Add a receiver's address" : 'Add a boat';
+  const a = _editAddressId ? DB.addresses.find(x=>x.id===_editAddressId) : null;
+  const first = !a && cat==='own' && !myAddresses('own').length;
+  const title = a ? 'Edit address' : first ? 'Add your delivery address' : cat==='own' ? 'Add an address' : cat==='other' ? "Add a receiver's address" : 'Add a boat';
+  const isl = a ? (a.island || (a.zone==='male'?'Malé':a.zone?'Hulhumalé':'')) : 'Malé';
+  const showZone = isl && isGreaterMale(isl) && isl!=='Villimalé';
   return `
-  <h2 style="margin-bottom:14px;">${title}</h2>
-  <div class="field"><label>${isBoat?'Boat / vessel name':'Name'}</label><input id="aa_name" placeholder="${isBoat?'e.g. Dhoni Safari 2':'Full name'}"></div>
-  <div class="field"><label>Phone</label><input id="aa_phone" placeholder="7XXXXXX"></div>
+  <h2 style="margin-bottom:6px;">${title}</h2>
+  ${first ? `<p class="muted" style="font-size:.86em; margin-bottom:14px;">This becomes your default address. It's filled in for you at checkout, and you can change it any time.</p>` : '<div style="height:8px;"></div>'}
+  <div class="field"><label for="aa_name">${isBoat?'Boat / vessel name':'Name'}</label><input id="aa_name" placeholder="${isBoat?'e.g. Dhoni Safari 2':'Full name'}" value="${escapeAttr(a ? a.name : (cat==='own' ? (state.customerName||'') : ''))}"></div>
+  <div class="field"><label for="aa_phone">Phone</label><input id="aa_phone" inputmode="tel" placeholder="7XXXXXX" value="${escapeAttr(a ? a.phone : (cat==='own' ? (state.customerPhone||'') : ''))}"></div>
   ${isBoat ? `
-  <div class="field"><label>Harbour / mooring location</label><input id="aa_harbour" placeholder="Where does the boat depart from?"></div>
+  <div class="field"><label for="aa_harbour">Harbour / mooring location</label><input id="aa_harbour" placeholder="Where does the boat depart from?" value="${escapeAttr(a?a.harbour:'')}"></div>
   ` : `
-  <div class="field"><label>Address</label><input id="aa_address" placeholder="House, street, island"></div>
-  <div class="field"><label>Zone</label>
+  <div class="field"><label>Island</label>${islandPickerHTML('aa_isl', isl, 'onAddrIslandChange')}</div>
+  <div class="field ${showZone?'':'hidden'}" id="aa_zone_box"><label for="aa_zone">Area</label>
     <select id="aa_zone">
-      <option value="male">Malé (MVR 15)</option>
-      <option value="hulhumale1">Hulhumalé Phase 1 (MVR 20)</option>
-      <option value="hulhumale2">Hulhumalé Phase 2 (MVR 25)</option>
+      <option value="male" ${a&&a.zone==='male'?'selected':''}>Malé</option>
+      <option value="hulhumale1" ${a&&a.zone==='hulhumale1'?'selected':''}>Hulhumalé Phase 1</option>
+      <option value="hulhumale2" ${a&&a.zone==='hulhumale2'?'selected':''}>Hulhumalé Phase 2</option>
     </select>
-  </div>`}
-  <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">Save address</button>`;
+  </div>
+  <div class="field"><label for="aa_address">House / street</label><input id="aa_address" placeholder="e.g. H. Blue Lagoon, Majeedhee Magu" value="${escapeAttr(a?a.address:'')}"></div>`}
+  ${a && !a.isDefault ? chkRowHTML('aa_default', false, 'Make this my default') : ''}
+  <button class="btn btn-primary" style="margin-top:10px;" onclick="submitAddAddress()">${a?'Save changes':'Save address'}</button>
+  ${a ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="openSheet('addressBook')">Cancel</button>` : !first ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="openSheet('addressBook')">Back to my addresses</button>` : ''}`;
 }
 async function submitAddAddress(){
   if(!requireOnline()) return;
   const cat = _addAddressCategory;
   const isBoat = cat==='boat';
-  const name = val('aa_name'), phone = val('aa_phone');
-  const address = isBoat ? null : val('aa_address');
-  const harbour = isBoat ? val('aa_harbour') : null;
-  const zone = isBoat ? null : (val('aa_zone')||'male');
-  if(!name || !phone || (isBoat ? !harbour : !address)){ toast(isBoat?'Enter the boat name, phone, and harbour':'Enter the name, phone, and address','bad'); return; }
+  const name = val('aa_name').trim(), phone = val('aa_phone').trim();
+  const address = isBoat ? null : val('aa_address').trim();
+  const harbour = isBoat ? val('aa_harbour').trim() : null;
+  let island = null, zone = null;
+  if(!isBoat){
+    island = pickedIsland('aa_isl');
+    if(!island){ toast('Pick the island','bad'); return; }
+    if(isGreaterMale(island)) zone = island==='Malé' || island==='Villimalé' ? 'male' : (val('aa_zone')||'hulhumale1');
+  }
+  if(!name || !phone || (isBoat ? !harbour : !address)){ toast(isBoat?'Enter the boat name, phone, and harbour':'Enter the name, phone, and house / street','bad'); return; }
+  if(_editAddressId){
+    const a = DB.addresses.find(x=>x.id===_editAddressId);
+    const upd = { name, phone, address, harbour, island, zone };
+    const { error } = await sb.from('customer_addresses').update(upd).eq('id', _editAddressId);
+    if(error){ toast('Could not save address: '+error.message, 'bad'); return; }
+    if(a) Object.assign(a, { ...upd, address: address||'', harbour: harbour||'', island: island||'' });
+    if(document.getElementById('aa_default') && document.getElementById('aa_default').checked) await setAddressDefault(_editAddressId, cat);
+    _editAddressId = null; _addrDefaultsApplied = false;
+    toast('Address updated'); openSheet('addressBook'); return;
+  }
   const makeDefault = myAddresses(cat).length===0;
-  const row = { id: uid('addr'), customerId: state.customerId, category: cat, name, phone, address, zone, harbour, isDefault: makeDefault, createdAt: Date.now() };
+  const row = { id: uid('addr'), customerId: state.customerId, category: cat, name, phone, address, zone, island, harbour, isDefault: makeDefault, createdAt: Date.now() };
   const { data, error } = await sb.from('customer_addresses').insert(toDbRow('addresses', row)).select();
   if(error){ toast('Could not save address: '+error.message, 'bad'); return; }
   DB.addresses.push(fromDbRow('addresses', data[0]));
-  toast('Address saved'); openSheet('addressBook');
+  toast(makeDefault ? 'Saved as your default address' : 'Address saved'); openSheet('addressBook');
 }
 async function setAddressDefault(id, category){
   if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return; }
@@ -8446,6 +8495,7 @@ function renderCustHome(){
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">
+      ${addressPromptHTML()}
       <div class="cat-bar">
         <button class="cat-bar-btn" onclick="openSheet('categories')" aria-haspopup="dialog">
           <span class="cbb-ic" aria-hidden="true">▦</span> All categories
@@ -8583,6 +8633,7 @@ function renderDeskHome(){
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     <div class="desk-home">
       ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
+      ${addressPromptHTML()}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `
 
       ${picks.length ? `
@@ -9028,7 +9079,11 @@ function deliveryTargetFieldsHTML(){
   const ownList = myAddresses('own');
   const otherList = myAddresses('other');
   const boatList = myAddresses('boat');
-  if(ownDefault && ownDefault.zone) _selectedZone = ownDefault.zone;
+  if(ownDefault && !_addrDefaultsApplied){
+    if(ownDefault.island && !isGreaterMale(ownDefault.island)){ _destMode = 'island'; _destIsland = ownDefault.island; }
+    else { _destMode = 'male'; if(ownDefault.zone) _selectedZone = ownDefault.zone; }
+  }
+  _addrDefaultsApplied = true;
   const selfName = ownDefault ? ownDefault.name : state.customerName;
   const selfPhone = ownDefault ? ownDefault.phone : (state.customerPhone||'');
   const selfAddress = ownDefault ? ownDefault.address : '';
@@ -9058,6 +9113,9 @@ function deliveryTargetFieldsHTML(){
           ${ownList.map(a=>`<option value="${a.id}" ${a.isDefault?'selected':''}>${escapeAttr(a.name)} — ${escapeAttr(a.address)}</option>`).join('')}
         </select>
       </div>` : ''}
+      ${sb && state.authed ? (ownDefault
+        ? `<p class="addr-note">📍 Your default address is filled in. Change anything for this order; we'll save it as your new default.</p>`
+        : `<p class="addr-note new">📍 Add your delivery address below. We'll save it as your default, so next time it's filled in for you.</p>`) : ''}
       <div class="field"><label>Name</label><input id="c_recv_name" value="${escapeAttr(selfName)}" onfocus="this.select()" oninput="handleRecvNameEdit()"></div>
       <div class="field"><label>Phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(selfPhone)}"></div>
       <div class="field"><label>Address</label><input id="c_recv_address" placeholder="House, street, island" value="${escapeAttr(selfAddress)}"></div>
@@ -9170,6 +9228,10 @@ function handleRecvNameEdit(){
 function pickSavedAddress(category, id){
   const a = DB.addresses.find(x=>x.id===id);
   if(!a) return;
+  if(category!=='boat' && (a.island || a.zone)){
+    if(a.island && !isGreaterMale(a.island)){ _destIsland = a.island; setDestMode('island'); const at = atollOfIsland(a.island); const as=document.getElementById('dest_atoll'); if(as && at){ as.value = at.code; islandAtollChanged('dest', null); const is=document.getElementById('dest_island'); if(is) is.value = a.island; } refreshCheckoutCards(); }
+    else { if(a.zone && typeof pickZone==='function'){ try{ pickZone('c_zone', a.zone, 'refreshCheckoutTotals'); }catch(e){ _selectedZone = a.zone; } } setDestMode('male'); }
+  }
   if(category==='own'){
     document.getElementById('c_recv_name').value = a.name;
     document.getElementById('c_recv_phone').value = a.phone;
@@ -9200,7 +9262,7 @@ async function rememberDeliveryAddress(deliveryTarget){
   const cat = deliveryTarget.addressCategory;
   const fields = cat==='boat'
     ? { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: null, zone: null, harbour: deliveryTarget.receiverAddress }
-    : { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: deliveryTarget.receiverAddress, zone: _selectedZone, harbour: null };
+    : { name: deliveryTarget.receiverName, phone: deliveryTarget.receiverPhone, address: deliveryTarget.receiverAddress, zone: _destMode==='male' ? _selectedZone : null, island: _destMode==='male' ? (_selectedZone==='male'?'Malé':'Hulhumalé') : (_destIsland||null), harbour: null };
   await saveAddressFromCheckout(cat, fields);
 }
 async function saveAddressFromCheckout(category, fields){
@@ -9209,6 +9271,11 @@ async function saveAddressFromCheckout(category, fields){
     a.name===fields.name && a.phone===fields.phone &&
     (category==='boat' ? a.harbour===fields.harbour : a.address===fields.address));
   if(existing){
+    // Same place: keep its island / zone up to date, and make it the default.
+    if(category!=='boat' && (existing.island!==(fields.island||'') || existing.zone!==fields.zone)){
+      const { error } = await sb.from('customer_addresses').update({ island: fields.island||null, zone: fields.zone||null }).eq('id', existing.id);
+      if(!error){ existing.island = fields.island||''; existing.zone = fields.zone||null; }
+    }
     if(!existing.isDefault) await setAddressDefault(existing.id, category);
     return;
   }

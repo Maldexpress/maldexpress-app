@@ -1030,6 +1030,17 @@
   .sup-reply{display:flex; gap:8px; align-items:flex-end; margin-top:12px;}
   .sup-reply textarea{flex:1; min-width:0; resize:vertical;}
   .slip-gone{background:var(--sand-2); margin-top:10px;}
+  /* Store payouts */
+  .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
+  .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
+  .owe-tile span{font-size:.8em; color:var(--ink-dim); font-weight:700;}
+  .owe-tile strong{font-family:var(--display); font-size:1.35em; color:var(--ink);}
+  .owe-tile small{font-size:.74em; color:var(--ink-dim);}
+  .owe-tile.due{background:linear-gradient(150deg,#FFF4EC,#FFE6D8); border-color:#F7C9B3;}
+  .owe-tile.due strong{color:var(--sunset-dk);}
+  .owe-list{margin-top:10px;}
+  .owe-list summary{cursor:pointer; font-weight:700; font-size:.86em; color:var(--lagoon-700); padding:6px 0;}
+  .owe-row{display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; padding:9px 0; border:none; border-top:1px solid var(--edge); background:none; font-size:.86em; color:var(--ink); text-align:left;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -4600,7 +4611,7 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('bizHome')"><span class="ic">🏠</span> Dashboard</button>
       <button class="drawer-item" onclick="go('bizItems')"><span class="ic">📦</span> My items</button>
       <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
-      <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">🛵</span> Delivery payouts</button>
+      <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">💸</span> Payouts</button>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
       <button class="drawer-item" onclick="toggleDrawer(false); openSupport()"><span class="ic">🎧</span> Live support${supportUnreadBadge()}</button>
     `;
@@ -5105,8 +5116,8 @@ function sheetSupportNew(){
   <div class="field"><label for="st_topic">What is it about?</label><select id="st_topic">${Object.entries(SUPPORT_TOPICS).map(([k,v])=>`<option value="${k}" ${d.topic===k?'selected':''}>${v}</option>`).join('')}</select></div>
   ${bk ? `<div class="field"><label>Booking</label><p><strong>${escapeAttr(bk.itemName||'Booking')}</strong> · #${bk.id.slice(-6).toUpperCase()}</p><input type="hidden" id="st_booking" value="${bk.id}"></div>` : `
   <div class="field"><label for="st_order">Order (optional)</label><select id="st_order"><option value="">Not about an order</option>${orders.map(x=>`<option value="${x.id}" ${x.id===(o&&o.id)?'selected':''}>#${x.id.slice(-6).toUpperCase()} · ${escapeAttr(x.customerName||x.businessName||'')} · ${money(x.total)}</option>`).join('')}</select></div>`}
-  <div class="field"><label for="st_subject">Subject</label><input id="st_subject" maxlength="120" value="${escapeAttr(d.topic==='slip' ? 'Please send me the bank slip' : '')}" placeholder="A few words, e.g. Order not delivered"></div>
-  <div class="field"><label for="st_body">Message</label><textarea id="st_body" rows="4" maxlength="4000" placeholder="Tell us what happened">${d.topic==='slip' ? 'I need the bank transfer slip for this order.' : ''}</textarea></div>
+  <div class="field"><label for="st_subject">Subject</label><input id="st_subject" maxlength="120" value="${escapeAttr(d.subject || (d.topic==='slip' ? 'Please send me the bank slip' : ''))}" placeholder="A few words, e.g. Order not delivered"></div>
+  <div class="field"><label for="st_body">Message</label><textarea id="st_body" rows="4" maxlength="4000" placeholder="Tell us what happened">${escapeAttr(d.body || (d.topic==='slip' ? 'I need the bank transfer slip for this order.' : ''))}</textarea></div>
   <button class="btn btn-primary" onclick="submitTicket()">Send to support</button>`;
 }
 async function submitTicket(){
@@ -7085,25 +7096,66 @@ async function approveOrderPayment(id){
 // Cash orders (rider owes the store) and bank-transfer orders (the store now
 // owes the rider, once delivered) are opposite directions of the same "settle
 // up with the delivery partner" job, so both sections live on this one screen.
+// Payouts: what the store owes. Maldexpress's fee on each paid order
+// (platform_fee_due until an admin marks it settled in Admin -> Fees) and each
+// rider's delivery fee after delivery (payout_status 'pending' until the store
+// marks it paid). Riders never collect cash, so there's no cash section.
 function renderBizPayouts(biz){
-  const cashOrders = DB.orders.filter(o=>o.businessId===biz.id && o.paymentMethod==='cash_to_delivery' && o.deliveryPersonId);
-  // payout_status is only ever set on free-delivery orders (buyer wasn't charged
-  // the zone fee), for either payment method - a zone-delivery/buyer-pays order
-  // never needs this, since the buyer's own payment already covers the fee.
-  const feePayouts = DB.orders.filter(o=>o.businessId===biz.id && o.payoutStatus);
+  const mine = DB.orders.filter(o=>o.businessId===biz.id);
+  const feeDue = mine.filter(o=>o.platformFeeDue!=null && Number(o.platformFeeDue)>0 && !o.feeSettledAt).sort((a,b)=>b.createdAt-a.createdAt);
+  const feePaid = mine.filter(o=>o.platformFeeDue!=null && o.feeSettledAt);
+  const feeTotal = round2(feeDue.reduce((a,o)=>a+Number(o.platformFeeDue||0),0));
+  const riderDue = mine.filter(o=>o.payoutStatus==='pending' && o.deliveryPersonId);
+  const riderPaid = mine.filter(o=>o.payoutStatus==='settled' && o.deliveryPersonId);
+  const riderTotal = round2(riderDue.reduce((a,o)=>a+Number(payoutAmountFor(o)||0),0));
+  const byRider = {};
+  riderDue.forEach(o=>{ const k = o.deliveryPersonId; (byRider[k] = byRider[k] || { name:o.deliveryPersonName||'Rider', orders:[], total:0 }); byRider[k].orders.push(o); byRider[k].total = round2(byRider[k].total + Number(payoutAmountFor(o)||0)); });
+  const st = DB.settings || {};
+  const hasBank = !!String(st.bankAccountNumber||'').trim();
   document.getElementById('app').innerHTML = wrapShell('business','bizPayouts', `
-    ${topbar('Delivery payouts', 'Settle up with delivery partners')}
+    ${topbar('Payouts', 'What you owe Maldexpress and riders')}
     <div style="padding:4px 16px 0;">
-      <div class="section">
-        <div class="section-head"><h2>Cash collected by riders</h2></div>
-        ${cashOrders.length? cashOrders.map(o=>cashPayoutCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No cash-collection orders yet</div>`}
+      <div class="owe-sum">
+        <div class="owe-tile ${feeTotal>0?'due':''}"><span>You owe Maldexpress</span><strong>${money(feeTotal)}</strong><small>${feeDue.length} order${feeDue.length===1?'':'s'}</small></div>
+        <div class="owe-tile ${riderTotal>0?'due':''}"><span>You owe riders</span><strong>${money(riderTotal)}</strong><small>${riderDue.length} deliver${riderDue.length===1?'y':'ies'}</small></div>
       </div>
+
+      <div class="section" style="margin-top:18px;">
+        <div class="section-head"><h2>Pay Maldexpress</h2></div>
+        ${feeTotal>0 ? `
+        <div class="glass card">
+          <p class="muted" style="font-size:.86em;">Maldexpress's fee on your paid orders. Transfer the total, then tell us so we can mark it paid.</p>
+          ${hasBank ? `<div class="acct-box" style="margin-top:10px;"><div class="lbl">Transfer ${money(feeTotal)} to</div><div class="val">${acctValHTML(st.bankAccountName, st.bankAccountNumber)}</div></div>` : `<p class="muted" style="font-size:.84em; margin-top:8px;">Maldexpress's bank account isn't set yet. Ask Live support how to pay.</p>`}
+          <button class="btn btn-primary" style="margin-top:12px;" onclick="openNewTicket(${escapeAttr(JSON.stringify({ topic:'payment', subject:'Fee payment '+money(feeTotal), body:'I transferred '+money(feeTotal)+' for the Maldexpress fees on '+feeDue.length+' order'+(feeDue.length===1?'':'s')+'. Store: '+biz.name }))})">I've paid. Tell Maldexpress</button>
+          <details class="owe-list"><summary>Fees by order (${feeDue.length})</summary>
+            ${feeDue.map(o=>`<button class="owe-row" onclick="openOrderDetailBiz('${o.id}')"><span>#${o.id.slice(-5).toUpperCase()} · ${fmtDateShort(new Date(o.createdAt).toISOString().slice(0,10))}</span><span>${money(o.platformFeeDue)}</span></button>`).join('')}
+          </details>
+        </div>` : `<div class="empty"><span class="ic">✅</span>Nothing owed to Maldexpress${feePaid.length?` · ${feePaid.length} fee${feePaid.length===1?'':'s'} paid`:''}</div>`}
+      </div>
+
       <div class="section" style="margin-top:22px;">
-        <div class="section-head"><h2>You owe the rider</h2></div>
-        ${feePayouts.length? feePayouts.map(o=>feePayoutCard(o)).join('') : `<div class="empty"><span class="ic">💸</span>Nothing owed to a rider right now</div>`}
+        <div class="section-head"><h2>Pay delivery riders</h2></div>
+        ${Object.keys(byRider).length ? Object.entries(byRider).map(([rid,r])=>{
+          const d = DB.delivery.find(x=>x.id===rid);
+          return `<div class="glass card">
+            <div class="row between"><h3>${escapeAttr(r.name)}</h3><span class="status-pill mid">You owe ${money(r.total)}</span></div>
+            <p class="muted" style="font-size:.84em; margin-top:4px;">Delivery fee for ${r.orders.length} deliver${r.orders.length===1?'y':'ies'}. Pay the rider directly, then mark it paid.</p>
+            ${d && d.phone ? contactHTML(d.phone, r.name) : ''}
+            <details class="owe-list"><summary>Deliveries (${r.orders.length})</summary>
+              ${r.orders.map(o=>`<div class="owe-row"><span>#${o.id.slice(-5).toUpperCase()} · ${money(payoutAmountFor(o))}</span><button class="link-btn" onclick="markPayoutPaid('${o.id}')">Mark paid</button></div>`).join('')}
+            </details>
+            <button class="btn btn-good btn-sm" style="width:100%; margin-top:10px;" onclick="markRiderPaidAll('${rid}')">Mark all ${money(r.total)} paid to ${escapeAttr(r.name)}</button>
+          </div>`; }).join('') : `<div class="empty"><span class="ic">🛵</span>Nothing owed to riders${riderPaid.length?` · ${riderPaid.length} paid`:''}</div>`}
       </div>
     </div>
   `);
+}
+async function markRiderPaidAll(riderId){
+  const biz = currentBiz();
+  const list = DB.orders.filter(o=>biz && o.businessId===biz.id && o.payoutStatus==='pending' && o.deliveryPersonId===riderId);
+  let ok = 0;
+  for(const o of list){ const u = await callOrderRpc('mark_payout_paid', { p_order_id: o.id }, o.id); if(u) ok++; }
+  toast(ok===list.length ? `Marked ${ok} deliver${ok===1?'y':'ies'} paid` : `${ok} of ${list.length} marked paid`, ok===list.length?undefined:'bad'); render();
 }
 function cashPayoutCard(o){
   const cutAmt = Math.round(cashCutAmount(o));

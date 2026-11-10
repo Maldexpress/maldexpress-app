@@ -834,7 +834,9 @@
   .bulk-err{color:var(--red); font-size:.84em; margin-top:6px; font-weight:600;}
   .bulk-warn{color:var(--amber); font-size:.84em; margin-top:6px; font-weight:600;}
   .bulk-note{color:var(--ink-dim); font-size:.82em; margin-top:6px;}
-  .bulk-thumb{width:48px; height:48px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; border:1px solid var(--edge);}
+  .bulk-photo-acts{display:flex; gap:14px; margin-top:4px;}
+  .bulk-photo-acts .link-btn{padding:4px 0; font-size:.86em;}
+  .bulk-thumb{width:64px; height:64px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; border:1px solid var(--edge);}
   .bulk-thumb.none{display:flex; align-items:center; justify-content:center; background:var(--sand-2); font-size:1.2em; border:none;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
@@ -5124,13 +5126,49 @@ function onBulkPhotos(ev){
   render();
 }
 function bulkPhotoCount(){ return new Set(Object.values(_bulkPhotos)).size; }
+function bulkSlug(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+// Which photo belongs to a row, in this order:
+//  1. one the store picked for this row in the preview ("Change photo")
+//  2. a web link in the photo column
+//  3. the file named in the photo column
+//  4. if the column is empty: a picked photo named after the item's code
+//     (e.g. LL0010.jpg for "Code LL0010") or after the item name itself.
 function bulkPhotoFor(r){
-  if(r.photoUrl) return { kind:'url', url:r.photoUrl };
-  if(!r.photo) return { kind:'none' };
-  const k = r.photo.split(/[\\/]/).pop().toLowerCase();
-  const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
-  return f ? { kind:'file', file:f } : { kind:'missing', name:r.photo };
+  if(r.override === 'none') return { kind:'none', removed:true };
+  if(r.override) return { kind:'file', file:r.override, how:'you' };
+  if(r.photoUrl) return { kind:'url', url:r.photoUrl, how:'web link' };
+  if(r.photo){
+    const k = r.photo.split(/[\\/]/).pop().toLowerCase();
+    const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
+    return f ? { kind:'file', file:f, how:'photo column' } : { kind:'missing', name:r.photo };
+  }
+  const files = [...new Set(Object.values(_bulkPhotos))];
+  if(!files.length) return { kind:'none' };
+  const text = ' '+bulkSlug((r.item.name||'')+' '+(r.item.description||''))+' ';
+  const byCode = files.find(f=>{ const b = bulkSlug(f.name.replace(/\.[^.]+$/,'')); return b.length>=3 && /\d/.test(b) && text.includes(' '+b+' '); });
+  if(byCode) return { kind:'file', file:byCode, how:'item code' };
+  const nm = bulkSlug(r.item.name);
+  const byName = nm && files.find(f=>bulkSlug(f.name.replace(/\.[^.]+$/,''))===nm);
+  if(byName) return { kind:'file', file:byName, how:'item name' };
+  return { kind:'none' };
 }
+// Picked photos no row uses, and photos used by more than one row.
+function bulkPhotoAudit(rows){
+  const use = new Map();
+  rows.forEach(r=>{ const ph = bulkPhotoFor(r); if(ph.kind==='file') use.set(ph.file, [...(use.get(ph.file)||[]), r]); });
+  const files = [...new Set(Object.values(_bulkPhotos))];
+  const usedKeys = new Set([...use.keys()].map(f=>f.name.toLowerCase()+'|'+f.size));
+  return { unused: files.filter(f=>!usedKeys.has(f.name.toLowerCase()+'|'+f.size)), shared: [...use.entries()].filter(([,rs])=>rs.length>1) };
+}
+let _bulkPickRow = null;
+function bulkChangePhoto(idx){ _bulkPickRow = idx; const el = document.getElementById('bulkRowPhoto'); if(el){ el.value=''; el.click(); } }
+function onBulkRowPhoto(ev){
+  const f = ev.target.files && ev.target.files[0];
+  if(f && _bulk && _bulk.rows[_bulkPickRow]){ _bulk.rows[_bulkPickRow].override = f; }
+  _bulkPickRow = null; render();
+}
+function bulkRemovePhoto(idx){ if(_bulk && _bulk.rows[idx]){ _bulk.rows[idx].override = 'none'; render(); } }
+function bulkResetPhoto(idx){ if(_bulk && _bulk.rows[idx]){ delete _bulk.rows[idx].override; render(); } }
 let _bulkThumbs = new Map();
 function bulkThumbURL(f){ if(!_bulkThumbs.has(f)) _bulkThumbs.set(f, URL.createObjectURL(f)); return _bulkThumbs.get(f); }
 async function onBulkFile(ev){
@@ -5153,6 +5191,7 @@ function sheetBulkItems(){
   const bad = _bulk ? _bulk.rows.filter(r=>r.errors.length) : [];
   const willAdd = Math.min(ok.length, room);
   const typeLbl = {buy_now:'Buy now', auction:'Auction', rental:'Rental'};
+  const audit = _bulk && !_bulk.fatal ? bulkPhotoAudit(_bulk.rows) : { unused:[], shared:[] };
   return `
   <h2>Upload a list of items</h2>
   <ol class="bulk-steps">
@@ -5172,7 +5211,7 @@ function sheetBulkItems(){
   <div class="field file">
     <input type="file" accept="image/*" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
     <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos (optional)'}</label>
-    <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). Items without a photo are added without one, and you can add it later in Edit item.</p>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
   </div>
   <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
   ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}
@@ -5184,8 +5223,11 @@ function sheetBulkItems(){
     <span class="status-pill mid">${ok.filter(r=>['file','url'].includes(bulkPhotoFor(r).kind)).length} with photos</span>
   </div>
   ${ok.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} ready item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.${biz.tier==='free'?' Go Pro for up to 500 items.':''}</p></div>` : ''}
+  ${audit.unused.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.unused.length} photo${audit.unused.length===1?' isn\u2019t':'s aren\u2019t'} matched to any item:</strong> ${audit.unused.slice(0,12).map(f=>escapeAttr(f.name)).join(', ')}${audit.unused.length>12?'…':''}. Put the file name in that item's photo column, or use Choose photo on the item.</p></div>` : ''}
+  ${audit.shared.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.shared.length} photo${audit.shared.length===1?' is':'s are'} used by more than one item.</strong> Check the rows marked below.</p></div>` : ''}
+  <input type="file" accept="image/*" id="bulkRowPhoto" style="display:none;" onchange="onBulkRowPhoto(event)">
   <div class="bulk-list">
-    ${_bulk.rows.map(r=>`
+    ${_bulk.rows.map((r,idx)=>`
       <div class="bulk-row ${r.errors.length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
@@ -5194,7 +5236,13 @@ function sheetBulkItems(){
         </div>
         ${r.errors.map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
         ${r.warnings.map(w=>`<p class="bulk-warn">! ${escapeAttr(w)}</p>`).join('')}
-        ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='missing' ? `<p class="bulk-warn">! Photo "${escapeAttr(ph.name)}" isn't picked yet, so this item is added without a photo</p>` : ph.kind==='none' ? `<p class="bulk-note">No photo: add one later in Edit item</p>` : ''; })()}
+        ${(()=>{ const ph = bulkPhotoFor(r); const shared = audit.shared.find(([f])=>ph.file===f);
+          const msg = ph.kind==='missing' ? `<p class="bulk-warn">! Photo "${escapeAttr(ph.name)}" isn't picked yet, so this item is added without a photo</p>`
+            : ph.kind==='none' ? `<p class="bulk-note">${ph.removed?'Photo removed':'No photo'}: you can add one later in Edit item</p>`
+            : `<p class="bulk-note">Photo: ${ph.kind==='file'?escapeAttr(ph.file.name):'web link'} · ${ph.how==='you'?'chosen by you':'matched by '+ph.how}</p>`;
+          const dup = shared ? `<p class="bulk-warn">! Same photo as row${shared[1].length>2?'s':''} ${shared[1].filter(x=>x!==r).map(x=>x.line).join(', ')}. Check it's the right one</p>` : '';
+          const btns = r.errors.length ? '' : `<div class="bulk-photo-acts"><button class="link-btn" onclick="bulkChangePhoto(${idx})">${ph.kind==='file'||ph.kind==='url'?'Change photo':'Choose photo'}</button>${ph.kind==='file'||ph.kind==='url'?`<button class="link-btn" onclick="bulkRemovePhoto(${idx})">Remove photo</button>`:''}${r.override?`<button class="link-btn" onclick="bulkResetPhoto(${idx})">Undo</button>`:''}</div>`;
+          return msg + dup + btns; })()}
       </div>`).join('')}
   </div>
   ${bad.length ? `<p class="muted" style="font-size:.84em; margin-top:10px;">Rows with problems are skipped. Fix them in the sheet and upload again, or add them one by one.</p>` : ''}

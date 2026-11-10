@@ -4652,7 +4652,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet) _addrDefaultsApplied = false; state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -9000,14 +9000,14 @@ function checkoutDestKey(){
   return _destIsland || '';
 }
 function setDestMode(m){
-  _destMode = m;
+  _destMode = m; setTimeout(applyAutoDeliveryTarget, 0);
   const a = document.getElementById('destTab_male'), b = document.getElementById('destTab_island');
   if(a) a.classList.toggle('active', m==='male'); if(b) b.classList.toggle('active', m==='island');
   const mb = document.getElementById('destMaleBox'), ib = document.getElementById('destIslandBox');
   if(mb) mb.classList.toggle('hidden', m!=='male'); if(ib) ib.classList.toggle('hidden', m!=='island');
   refreshCheckoutCards();
 }
-function setDestIsland(k){ _destIsland = k || ''; refreshCheckoutCards(); }
+function setDestIsland(k){ _destIsland = k || ''; refreshCheckoutCards(); applyAutoDeliveryTarget(); }
 function refreshCheckoutCards(){
   const box = document.getElementById('ckStores'); if(!box) return;
   const entries = Object.entries(state.cart);
@@ -9097,14 +9097,14 @@ function deliveryTargetFieldsHTML(){
   <div class="field">
     <label>Deliver to</label>
     <div class="tabs">
-      <button type="button" class="tab active" id="deliverTabPerson" style="flex:1; text-align:center;" onclick="setDeliveryTarget('person')">Deliver to a person</button>
-      <button type="button" class="tab" id="deliverTabBoat" style="flex:1; text-align:center;" onclick="setDeliveryTarget('boat')">Deliver to a boat</button>
+      <button type="button" class="tab ${_deliverTargetMode!=='boat'?'active':''}" id="deliverTabPerson" style="flex:1; text-align:center;" onclick="setDeliveryTarget('person', true)">Deliver to a person</button>
+      <button type="button" class="tab ${_deliverTargetMode==='boat'?'active':''}" id="deliverTabBoat" style="flex:1; text-align:center;" onclick="setDeliveryTarget('boat', true)">Deliver to a boat</button>
     </div>
   </div>
-  <input type="hidden" id="c_delivery_target" value="person">
+  <input type="hidden" id="c_delivery_target" value="${_deliverTargetMode==='boat'?'boat':'person'}">
   <input type="hidden" id="c_recv_mode" value="self">
   <input type="hidden" id="c_recv_self_name" value="${escapeAttr(selfName)}">
-  <div id="personFields">
+  <div id="personFields" class="${_deliverTargetMode==='boat'?'hidden':''}">
     <div id="recvOwnBlock">
       ${ownList.length>1 ? `
       <div class="field">
@@ -9135,7 +9135,8 @@ function deliveryTargetFieldsHTML(){
       <button type="button" class="link-btn" onclick="switchDeliverToSelf()">Deliver to me instead</button>
     </div>
   </div>
-  <div id="boatFields" class="hidden">
+  <div id="boatFields" class="${_deliverTargetMode==='boat'?'':'hidden'}">
+    <p id="boatAutoNote" class="addr-note ${_boatAuto && _deliverTargetMode==='boat'?'':'hidden'}">⛴️ Orders to other islands go by boat, so we switched to <strong>Deliver to a boat</strong>. Enter the boat that will carry it.</p>
     ${boatList.length>1 ? `
     <div class="field">
       <label>Saved boats</label>
@@ -9185,7 +9186,33 @@ function readDeliveryTargetFields(){
 // Switches which set of receiver fields is shown/required - a direct DOM toggle
 // (mirrors setAddItemListingType() in Add Item) rather than a full render(), so any
 // receiver details already typed for the other option aren't wiped by switching back.
-function setDeliveryTarget(type){
+// Island orders that travel by boat (a Greater Malé store sending to an
+// island, or "Another island" picked) switch to "Deliver to a boat" by
+// themselves; going back to Greater Malé switches back if it was automatic.
+let _deliverTargetMode = 'person', _boatAuto = false, _targetByUser = false;
+function checkoutLineGroups(){
+  const entries = Object.entries(state.cart||{});
+  const allLines = entries.map(([id,qty])=>{ const it = DB.items.find(i=>i.id===id); return {it,qty}; }).filter(x=>x.it);
+  return groupCartLinesByBusiness(cartCheckoutLines(allLines));
+}
+function checkoutNeedsBoat(){
+  if(_destMode!=='island') return false;
+  if(!_destIsland) return true;
+  const routes = checkoutLineGroups().map(g=>routeFor(bizIsland(g.biz), _destIsland)).filter(Boolean);
+  if(!routes.length) return true;
+  return routes.some(r=>r==='boat_to_island');
+}
+function applyAutoDeliveryTarget(){
+  if(!document.getElementById('ckStores') || !document.getElementById('c_delivery_target')) return;
+  if(_targetByUser) return;   // the customer picked person / boat themselves
+  const want = checkoutNeedsBoat();
+  if(want && _deliverTargetMode!=='boat'){ setDeliveryTarget('boat'); _boatAuto = true; }
+  else if(!want && _deliverTargetMode==='boat' && _boatAuto){ setDeliveryTarget('person'); _boatAuto = false; }
+  const note = document.getElementById('boatAutoNote'); if(note) note.classList.toggle('hidden', !(_boatAuto && _deliverTargetMode==='boat'));
+}
+function setDeliveryTarget(type, byUser){
+  _deliverTargetMode = type; if(byUser){ _boatAuto = false; _targetByUser = true; }
+  const note = document.getElementById('boatAutoNote'); if(note && byUser) note.classList.add('hidden');
   document.getElementById('c_delivery_target').value = type;
   document.getElementById('deliverTabPerson').classList.toggle('active', type==='person');
   document.getElementById('deliverTabBoat').classList.toggle('active', type==='boat');
@@ -9313,6 +9340,7 @@ function refreshCheckoutTotals(){
 function goCheckout(){
   if(sb && !state.authed){ state.pendingItemAction = {type:'checkout'}; openSheet('signIn', {intent:'checkout'}); return; }
   openSheet('checkout');
+  applyAutoDeliveryTarget();   // e.g. default address on another island
 }
 // Renting is a single-item flow (pick a duration, then pickup/deliver + payment),
 // not a cart-quantity flow like Buy Now - modeled on sheetCheckout/placeOrder, but

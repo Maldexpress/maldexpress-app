@@ -5403,7 +5403,7 @@ function onPhotosPicked(e){
   if(files.length > room) toast(`Up to ${PHOTO_MAX} photos per item, so only ${room} more were added`,'bad');
   files.slice(0, room).forEach(f=>{
     if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose JPEG, PNG, WEBP or GIF images','bad'); return; }
-    if(f.size > IMAGE_MAX_BYTES){ toast(`${f.name} is over 5MB`,'bad'); return; }
+    if(f.size > 20*1024*1024){ toast(`${f.name} is over 20MB`,'bad'); return; }   // shrunk before upload (shrinkPhoto)
     const slot = { file:f, preview:'' }; _photoSlots.push(slot);
     const r = new FileReader(); r.onload = ()=>{ slot.preview = r.result; redrawPhotoSlots(); }; r.readAsDataURL(f);
   });
@@ -5434,9 +5434,55 @@ function previewItemPhoto(e, previewId='itemPhotoPreview'){
 // storage RLS policies check against that same prefix, so no join to
 // businesses is needed there. Returns null (photo skipped) rather than
 // throwing when there's no backend or no file was chosen.
+// Make a photo small before it's uploaded without visible quality loss:
+// at most PHOTO_MAX_SIDE px on the long side, re-encoded as WebP (JPEG where
+// the browser can't write WebP). Small photos are left as they are, and the
+// original is kept if the new one wouldn't be smaller.
+const PHOTO_MAX_SIDE = 1600, PHOTO_QUALITY = 0.86;
+async function shrinkPhoto(file){
+  try{
+    if(!file || /gif$/i.test(file.type)) return file;
+    const bmp = await createImageBitmap(file);
+    const big = Math.max(bmp.width, bmp.height);
+    if(big <= PHOTO_MAX_SIDE && file.size <= 350*1024){ bmp.close && bmp.close(); return file; }
+    const k = Math.min(1, PHOTO_MAX_SIDE / big);
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    let blob = await new Promise(r=>c.toBlob(r, 'image/webp', PHOTO_QUALITY));
+    if(!blob || blob.type !== 'image/webp') blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', 0.9));
+    if(!blob || blob.size >= file.size) return file;
+    const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    return new File([blob], file.name.replace(/\.[^.]+$/,'') + '.' + ext, { type: blob.type });
+  }catch(e){ return file; }
+}
+// Read photos out of a .zip in the browser (stored or deflate entries; uses
+// DecompressionStream). Folders and macOS "__MACOSX" / "._" files are skipped.
+async function photosFromZip(zipFile){
+  const buf = new Uint8Array(await zipFile.arrayBuffer()); const dv = new DataView(buf.buffer);
+  let eocd = -1; for(let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--){ if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; } }
+  if(eocd < 0) throw new Error('not a zip file');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const out = []; const dec = new TextDecoder();
+  for(let n = 0; n < count; n++){
+    if(dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nlen)); p += 46 + nlen + xlen + clen;
+    const base = name.split('/').pop();
+    if(!base || /(^|\/)__MACOSX\//.test(name) || base.startsWith('._') || !/\.(jpe?g|png|webp|gif)$/i.test(base)) continue;
+    const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    let data = buf.slice(start, start + csize);
+    if(method === 8){ data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+    else if(method !== 0) continue;
+    const ext = base.split('.').pop().toLowerCase();
+    out.push(new File([data], base, { type: ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/' + ext }));
+  }
+  return out;
+}
 async function uploadItemPhoto(fileArg){
-  const file = fileArg || _itemPhotoFile;
+  let file = fileArg || _itemPhotoFile;
   if(!file || !sb) return null;
+  file = await shrinkPhoto(file);
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   // Storage doesn't accept Firebase sign-ins directly, so the photo goes
   // through the upload-item-photo function, which checks the sign-in and
@@ -5818,10 +5864,16 @@ function bulkBuildRow(data, line, bizId){
 // Photos picked together with the sheet, keyed by lower-case file name (with
 // and without the extension), so "rice.jpg", "Rice.JPG" and "rice" all match.
 let _bulkPhotos = {};
-function onBulkPhotos(ev){
-  const files = [...(ev.target.files||[])].filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+async function onBulkPhotos(ev){
+  const picked = [...(ev.target.files||[])]; ev.target.value = '';
+  let files = picked.filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+  for(const z of picked.filter(f=>/\.zip$/i.test(f.name) || /zip/.test(f.type))){
+    toast('Opening '+z.name+'…');
+    try{ const got = await photosFromZip(z); files = files.concat(got); toast(`${got.length} photo${got.length===1?'':'s'} from ${z.name}`); }
+    catch(e){ toast('Could not open '+z.name+': '+(e.message||e),'bad'); }
+  }
   files.forEach(f=>{ const k=f.name.toLowerCase(); _bulkPhotos[k]=f; _bulkPhotos[k.replace(/\.[^.]+$/,'')]=f; });
-  if(!files.length) toast('Pick image files (JPG, PNG or WebP)','bad');
+  if(!files.length) toast('Pick image files (JPG, PNG or WebP) or a .zip of them','bad');
   render();
 }
 function bulkPhotoCount(){ return new Set(Object.values(_bulkPhotos)).size; }
@@ -5917,8 +5969,8 @@ function sheetBulkItems(){
     <label for="bulkFile" class="filebtn">📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
   </div>
   <div class="field file">
-    <input type="file" accept="image/*" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
-    <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos (optional)'}</label>
+    <input type="file" accept="image/*,.zip,application/zip" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
+    <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos or a .zip (optional)'}</label>
     <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
   </div>
   <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
@@ -5964,22 +6016,28 @@ async function submitBulkItems(){
   const rows = _bulk.rows.filter(r=>!r.errors.length).slice(0, room);
   if(!rows.length){ toast('Nothing to add','bad'); return; }
   toast(`Adding ${rows.length} item${rows.length===1?'':'s'}…`);
+  // Every photo for every row (cover + extras from the photo column), uploaded
+  // a few at a time with one running count.
   let photoFails = 0, done = 0;
-  for(const r of rows){
+  const jobs = [];   // {r, slot, file|url}
+  rows.forEach(r=>{
     const ph = bulkPhotoFor(r);
-    if(ph.kind==='url') r.item.imageUrl = ph.url;
-    else if(ph.kind==='file' && !sb){ r.item.imageUrl = bulkThumbURL(ph.file); }   // preview without a server
-    else if(ph.kind==='file'){
-      toast(`Uploading photos… ${++done} of ${rows.filter(x=>bulkPhotoFor(x).kind==='file').length}`);
-      const url = await uploadItemPhoto(ph.file);
-      if(url) r.item.imageUrl = url; else photoFails++;
+    r._imgs = new Array(PHOTO_MAX).fill(null);
+    if(ph.kind==='url') r._imgs[0] = ph.url;
+    else if(ph.kind==='file') jobs.push({ r, slot:0, file:ph.file });
+    bulkExtraPhotos(r).forEach((x,k)=>{ if(x.kind==='url') r._imgs[k+1] = x.url; else if(x.kind==='file') jobs.push({ r, slot:k+1, file:x.file }); });
+  });
+  let next = 0;
+  async function worker(){
+    while(next < jobs.length){
+      const j = jobs[next++];
+      const url = sb ? await uploadItemPhoto(j.file) : bulkThumbURL(j.file);   // no server: local preview
+      if(url) j.r._imgs[j.slot] = url; else photoFails++;
+      done++; if(sb && (done % 3 === 0 || done === jobs.length)) toast(`Uploading photos… ${done} of ${jobs.length}`);
     }
   }
-  for(const r of rows){   // extra photos from the photo column
-    const extra = [];
-    for(const x of bulkExtraPhotos(r)){ if(x.kind==='url') extra.push(x.url); else if(x.kind==='file'){ const u = sb ? await uploadItemPhoto(x.file) : bulkThumbURL(x.file); if(u) extra.push(u); } }
-    r.item.images = [r.item.imageUrl, ...extra].filter(Boolean).slice(0, PHOTO_MAX);
-  }
+  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+  rows.forEach(r=>{ const imgs = r._imgs.filter(Boolean).slice(0, PHOTO_MAX); r.item.images = imgs; r.item.imageUrl = imgs[0] || r.item.imageUrl || null; delete r._imgs; });
   const items = rows.map(r=>r.item);
   items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
   DB.items.push(...items);

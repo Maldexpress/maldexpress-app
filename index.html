@@ -961,6 +961,44 @@
   .size-chip:hover{border-color:var(--lagoon-500);}
   .size-chip.on{border-color:var(--lagoon-700); background:var(--lagoon-700); color:#fff;}
   .cart-size{font-size:.84em; margin:2px 0;}
+  /* Manage listings, photos, option chips */
+  .items-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;}
+  .items-head .tabs{flex:1; min-width:0;}
+  .sel-bar{position:sticky; top:70px; z-index:20; background:var(--surface); border:1px solid var(--edge); border-radius:16px; padding:12px; margin-bottom:12px; box-shadow:var(--shadow-lift);}
+  .sel-all{display:inline-flex; align-items:center; gap:8px; background:none; border:none; padding:4px 0; font-weight:700; color:var(--ink);}
+  .sel-acts{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:10px;}
+  @media (min-width:700px){ .sel-acts{grid-template-columns:repeat(4,1fr);} }
+  .sel-wrap{position:relative; display:flex; align-items:center; gap:8px;}
+  .sel-wrap > .item-card{flex:1; min-width:0;}
+  .sel-wrap.on > .item-card{border-color:var(--lagoon-500); box-shadow:0 0 0 2px var(--lagoon-500);}
+  .sel-dot{color:var(--lagoon-600); display:flex;}
+  .item-status.paused{color:var(--ink-dim);}
+  .danger-txt{color:var(--red) !important;}
+  .danger-bg{background:var(--red) !important; box-shadow:none !important;}
+  .photo-slots{display:grid; grid-template-columns:repeat(auto-fill, minmax(88px,1fr)); gap:8px;}
+  .ps-tile{position:relative; aspect-ratio:1/1; border-radius:14px; overflow:hidden; background:var(--sand-2); border:1px solid var(--edge);}
+  .ps-tile img{width:100%; height:100%; object-fit:cover;}
+  .ps-tile.cover{box-shadow:0 0 0 2px var(--lagoon-500);}
+  .ps-cover{position:absolute; left:6px; bottom:6px; padding:2px 7px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
+  .ps-btn{position:absolute; top:5px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(13,43,51,.7); color:#fff; font-size:.8em; display:flex; align-items:center; justify-content:center;}
+  .ps-x{right:5px;} .ps-star{left:5px;}
+  .ps-add{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; border:1.5px dashed var(--lagoon-500); background:var(--lagoon-50); color:var(--lagoon-700); text-align:center; padding:6px;}
+  .ps-add span{font-size:1.6em; line-height:1;} .ps-add small{font-size:.7em; font-weight:700;}
+  .gal-arrow{font-size:calc(var(--fs)*1.6) !important; position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.92); color:var(--ink); line-height:1; box-shadow:0 2px 8px rgba(13,43,51,.2); display:flex; align-items:center; justify-content:center;}
+  .gal-arrow.prev{left:10px;} .gal-arrow.next{right:10px;}
+  .gal-count{position:absolute; right:10px; bottom:10px; padding:3px 9px; border-radius:99px; background:rgba(13,43,51,.7); color:#fff; font-size:calc(var(--fs)*.8) !important; line-height:1.4; font-weight:700;}
+  .gal-thumbs{display:flex; gap:8px; margin-top:10px; overflow-x:auto; scrollbar-width:none;}
+  .gal-thumb{flex:0 0 64px; height:64px; border-radius:12px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--sand-2);}
+  .gal-thumb img{width:100%; height:100%; object-fit:cover;}
+  .gal-thumb.on{border-color:var(--lagoon-600);}
+  .opt-row-chips{display:block;}
+  .opt-row-chips > label{display:block; margin-bottom:6px;}
+  .opt-chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .opt-chip{padding:7px 12px; border-radius:99px; border:1.5px solid var(--edge-2); background:#fff; color:var(--ink); font-weight:600; font-size:.85em;}
+  .opt-chip.on{background:var(--lagoon-700); border-color:var(--lagoon-700); color:#fff;}
+  .opt-add{display:flex; gap:6px; margin-top:8px;}
+  .opt-add input{flex:1; min-width:0;}
+  .bulk-more{position:absolute; margin:38px 0 0 34px; padding:1px 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -2777,7 +2815,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -2789,7 +2827,7 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options) };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -4134,7 +4172,7 @@ if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
 function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
-function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved'; }
+function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
 function featuredSlotsUsed(){ return DB.items.filter(isFeaturedNow).length; }
 // Same order for everyone within an hour, a new random order each hour.
@@ -4157,6 +4195,7 @@ function fmtDateTime(ms){ return new Date(ms).toLocaleString([], { day:'numeric'
 
 // Seller: status line on each item card.
 function itemStatusNoteHTML(i){
+  if(i.paused) return `<p class="item-status paused">Paused. Customers can't see it until you resume it</p>`;
   if(i.approvalStatus==='pending') return `<p class="item-status wait">🕓 Waiting for Maldexpress approval. Customers can't see it yet</p>`;
   if(i.approvalStatus==='rejected') return `<p class="item-status bad">✕ Not approved${i.approvalNote?`: ${escapeAttr(i.approvalNote)}`:''}. Edit it to send it again</p>`;
   if(isFeaturedNow(i)) return `<p class="item-status feat">⭐ Featured until ${fmtDateTime(i.featuredUntil)}</p>`;
@@ -4690,6 +4729,8 @@ function sheetHTML(){
   else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='featureItem') body = sheetFeatureItem();
   else if(state.sheet==='categories') body = sheetCategories();
+  else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
+  else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
@@ -5156,10 +5197,14 @@ function renderBizItems(biz,t){
     <div style="padding:4px 16px 0;">
       ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="_bulk=null; _bulkPhotos={}; openSheet('bulkItems')">Upload a list</button></div>` : ''}
       ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
-      <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+      <div class="items-head">
+        <div class="tabs" style="margin-bottom:0;">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
+        ${myItems.length ? `<button class="btn btn-ghost btn-sm sel-toggle" onclick="toggleBizSelect()">${state.bizSelect?'Done':'☑ Select'}</button>` : ''}
+      </div>
+      ${state.bizSelect ? bizSelectBarHTML(myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat)) : ''}
       ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
     </div>
-  `, canAdd? `<button class="fab" onclick="_itemPhotoFile=null; openSheet('addItem')">+</button>` : '');
+  `, canAdd && !state.bizSelect ? `<button class="fab" onclick="startAddItem()" aria-label="Add item">+</button>` : '');
   ensureCountdownTimer();
 }
 // Small note on the seller's own item card while an item's "Other" category
@@ -5172,7 +5217,110 @@ function itemCatPendingNoteHTML(i){
   if(i.category!=='Other' || !i.categoryOtherName) return st;
   return `<p class="muted" style="font-size:.76em; margin-top:2px;">🕓 "${i.categoryOtherName}" - pending category approval</p>` + st;
 }
+// ---------- Manage many listings at once ----------
+function toggleBizSelect(){ state.bizSelect = !state.bizSelect; state.bizSel = {}; render(); }
+function bizItemTap(id){
+  if(state.bizSelect){ state.bizSel = state.bizSel || {}; if(state.bizSel[id]) delete state.bizSel[id]; else state.bizSel[id] = true; render(); return; }
+  startEditItem(id);
+}
+function selectedBizIds(){ return Object.keys(state.bizSel||{}).filter(id=>DB.items.some(i=>i.id===id)); }
+function bizVisibleItems(){ const biz = currentBiz(); return DB.items.filter(i=>biz && i.businessId===biz.id && (state.filterCat==='All' || (i.category||'General')===state.filterCat)); }
+function bizSelectAll(){ const ids = bizVisibleItems().map(i=>i.id); const all = ids.length && ids.every(id=>(state.bizSel||{})[id]); state.bizSel = all ? {} : Object.fromEntries(ids.map(id=>[id,true])); render(); }
+function bizSelectBarHTML(list){
+  const n = selectedBizIds().length, all = list.length && list.every(i=>(state.bizSel||{})[i.id]);
+  return `<div class="sel-bar">
+    <div class="row between" style="gap:8px; flex-wrap:wrap;">
+      <button class="sel-all" onclick="bizSelectAll()">${iconCheckCircle(all)} ${all?'Unselect all':`Select all (${list.length})`}</button>
+      <strong>${n} selected</strong>
+    </div>
+    <div class="sel-acts">
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="setItemsPaused(selectedBizIds(), true)">Pause</button>
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="setItemsPaused(selectedBizIds(), false)">Resume</button>
+      <button class="btn btn-ghost btn-sm" ${n?'':'disabled'} onclick="openSheet('bulkEdit')">Edit stock, price…</button>
+      <button class="btn btn-ghost btn-sm danger-txt" ${n?'':'disabled'} onclick="askDeleteItems(selectedBizIds())">Delete</button>
+    </div>
+  </div>`;
+}
+async function setItemsPaused(ids, paused){
+  const items = DB.items.filter(i=>ids.includes(i.id) && !!i.paused !== paused);
+  if(!items.length){ toast(paused ? 'Already paused' : 'Already listed'); return; }
+  items.forEach(i=>i.paused = paused);
+  if(await saveDB('items', items) === false){ items.forEach(i=>i.paused = !paused); render(); return; }
+  toast(`${items.length} listing${items.length===1?'':'s'} ${paused?'paused. Customers can\u2019t see them':'resumed'}`); render();
+}
+function deleteBlockReason(i){
+  if(i.listingType==='auction'){ const a = auctionForItem(i.id); if(a && a.status==='active' && (a.bidCount||0)>0) return 'it has bids'; }
+  if(i.listingType==='rental'){ const today = todayISODate(); if(DB.bookings.some(b=>b.itemId===i.id && ['accepted','pending'].includes(b.status) && (b.requestedDate||'')>=today)) return 'it has upcoming bookings'; }
+  if(DB.orders.some(o=>o.rentalItemId===i.id && !['delivered','declined','cancelled'].includes(o.status) && !o.rentalReturnedAt)) return 'it is rented out right now';
+  return '';
+}
+let _pendingDeleteIds = [];
+function askDeleteItems(ids){ _pendingDeleteIds = ids.slice(); openSheet('confirmDelete'); }
+function sheetConfirmDelete(){
+  const items = DB.items.filter(i=>_pendingDeleteIds.includes(i.id));
+  const blocked = items.filter(i=>deleteBlockReason(i));
+  const ok = items.filter(i=>!deleteBlockReason(i));
+  return `<h2>Delete ${items.length===1?'this listing':`${items.length} listings`}?</h2>
+  <p class="muted" style="margin-bottom:12px;">Deleted listings are gone for good. To hide a listing for a while, pause it instead.</p>
+  ${blocked.length ? `<div class="card tight notice-warn"><p style="font-size:.88em;">${blocked.length} can't be deleted: ${blocked.map(i=>`<strong>${escapeAttr(i.name)}</strong> (${deleteBlockReason(i)})`).join(', ')}. You can pause ${blocked.length===1?'it':'them'} instead.</p></div>` : ''}
+  <div class="row" style="gap:8px; margin-top:12px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep</button>
+    <button class="btn btn-primary danger-bg" style="flex:1;" ${ok.length?'':'disabled'} onclick="deleteItemsNow()">Delete ${ok.length}</button>
+  </div>`;
+}
+async function deleteItemsNow(){
+  const ids = DB.items.filter(i=>_pendingDeleteIds.includes(i.id) && !deleteBlockReason(i)).map(i=>i.id);
+  if(!ids.length) return;
+  if(sb){
+    const { error } = await sb.from('items').delete().in('id', ids);
+    if(error){ toast(/item_in_use/.test(error.message) ? "Some listings can't be deleted because they have bids or bookings" : 'Could not delete: '+error.message,'bad'); return; }
+  }
+  DB.items = DB.items.filter(i=>!ids.includes(i.id));
+  DB.auctions = DB.auctions.filter(a=>!ids.includes(a.itemId));
+  ids.forEach(id=>{ if(state.bizSel) delete state.bizSel[id]; });
+  _pendingDeleteIds = []; closeSheet();
+  toast(`${ids.length} listing${ids.length===1?'':'s'} deleted`); render();
+}
+function sheetBulkEdit(){
+  const ids = selectedBizIds(); const items = DB.items.filter(i=>ids.includes(i.id));
+  const buyNow = items.filter(i=>(i.listingType||'buy_now')==='buy_now').length;
+  return `<h2>Edit ${items.length} listing${items.length===1?'':'s'}</h2>
+  <p class="muted" style="margin-bottom:14px;">Leave a field empty to keep it as it is.</p>
+  <div class="field"><label for="be_cat">Category</label><select id="be_cat"><option value="">Keep current</option>${MARKETPLACE_CATEGORIES.map(c=>`<option value="${escapeAttr(c)}">${c}</option>`).join('')}</select></div>
+  ${buyNow ? `
+  <div class="field"><label for="be_stock">Stock quantity${buyNow<items.length?` (${buyNow} Buy now item${buyNow===1?'':'s'})`:''}</label><input id="be_stock" type="number" min="0" inputmode="numeric" placeholder="Keep current"></div>
+  <div class="field"><label for="be_disc">Discount %</label><input id="be_disc" type="number" min="0" max="90" inputmode="numeric" placeholder="Keep current (0 removes it)"></div>
+  <div class="field"><label for="be_price">Change price by %</label><input id="be_price" type="number" min="-90" max="500" inputmode="decimal" placeholder="e.g. 10 for +10%, -10 for -10%"></div>
+  <div class="field">${chkRowHTML('be_free', false, 'Free delivery for buyer')}<p class="muted" style="font-size:.78em; margin-top:4px;">Tick to turn free delivery on for all of them.</p></div>` : ''}
+  <div class="row" style="gap:8px; margin-top:6px;">
+    ${buyNow ? `<button class="btn btn-ghost" style="flex:1;" onclick="bulkEditApply(true)">Mark out of stock</button>` : ''}
+    <button class="btn btn-primary" style="flex:2;" onclick="bulkEditApply(false)">Apply changes</button>
+  </div>`;
+}
+async function bulkEditApply(outOfStock){
+  const ids = selectedBizIds(); const items = DB.items.filter(i=>ids.includes(i.id));
+  const cat = val('be_cat'), stockV = val('be_stock'), discV = val('be_disc'), priceV = val('be_price');
+  const freeEl = document.getElementById('be_free');
+  const before = items.map(i=>({...i}));
+  for(const i of items){
+    if(cat){ i.category = cat; if(cat!=='Other') i.categoryOtherName = ''; }
+    if((i.listingType||'buy_now')!=='buy_now') continue;
+    if(outOfStock) i.stock = 0;
+    else if(stockV!=='' && stockV!=null){ const n = Math.max(0, Math.round(Number(stockV))); if(isFinite(n)) i.stock = n; }
+    if(discV!=='' && discV!=null){ const d = Math.min(90, Math.max(0, Number(discV))); if(isFinite(d)) i.discountPercent = d; }
+    if(priceV!=='' && priceV!=null){ const pct = Number(priceV); if(isFinite(pct) && pct>-90 && pct<=500) i.price = Math.max(0.01, Math.round(i.price*(1+pct/100)*100)/100); }
+    if(freeEl && freeEl.checked) i.freeDelivery = true;
+  }
+  if(await saveDB('items', items) === false){ before.forEach(b=>{ const k = DB.items.findIndex(i=>i.id===b.id); if(k>=0) DB.items[k] = b; }); render(); return; }
+  closeSheet(); toast(outOfStock ? `${items.length} marked out of stock` : `${items.length} listing${items.length===1?'':'s'} updated`); render();
+}
 function bizItemCard(i){
+  const card = bizItemCardInner(i);
+  if(!state.bizSelect) return card;
+  const on = !!(state.bizSel||{})[i.id];
+  return `<div class="sel-wrap ${on?'on':''}"><span class="sel-dot" aria-hidden="true">${iconCheckCircle(on)}</span>${card}</div>`;
+}
+function bizItemCardInner(i){
   const thumb = itemThumbHTML(i);
   if(i.listingType==='auction'){
     const auction = auctionForItem(i.id);
@@ -5180,7 +5328,7 @@ function bizItemCard(i){
     const ended = auction.status!=='active' || Date.now()>=auction.endTime;
     const highBid = auction.currentHighestBid!=null ? auction.currentHighestBid : auction.startingPrice;
     return `
-    <div class="glass item-card" style="align-items:flex-start;" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+    <div class="glass item-card" style="align-items:flex-start;" onclick="bizItemTap('${i.id}')">
       <div class="item-thumb">${thumb}</div>
       <div class="item-info">
         <div class="row between"><h3>${i.name}</h3><span class="badge free" style="white-space:nowrap;">AUCTION</span></div>
@@ -5194,7 +5342,7 @@ function bizItemCard(i){
     const bookedNow = i.rentalAvailability!=='soon' ? currentBookingBlock(i.id) : null;
     const windows = itemBookingWindows(i.id);
     return `
-    <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+    <div class="glass item-card" onclick="bizItemTap('${i.id}')">
       <div class="item-thumb">${thumb}</div>
       <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.rentalAvailability==='soon'?`🕒 Available soon${i.availableFrom?` (from ${fmtDateShort(i.availableFrom)})`:''}`:`${i.stock} available to rent`}${i.rentalDeposit?` · ${money(i.rentalDeposit)} deposit`:''} · ${i.rentalFulfillment==='pickup'?'📦 Pickup':'🚚 You deliver'}</p>
       ${bookedNow?`<p class="muted" style="font-size:.78em; color:var(--coral); margin-top:2px;">🔒 Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</p>`:windows.length?`<p class="muted" style="font-size:.78em; margin-top:2px;">📌 ${windows.length} upcoming booking${windows.length>1?'s':''}</p>`:''}
@@ -5203,7 +5351,7 @@ function bizItemCard(i){
     </div>`;
   }
   return `
-  <div class="glass item-card" onclick="_itemPhotoFile=null; openSheet('editItem','${i.id}')">
+  <div class="glass item-card" onclick="bizItemTap('${i.id}')">
     <div class="item-thumb">${thumb}</div>
     <div class="item-info"><h3>${i.name}</h3><p class="muted" style="font-size:.82em;">${i.stock} in stock${i.discountPercent?` · ${i.discountPercent}% off`:''}${i.freeDelivery!==false?` · 🚚 Free delivery`:''}</p>${itemCatPendingNoteHTML(i)}</div>
     <div class="price">${money(i.price)}</div>
@@ -5214,6 +5362,48 @@ function bizItemCard(i){
 const IMAGE_ALLOWED_TYPES = ['image/jpeg','image/png','image/webp','image/gif'];
 const IMAGE_MAX_BYTES = 5*1024*1024;
 let _itemPhotoFile = null;
+// Up to 5 photos per listing; the first is the cover (items.image_url).
+const PHOTO_MAX = 5;
+let _photoSlots = [];   // [{url}] saved, or [{file, preview}] new
+function itemImages(it){ return it && it.images && it.images.length ? it.images : (it && it.imageUrl ? [it.imageUrl] : []); }
+function startAddItem(){ _itemPhotoFile = null; _photoSlots = []; openSheet('addItem'); }
+function startEditItem(id){ const it = DB.items.find(i=>i.id===id); _itemPhotoFile = null; _photoSlots = itemImages(it).map(url=>({url})); openSheet('editItem', id); }
+function photoSlotsHTML(){
+  return `<div class="photo-slots" id="photoSlots">
+    ${_photoSlots.map((ph,i)=>`<div class="ps-tile ${i===0?'cover':''}">
+      <img src="${ph.url||ph.preview}" alt="Photo ${i+1}">
+      ${i===0?`<span class="ps-cover">Cover</span>`:`<button type="button" class="ps-btn ps-star" aria-label="Make photo ${i+1} the cover" onclick="coverPhotoSlot(${i})">★</button>`}
+      <button type="button" class="ps-btn ps-x" aria-label="Remove photo ${i+1}" onclick="removePhotoSlot(${i})">✕</button>
+    </div>`).join('')}
+    ${_photoSlots.length < PHOTO_MAX ? `<label class="ps-tile ps-add" for="itemPhotosInput"><span>＋</span><small>${_photoSlots.length?`Add (${PHOTO_MAX-_photoSlots.length} left)`:`Add up to ${PHOTO_MAX} photos`}</small></label>` : ''}
+  </div>
+  <input type="file" accept="image/*" multiple id="itemPhotosInput" style="display:none;" onchange="onPhotosPicked(event)">`;
+}
+function redrawPhotoSlots(){ const el = document.getElementById('photoSlots'); if(el){ const inp = document.getElementById('itemPhotosInput'); if(inp) inp.remove(); el.outerHTML = photoSlotsHTML(); } }
+function onPhotosPicked(e){
+  const files = [...(e.target.files||[])]; e.target.value = '';
+  const room = PHOTO_MAX - _photoSlots.length;
+  if(files.length > room) toast(`Up to ${PHOTO_MAX} photos per item, so only ${room} more were added`,'bad');
+  files.slice(0, room).forEach(f=>{
+    if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose JPEG, PNG, WEBP or GIF images','bad'); return; }
+    if(f.size > IMAGE_MAX_BYTES){ toast(`${f.name} is over 5MB`,'bad'); return; }
+    const slot = { file:f, preview:'' }; _photoSlots.push(slot);
+    const r = new FileReader(); r.onload = ()=>{ slot.preview = r.result; redrawPhotoSlots(); }; r.readAsDataURL(f);
+  });
+  redrawPhotoSlots();
+}
+function removePhotoSlot(i){ _photoSlots.splice(i,1); redrawPhotoSlots(); }
+function coverPhotoSlot(i){ const [ph] = _photoSlots.splice(i,1); _photoSlots.unshift(ph); redrawPhotoSlots(); }
+async function uploadPhotoSlots(){
+  const out = [];
+  for(const ph of _photoSlots){
+    if(ph.url){ out.push(ph.url); continue; }
+    if(!sb){ out.push(ph.preview); continue; }   // preview without a server
+    const url = await uploadItemPhoto(ph.file);
+    if(url) out.push(url);
+  }
+  return out.slice(0, PHOTO_MAX);
+}
 function previewItemPhoto(e, previewId='itemPhotoPreview'){
   const f = e.target.files[0]; if(!f) return;
   if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose a JPEG, PNG, WEBP, or GIF image','bad'); e.target.value=''; return; }
@@ -5383,10 +5573,9 @@ function sheetAddItem(){
     <p class="muted" style="font-size:.78em; margin-top:6px; display:none;" id="extraFeeNoteRental">Rentals never use the delivery-partner network, so there's no zone fee. Add an amount here only if you want to charge extra on top of the daily rate — it's charged to the renter and comes to you.</p>
   </div>
   <div class="field file">
-    <label>Photo (optional)</label>
-    <input type="file" accept="image/*" id="itemPhotoFile" style="display:none;" onchange="previewItemPhoto(event)">
-    <label for="itemPhotoFile" class="filebtn">📎 Tap to choose an image</label>
-    <img id="itemPhotoPreview" style="width:100%; border-radius:14px; margin-top:10px; display:none; max-height:200px; object-fit:cover;">
+    <label>Photos (up to ${PHOTO_MAX}, optional)</label>
+    ${photoSlotsHTML()}
+    <p class="muted" style="font-size:.78em; margin-top:6px;">The first photo is the cover. Tap ★ to make another one the cover.</p>
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
@@ -5467,8 +5656,9 @@ async function submitAddItem(){
   const extraDeliveryFee = Math.max(0, Number(val('i_extra_fee')||0));
   const description = val('i_desc');
   toast('Saving item…');
-  const imageUrl = await uploadItemPhoto();
-  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
+  const images = await uploadPhotoSlots();
+  const imageUrl = images[0] || null;
+  const item = {id:uid('it'), images, businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -5507,7 +5697,7 @@ const BULK_COLUMNS = [
   ['pickup_location','Rental only: where renters pick it up (required for rentals)'],
   ['available_from','Rental only: YYYY-MM-DD if not available yet (optional)'],
   ['options','Optional. Choices the customer picks from, e.g. Size: S, M, L; Colour: White, Navy. A column named after an option (Size, Colour, Weight, Flavour, Storage…) works too'],
-  ['photo','Optional. The file name of a photo you pick together with the sheet (e.g. rice.jpg), or a web link to a picture. Leave empty to add a photo later'],
+  ['photo','Optional. Up to 5 photos separated by | (e.g. shirt-front.jpg | shirt-back.jpg): file names of photos you pick with the sheet, or web links. The first is the cover. Leave empty to add photos later'],
 ];
 let _bulk = null;   // { fileName, rows:[{line, data, item, auction, errors:[], warnings:[]}] }
 function csvCell(v){ v = v==null ? '' : String(v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
@@ -5605,7 +5795,7 @@ function bulkBuildRow(data, line, bizId){
   item.options = opts;
   const photo = g('photo');
   let photoUrl = '';
-  if(/^https?:\/\//i.test(photo)) photoUrl = photo;
+  if(/^https?:\/\//i.test(photo.split('|')[0].trim())) photoUrl = photo.split('|')[0].trim();
   return { line, data, item, auction, errors, warnings, photo, photoUrl };
 }
 // Photos picked together with the sheet, keyed by lower-case file name (with
@@ -5630,7 +5820,7 @@ function bulkPhotoFor(r){
   if(r.override) return { kind:'file', file:r.override, how:'you' };
   if(r.photoUrl) return { kind:'url', url:r.photoUrl, how:'web link' };
   if(r.photo){
-    const k = r.photo.split(/[\\/]/).pop().toLowerCase();
+    const k = r.photo.split('|')[0].trim().split(/[\\/]/).pop().toLowerCase();
     const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
     return f ? { kind:'file', file:f, how:'photo column' } : { kind:'missing', name:r.photo };
   }
@@ -5645,9 +5835,18 @@ function bulkPhotoFor(r){
   return { kind:'none' };
 }
 // Picked photos no row uses, and photos used by more than one row.
+// Extra photos after the first in the photo column: "front.jpg | back.jpg | side.jpg"
+function bulkExtraPhotos(r){
+  if(!r.photo || r.override) return [];
+  return r.photo.split('|').slice(1, PHOTO_MAX).map(x=>x.trim()).filter(Boolean).map(nm=>{
+    if(/^https?:\/\//i.test(nm)) return { kind:'url', url:nm };
+    const k = nm.split(/[\\/]/).pop().toLowerCase(); const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
+    return f ? { kind:'file', file:f } : { kind:'missing', name:nm };
+  });
+}
 function bulkPhotoAudit(rows){
   const use = new Map();
-  rows.forEach(r=>{ const ph = bulkPhotoFor(r); if(ph.kind==='file') use.set(ph.file, [...(use.get(ph.file)||[]), r]); });
+  rows.forEach(r=>{ const ph = bulkPhotoFor(r); if(ph.kind==='file') use.set(ph.file, [...(use.get(ph.file)||[]), r]); bulkExtraPhotos(r).forEach(x=>{ if(x.kind==='file' && !use.has(x.file)) use.set(x.file, [r]); }); });
   const files = [...new Set(Object.values(_bulkPhotos))];
   const usedKeys = new Set([...use.keys()].map(f=>f.name.toLowerCase()+'|'+f.size));
   return { unused: files.filter(f=>!usedKeys.has(f.name.toLowerCase()+'|'+f.size)), shared: [...use.entries()].filter(([,rs])=>rs.length>1) };
@@ -5722,6 +5921,7 @@ function sheetBulkItems(){
     ${_bulk.rows.map((r,idx)=>`
       <div class="bulk-row ${r.errors.length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
+          ${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more">+${ex}</span>` : ''; })()}
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
           <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
@@ -5757,6 +5957,11 @@ async function submitBulkItems(){
       const url = await uploadItemPhoto(ph.file);
       if(url) r.item.imageUrl = url; else photoFails++;
     }
+  }
+  for(const r of rows){   // extra photos from the photo column
+    const extra = [];
+    for(const x of bulkExtraPhotos(r)){ if(x.kind==='url') extra.push(x.url); else if(x.kind==='file'){ const u = sb ? await uploadItemPhoto(x.file) : bulkThumbURL(x.file); if(u) extra.push(u); } }
+    r.item.images = [r.item.imageUrl, ...extra].filter(Boolean).slice(0, PHOTO_MAX);
   }
   const items = rows.map(r=>r.item);
   items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
@@ -5844,12 +6049,15 @@ function sheetEditItem(){
       : `<p class="muted" style="font-size:.78em; margin-top:6px;">The MVR 15–25 zone fee is fixed and goes to the delivery partner. Add an extra amount here — for a bulky, fragile, or heavy item — that's charged to the buyer on top and comes to you.</p>`}
   </div>
   <div class="field file">
-    <label>Photo</label>
-    <input type="file" accept="image/*" id="editItemPhoto" style="display:none;" onchange="previewItemPhoto(event,'editItemPreview')">
-    <label for="editItemPhoto" class="filebtn">📎 ${item.imageUrl?'Change photo':'Add a photo'}</label>
-    <img id="editItemPreview" src="${item.imageUrl||''}" style="width:100%; border-radius:14px; margin-top:10px; ${item.imageUrl?'':'display:none;'} max-height:200px; object-fit:cover;">
+    <label>Photos (up to ${PHOTO_MAX})</label>
+    ${photoSlotsHTML()}
+    <p class="muted" style="font-size:.78em; margin-top:6px;">The first photo is the cover. Tap ★ to make another one the cover.</p>
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>
+  <div class="row" style="gap:8px; margin-top:10px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="setItemsPaused(['${item.id}'], ${!item.paused}).then(()=>closeSheet())">${item.paused?'Resume listing':'Pause listing'}</button>
+    <button class="btn btn-ghost danger-txt" style="flex:1;" onclick="askDeleteItems(['${item.id}'])">Delete listing</button>
+  </div>
   ${editItemFeaturedHTML(item)}`;
 }
 async function submitEditItem(itemId){
@@ -5892,12 +6100,10 @@ async function submitEditItem(itemId){
   const freeDeliveryEl = document.getElementById('e_free_delivery');
   if(freeDeliveryEl) item.freeDelivery = freeDeliveryEl.checked;
   item.extraDeliveryFee = Math.max(0, Number(val('e_extra_fee')||0));
-  if(_itemPhotoFile){
-    toast('Saving…');
-    const url = await uploadItemPhoto();
-    if(url) item.imageUrl = url;
-  }
-  saveDB('items', [item]);
+  if(_photoSlots.some(ph=>ph.file)) toast('Saving photos…');
+  const imgs = await uploadPhotoSlots();
+  item.images = imgs; item.imageUrl = imgs[0] || null;
+  if(await saveDB('items', [item]) === false) return;
   _itemPhotoFile = null;
   closeSheet(); toast('Item updated'); render();
 }
@@ -8354,6 +8560,15 @@ function relatedItemsFor(item, n){
   const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
   return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
 }
+function galleryGo(itemId, i){ state.galleryIdx = state.galleryIdx || {}; state.galleryIdx[itemId] = i; render(); }
+function itemGalleryHTML(item){
+  const imgs = itemImages(item);
+  const n = imgs.length; const idx = Math.min(((state.galleryIdx||{})[item.id]||0), Math.max(0,n-1));
+  return `<div class="ip-photo">${n ? `<img src="${imgs[idx]}" alt="${escapeAttr(item.name)} photo ${idx+1} of ${n}">` : itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}
+      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galleryGo('${item.id}', ${(idx-1+n)%n})">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galleryGo('${item.id}', ${(idx+1)%n})">›</button><span class="gal-count">${idx+1} / ${n}</span>` : ''}
+    </div>
+    ${n>1 ? `<div class="gal-thumbs">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
+}
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);
   if(!item){ go('custHome'); return; }
@@ -8372,7 +8587,7 @@ function renderCustItem(){
       </div>
       <div class="ip-main">
         <div class="ip-media">
-          <div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>
+          ${itemGalleryHTML(item)}
         </div>
         <div class="ip-info">
           <div class="ip-store-row">
@@ -8944,19 +9159,51 @@ function optionPickerHTML(item){
 function pickItemOptionIdx(itemId, gi, vi){ const it = DB.items.find(i=>i.id===itemId); if(!it) return; const o = itemOptions(it), n = Object.keys(o)[gi]; if(n) pickItemOption(itemId, n, o[n][vi]); }
 // Seller: options editor in Add / Edit item. Suggested names for the
 // category, any the item already has, and one free row for a new option.
+const OPTION_PRESETS = { 'Size':['XS','S','M','L','XL','XXL','3XL'], 'Colour':['Black','White','Grey','Red','Pink','Orange','Yellow','Green','Blue','Navy','Purple','Brown','Beige','Gold','Silver'],
+  'Weight':['250g','500g','1kg','2kg','5kg','10kg'], 'Pack size':['1','2','3','6','12','24'], 'Flavour':['Plain','Vanilla','Chocolate','Strawberry','Coconut','Mango'],
+  'Storage':['32GB','64GB','128GB','256GB','512GB','1TB'], 'Shade':['Fair','Light','Medium','Tan','Deep'], 'Volume':['30ml','50ml','100ml','250ml','500ml','1L'],
+  'Strength':['250mg','500mg','1000mg'], 'Age':['0+','3+','6+','9+','12+'], 'Format':['Paperback','Hardcover','eBook'], 'Language':['English','Dhivehi','Arabic'],
+  'Material':['Steel','Wood','Plastic','Aluminium','Glass'], 'Edition':['Standard','Limited','Signed'], 'Condition':['New','Like new','Used'] };
+// Seller taps ready-made values on / off (and can add their own); the
+// chosen values live in a hidden input per option, read by readOptionsEditor().
+function optChipsHTML(name, chosen){
+  const preset = OPTION_PRESETS[name] || [];
+  const all = [...preset, ...chosen.filter(v=>!preset.includes(v))];
+  return all.map(v=>`<button type="button" class="opt-chip ${chosen.includes(v)?'on':''}" aria-pressed="${chosen.includes(v)}" data-v="${escapeAttr(v)}" onclick="toggleOptChip(this)">${escapeAttr(v)}</button>`).join('');
+}
+function toggleOptChip(btn){
+  const row = btn.closest('.opt-row'); const hid = row.querySelector('input[data-opt-name]');
+  const list = parseOptValues(hid.value); const v = btn.getAttribute('data-v');
+  const k = list.indexOf(v); if(k>=0) list.splice(k,1); else list.push(v);
+  hid.value = list.join(', '); btn.classList.toggle('on', k<0); btn.setAttribute('aria-pressed', String(k<0));
+}
+function addOptValues(btn){
+  const row = btn.closest('.opt-row'); const hid = row.querySelector('input[data-opt-name]'); const inp = row.querySelector('input[data-opt-add]');
+  const more = parseOptValues(inp.value); if(!more.length) return;
+  const list = [...new Set([...parseOptValues(hid.value), ...more])];
+  hid.value = list.join(', '); inp.value = '';
+  row.querySelector('.opt-chips').innerHTML = optChipsHTML(hid.getAttribute('data-opt-name'), list);
+}
 function optionsEditorHTML(prefix, cat, opts){
   opts = opts || {};
   const names = [...new Set([...(CATEGORY_OPTIONS[cat] || ['Option']), ...Object.keys(opts)])];
   return `<div class="opt-editor" id="${prefix}_opts" data-cat="${escapeAttr(cat||'')}">
-    <div class="opt-head"><strong>Options (optional)</strong><span class="muted">Customers pick one of each before adding to cart. Leave empty if there's no choice.</span></div>
-    ${names.map(n=>`<div class="opt-row"><label>${escapeAttr(n)}</label><input data-opt-name="${escapeAttr(n)}" value="${escapeAttr((opts[n]||[]).join(', '))}" placeholder="${escapeAttr(OPTION_HINTS[n] ? 'e.g. '+OPTION_HINTS[n] : 'Values separated by commas')}"></div>`).join('')}
+    <div class="opt-head"><strong>Options (optional)</strong><span class="muted">Tap the choices this item comes in. Customers pick one of each before adding to cart.</span></div>
+    ${names.map(n=>`<div class="opt-row opt-row-chips"><label>${escapeAttr(n)}</label>
+      <input type="hidden" data-opt-name="${escapeAttr(n)}" value="${escapeAttr((opts[n]||[]).join(', '))}">
+      <div class="opt-chips">${optChipsHTML(n, opts[n]||[])}</div>
+      <div class="opt-add"><input data-opt-add placeholder="${escapeAttr(OPTION_PRESETS[n] ? 'Add another, e.g. '+(n==='Size'?'38':'Teal') : 'Add, e.g. '+(OPTION_HINTS[n]||'Small, Large'))}" aria-label="Add ${escapeAttr(n)} values" onkeydown="if(event.key==='Enter'){event.preventDefault(); addOptValues(this);}"><button type="button" class="btn btn-ghost btn-sm" onclick="addOptValues(this)">Add</button></div>
+    </div>`).join('')}
     <div class="opt-row opt-custom"><input data-opt-custom-name placeholder="Another option, e.g. Scent" aria-label="Option name"><input data-opt-custom-vals placeholder="Values, e.g. Rose, Oud" aria-label="Option values"></div>
   </div>`;
 }
 function readOptionsEditor(prefix){
   const box = document.getElementById(prefix+'_opts'); const out = {};
   if(!box) return out;
-  box.querySelectorAll('input[data-opt-name]').forEach(inp=>{ const list = parseOptValues(inp.value); if(list.length) out[inp.getAttribute('data-opt-name')] = list; });
+  box.querySelectorAll('input[data-opt-name]').forEach(inp=>{
+    const row = inp.closest('.opt-row'); const pend = row && row.querySelector('input[data-opt-add]');
+    const list = [...new Set([...parseOptValues(inp.value), ...(pend ? parseOptValues(pend.value) : [])])];   // typed but not added yet counts too
+    if(list.length) out[inp.getAttribute('data-opt-name')] = list; });
   const cn = box.querySelector('input[data-opt-custom-name]'), cv = box.querySelector('input[data-opt-custom-vals]');
   if(cn && cv){ const n = tidyOptName(cn.value), list = parseOptValues(cv.value); if(n && list.length) out[n] = list; }
   return out;

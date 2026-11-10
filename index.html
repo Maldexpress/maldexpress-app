@@ -815,6 +815,27 @@
   }
 
 
+  /* Upload a list of items */
+  .bulk-cta{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; margin-bottom:14px; border-radius:16px; background:var(--lagoon-50); border:1px solid #B5E5E0;}
+  .bulk-cta p{font-size:.86em; margin-top:2px;}
+  .bulk-cta .btn{flex-shrink:0;}
+  .bulk-steps{margin:4px 0 14px; padding-left:20px; color:var(--ink-dim); line-height:1.55;}
+  .bulk-steps li{margin-bottom:6px;} .bulk-steps strong{color:var(--ink);}
+  .bulk-cols{margin-top:12px; font-size:.88em;}
+  .bulk-cols summary{cursor:pointer; font-weight:700; color:var(--link);}
+  .bulk-cols table{width:100%; border-collapse:collapse; margin-top:8px;}
+  .bulk-cols th{text-align:left; padding:6px 10px 6px 0; vertical-align:top; white-space:nowrap; font-family:ui-monospace,Menlo,monospace; font-size:.92em;}
+  .bulk-cols td{padding:6px 0; color:var(--ink-dim); border-bottom:1px solid var(--edge);}
+  .bulk-cols th{border-bottom:1px solid var(--edge);}
+  .bulk-summary{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;}
+  .bulk-list{display:flex; flex-direction:column; gap:8px; margin-top:12px; max-height:46vh; overflow-y:auto;}
+  .bulk-row{padding:12px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--edge);}
+  .bulk-row.has-err{border-color:#F3B7BB; background:#FFF7F7;}
+  .bulk-err{color:var(--red); font-size:.84em; margin-top:6px; font-weight:600;}
+  .bulk-warn{color:var(--amber); font-size:.84em; margin-top:6px; font-weight:600;}
+  .bulk-note{color:var(--ink-dim); font-size:.82em; margin-top:6px;}
+  .bulk-thumb{width:48px; height:48px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; border:1px solid var(--edge);}
+  .bulk-thumb.none{display:flex; align-items:center; justify-content:center; background:var(--sand-2); font-size:1.2em; border:none;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -4197,6 +4218,7 @@ function sheetHTML(){
   else if(state.sheet==='addressBook') body = sheetAddressBook();
   else if(state.sheet==='addAddress') body = sheetAddAddress();
   else if(state.sheet==='addItem') body = sheetAddItem();
+  else if(state.sheet==='bulkItems') body = sheetBulkItems();
   else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
@@ -4648,6 +4670,7 @@ function renderBizItems(biz,t){
   document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
     ${topbar('My items', `${myItems.length} / ${t.limit} listed`)}
     <div style="padding:4px 16px 0;">
+      ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="_bulk=null; _bulkPhotos={}; openSheet('bulkItems')">Upload a list</button></div>` : ''}
       ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
       <div class="tabs">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
       ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
@@ -4719,9 +4742,9 @@ function previewItemPhoto(e, previewId='itemPhotoPreview'){
 // storage RLS policies check against that same prefix, so no join to
 // businesses is needed there. Returns null (photo skipped) rather than
 // throwing when there's no backend or no file was chosen.
-async function uploadItemPhoto(){
-  if(!_itemPhotoFile || !sb) return null;
-  const file = _itemPhotoFile;
+async function uploadItemPhoto(fileArg){
+  const file = fileArg || _itemPhotoFile;
+  if(!file || !sb) return null;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const path = `${state.customerId}/${uid('img')}.${ext}`;
   const { error } = await sb.storage.from('product-images').upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type });
@@ -4966,6 +4989,240 @@ async function submitAddItem(){
   }
   _itemPhotoFile = null;
   closeSheet(); toast(listingType==='auction' ? 'Auction listed!' : 'Item added'); render();
+}
+
+// ---------- Upload a list of items (CSV template) ----------
+// Stores download a CSV template, fill it in Excel / Google Sheets / Numbers,
+// and upload it. Every row is checked with the same rules as the Add item
+// form (submitAddItem) and the plan's item limit; the store sees a preview
+// with any problems before anything is saved. Photos are added afterwards.
+const BULK_COLUMNS = [
+  ['type','buy_now, auction or rental'],
+  ['name','Item name (required)'],
+  ['details','Anything buyers should know (optional)'],
+  ['category','One of the app categories, e.g. Grocery. Anything else is listed as Other until approved'],
+  ['price','Buy now: price. Auction: starting price. Rental: rate per day (or month)'],
+  ['stock','Buy now: stock quantity. Rental: units available. Ignored for auctions'],
+  ['discount_percent','Buy now only, 0-90 (optional)'],
+  ['free_delivery','yes or no (default yes). Not used for rentals'],
+  ['extra_fee','Extra MVR charged on top for bulky items (optional)'],
+  ['bid_increment','Auction only (required for auctions)'],
+  ['auction_days','Auction only: 1 to 5 (default 5)'],
+  ['rent_period','Rental only: day or month (month only for Home & Living)'],
+  ['deposit','Rental only: refundable deposit (optional)'],
+  ['pickup_location','Rental only: where renters pick it up (required for rentals)'],
+  ['available_from','Rental only: YYYY-MM-DD if not available yet (optional)'],
+  ['photo','Optional. The file name of a photo you pick together with the sheet (e.g. rice.jpg), or a web link to a picture. Leave empty to add a photo later'],
+];
+let _bulk = null;   // { fileName, rows:[{line, data, item, auction, errors:[], warnings:[]}] }
+function csvCell(v){ v = v==null ? '' : String(v); return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function downloadBulkTemplate(){
+  const head = BULK_COLUMNS.map(c=>c[0]);
+  const examples = [
+    ['buy_now','Fresh Rice 5kg','Basmati, 5kg bag','Grocery','145','20','10','yes','0','','','','','','','rice.jpg'],
+    ['auction','Vintage dhoni model','Hand-carved, 60cm','Collectibles','500','','','yes','0','25','5','','','','',''],
+    ['rental','Snorkel set','Mask, snorkel and fins','Sports & Outdoors','50','4','','','0','','','day','200','Majeedhee Magu, Malé','',''],
+  ];
+  const csv = '﻿' + [head, ...examples].map(r=>r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'maldexpress-items-template.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+  toast('Template downloaded. Replace the 3 example rows with your items.');
+}
+// Small RFC 4180 parser: quoted cells, doubled quotes, commas/newlines in
+// quotes. Excel in some regions saves with ';' (or tabs), so the separator is
+// taken from the header line.
+function parseCSV(text){
+  text = String(text||'').replace(/^﻿/,'');
+  const firstLine = text.split(/\r?\n/)[0] || '';
+  const counts = { ',':(firstLine.match(/,/g)||[]).length, ';':(firstLine.match(/;/g)||[]).length, '\t':(firstLine.match(/\t/g)||[]).length };
+  const sep = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; }
+      else cell+=c;
+    } else if(c==='"') q=true;
+    else if(c===sep){ row.push(cell); cell=''; }
+    else if(c==='\n' || c==='\r'){ if(c==='\r' && text[i+1]==='\n') i++; row.push(cell); rows.push(row); row=[]; cell=''; }
+    else cell+=c;
+  }
+  if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+function bulkNum(v){ v=String(v==null?'':v).trim().replace(/^MVR\s*/i,'').replace(/,/g,''); return v==='' ? null : (isFinite(Number(v)) ? Number(v) : NaN); }
+function bulkYes(v, dflt){ v=String(v||'').trim().toLowerCase(); if(!v) return dflt; return ['yes','y','true','1'].includes(v); }
+function bulkType(v){ v=String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_'); if(!v || v==='buy_now'||v==='buynow'||v==='buy') return 'buy_now'; if(v.startsWith('auction')) return 'auction'; if(v.startsWith('rent')) return 'rental'; return null; }
+function bulkCategory(v){
+  v = String(v||'').trim(); if(!v) return { cat:'General', other:'' };
+  const hit = MARKETPLACE_CATEGORIES.find(c=>c.toLowerCase()===v.toLowerCase());
+  return hit ? { cat:hit, other:'' } : { cat:'Other', other:v.slice(0,40) };
+}
+function bulkBuildRow(data, line, bizId){
+  const errors=[], warnings=[];
+  const g = k => String(data[k]==null?'':data[k]).trim();
+  const listingType = bulkType(g('type'));
+  if(!listingType) errors.push(`Type "${g('type')}" should be buy_now, auction or rental`);
+  const name = g('name'); if(!name) errors.push('Name is missing');
+  const { cat, other } = bulkCategory(g('category'));
+  if(other) warnings.push(`"${other}" isn't a category yet, so it's listed as Other until approved`);
+  const price = bulkNum(g('price')), stockN = bulkNum(g('stock')), extra = bulkNum(g('extra_fee'));
+  if(extra!=null && (isNaN(extra) || extra<0)) errors.push('Extra fee must be a number, 0 or more');
+  const item = { id:uid('it'), businessId:bizId, name, category:cat, categoryOtherName:other, imageUrl:null, listingType: listingType||'buy_now',
+    freeDelivery: bulkYes(g('free_delivery'), true), extraDeliveryFee: extra && !isNaN(extra) ? extra : 0, discountPercent:0,
+    rentalDeposit:0, rentalRatePeriod:'day', rentalFulfillment:'pickup', pickupLocation:'', rentalAvailability:'now', availableFrom:'', description:g('details') };
+  let auction = null;
+  if(listingType==='auction'){
+    const inc = bulkNum(g('bid_increment')); const days = bulkNum(g('auction_days')) ?? 5;
+    if(price==null || isNaN(price) || price<=0) errors.push('Auction needs a starting price above 0');
+    if(inc==null || isNaN(inc) || inc<=0) errors.push('Auction needs a bid increment above 0');
+    if(isNaN(days) || days<1 || days>5 || Math.round(days)!==days) errors.push('Auction days must be 1 to 5');
+    item.price = price; item.stock = 1;
+    auction = { startingPrice:price, bidIncrement:inc, days };
+  } else if(listingType==='rental'){
+    item.price = price; item.stock = stockN;
+    const dep = bulkNum(g('deposit')); if(dep!=null && (isNaN(dep)||dep<0)) errors.push('Deposit must be a number, 0 or more'); else item.rentalDeposit = dep||0;
+    const per = g('rent_period').toLowerCase();
+    item.rentalRatePeriod = per.startsWith('month') ? 'month' : 'day';
+    if(item.rentalRatePeriod==='month' && cat!=='Home & Living'){ item.rentalRatePeriod='day'; warnings.push('Monthly rates are only for Home & Living, so this uses a daily rate'); }
+    if(price==null || isNaN(price) || price<=0) errors.push(`Rental needs a ${item.rentalRatePeriod==='month'?'monthly':'daily'} rate above 0`);
+    if(stockN==null || isNaN(stockN) || stockN<=0) errors.push('Rental needs units available (1 or more)');
+    item.pickupLocation = g('pickup_location'); if(!item.pickupLocation) errors.push('Rental needs a pickup location');
+    const from = g('available_from');
+    if(from){ if(!/^\d{4}-\d{2}-\d{2}$/.test(from) || isNaN(Date.parse(from))) errors.push('Available from must look like 2026-12-01'); else { item.rentalAvailability='soon'; item.availableFrom=from; } }
+    item.freeDelivery = true;
+  } else if(listingType==='buy_now'){
+    if(price==null || isNaN(price) || price<=0) errors.push('Price must be a number above 0');
+    if(stockN!=null && (isNaN(stockN) || stockN<0)) errors.push('Stock must be a number, 0 or more');
+    const disc = bulkNum(g('discount_percent'));
+    if(disc!=null && (isNaN(disc) || disc<0 || disc>90)) errors.push('Discount must be 0 to 90');
+    item.price = price; item.stock = stockN||0; item.discountPercent = disc && !isNaN(disc) ? disc : 0;
+  }
+  const photo = g('photo');
+  let photoUrl = '';
+  if(/^https?:\/\//i.test(photo)) photoUrl = photo;
+  return { line, data, item, auction, errors, warnings, photo, photoUrl };
+}
+// Photos picked together with the sheet, keyed by lower-case file name (with
+// and without the extension), so "rice.jpg", "Rice.JPG" and "rice" all match.
+let _bulkPhotos = {};
+function onBulkPhotos(ev){
+  const files = [...(ev.target.files||[])].filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+  files.forEach(f=>{ const k=f.name.toLowerCase(); _bulkPhotos[k]=f; _bulkPhotos[k.replace(/\.[^.]+$/,'')]=f; });
+  if(!files.length) toast('Pick image files (JPG, PNG or WebP)','bad');
+  render();
+}
+function bulkPhotoCount(){ return new Set(Object.values(_bulkPhotos)).size; }
+function bulkPhotoFor(r){
+  if(r.photoUrl) return { kind:'url', url:r.photoUrl };
+  if(!r.photo) return { kind:'none' };
+  const k = r.photo.split(/[\\/]/).pop().toLowerCase();
+  const f = _bulkPhotos[k] || _bulkPhotos[k.replace(/\.[^.]+$/,'')];
+  return f ? { kind:'file', file:f } : { kind:'missing', name:r.photo };
+}
+let _bulkThumbs = new Map();
+function bulkThumbURL(f){ if(!_bulkThumbs.has(f)) _bulkThumbs.set(f, URL.createObjectURL(f)); return _bulkThumbs.get(f); }
+async function onBulkFile(ev){
+  const f = ev.target.files && ev.target.files[0]; if(!f) return;
+  if(/\.(xlsx|xls|numbers)$/i.test(f.name)){ toast('Save the sheet as CSV first (File > Save as / Download > .csv), then upload that','bad'); ev.target.value=''; return; }
+  const text = await f.text();
+  const rows = parseCSV(text);
+  if(rows.length<2){ _bulk = { fileName:f.name, rows:[], fatal:'The file has no item rows under the header.' }; render(); return; }
+  const header = rows[0].map(h=>String(h).trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z_]/g,''));
+  if(!header.includes('name')){ _bulk = { fileName:f.name, rows:[], fatal:'This doesn’t look like the Maldexpress template: there’s no "name" column. Download the template and copy your items into it.' }; render(); return; }
+  const biz = currentBiz();
+  const out = rows.slice(1).map((r,i)=>{ const data={}; header.forEach((h,j)=>{ if(h) data[h]=r[j]; }); return bulkBuildRow(data, i+2, biz.id); });
+  _bulk = { fileName:f.name, rows:out };
+  render();
+}
+function sheetBulkItems(){
+  const biz = currentBiz(); const t = tierInfo(biz);
+  const room = Math.max(0, t.limit - DB.items.filter(i=>i.businessId===biz.id).length);
+  const ok = _bulk ? _bulk.rows.filter(r=>!r.errors.length) : [];
+  const bad = _bulk ? _bulk.rows.filter(r=>r.errors.length) : [];
+  const willAdd = Math.min(ok.length, room);
+  const typeLbl = {buy_now:'Buy now', auction:'Auction', rental:'Rental'};
+  return `
+  <h2>Upload a list of items</h2>
+  <ol class="bulk-steps">
+    <li><strong>Download the template.</strong> It opens in Excel, Google Sheets or Numbers and has 3 example rows to copy.</li>
+    <li><strong>Add one item per row</strong> and save it as a CSV file.</li>
+    <li><strong>Upload it here</strong> and check the preview before adding.</li>
+  </ol>
+  <button class="btn btn-ghost" onclick="downloadBulkTemplate()">Download template (.csv)</button>
+  <details class="bulk-cols"><summary>What goes in each column</summary>
+    <table>${BULK_COLUMNS.map(([k,d])=>`<tr><th>${k}</th><td>${d}</td></tr>`).join('')}</table>
+    <p class="muted" style="font-size:.84em; margin-top:8px;">Categories: ${MARKETPLACE_CATEGORIES.join(', ')}.</p>
+  </details>
+  <div class="field file" style="margin-top:14px;">
+    <input type="file" accept=".csv,text/csv" id="bulkFile" style="display:none;" onchange="onBulkFile(event)">
+    <label for="bulkFile" class="filebtn">📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
+  </div>
+  <div class="field file">
+    <input type="file" accept="image/*" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
+    <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos (optional)'}</label>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). Items without a photo are added without one, and you can add it later in Edit item.</p>
+  </div>
+  <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
+  ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}
+  ${_bulk && !_bulk.fatal ? `
+  <div class="bulk-summary">
+    <span class="status-pill ok">${ok.length} ready</span>
+    ${bad.length?`<span class="status-pill bad">${bad.length} with problems</span>`:''}
+    ${ok.length>room?`<span class="status-pill wait">${ok.length-room} over your limit</span>`:''}
+    <span class="status-pill mid">${ok.filter(r=>['file','url'].includes(bulkPhotoFor(r).kind)).length} with photos</span>
+  </div>
+  ${ok.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} ready item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.${biz.tier==='free'?' Go Pro for up to 500 items.':''}</p></div>` : ''}
+  <div class="bulk-list">
+    ${_bulk.rows.map(r=>`
+      <div class="bulk-row ${r.errors.length?'has-err':''}">
+        <div class="row between" style="gap:10px; align-items:flex-start;">
+          ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
+          <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}</p></div>
+          <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
+        </div>
+        ${r.errors.map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
+        ${r.warnings.map(w=>`<p class="bulk-warn">! ${escapeAttr(w)}</p>`).join('')}
+        ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='missing' ? `<p class="bulk-warn">! Photo "${escapeAttr(ph.name)}" isn't picked yet, so this item is added without a photo</p>` : ph.kind==='none' ? `<p class="bulk-note">No photo: add one later in Edit item</p>` : ''; })()}
+      </div>`).join('')}
+  </div>
+  ${bad.length ? `<p class="muted" style="font-size:.84em; margin-top:10px;">Rows with problems are skipped. Fix them in the sheet and upload again, or add them one by one.</p>` : ''}
+  <button class="btn btn-primary" style="margin-top:14px;" ${willAdd?'':'disabled'} onclick="submitBulkItems()">${willAdd?`Add ${willAdd} item${willAdd===1?'':'s'} to store`:'Nothing to add yet'}</button>` : ''}`;
+}
+async function submitBulkItems(){
+  if(!_bulk) return;
+  const biz = currentBiz(); const t = tierInfo(biz);
+  const room = Math.max(0, t.limit - DB.items.filter(i=>i.businessId===biz.id).length);
+  const rows = _bulk.rows.filter(r=>!r.errors.length).slice(0, room);
+  if(!rows.length){ toast('Nothing to add','bad'); return; }
+  toast(`Adding ${rows.length} item${rows.length===1?'':'s'}…`);
+  let photoFails = 0, done = 0;
+  for(const r of rows){
+    const ph = bulkPhotoFor(r);
+    if(ph.kind==='url') r.item.imageUrl = ph.url;
+    else if(ph.kind==='file' && !sb){ r.item.imageUrl = bulkThumbURL(ph.file); }   // preview without a server
+    else if(ph.kind==='file'){
+      toast(`Uploading photos… ${++done} of ${rows.filter(x=>bulkPhotoFor(x).kind==='file').length}`);
+      const url = await uploadItemPhoto(ph.file);
+      if(url) r.item.imageUrl = url; else photoFails++;
+    }
+  }
+  const items = rows.map(r=>r.item);
+  DB.items.push(...items);
+  await saveDB('items', items);
+  const now = Date.now();
+  const auctions = rows.filter(r=>r.auction).map(r=>({ id:uid('auc'), itemId:r.item.id, businessId:biz.id, startingPrice:r.auction.startingPrice, bidIncrement:r.auction.bidIncrement, startTime:now, endTime:now + r.auction.days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null }));
+  if(auctions.length){
+    DB.auctions.push(...auctions);
+    if(sb){ const { error } = await sb.from('auction_listings').insert(auctions.map(a=>toDbRow('auctions', a))); if(error) toast('Items saved but auction setup failed: '+error.message,'bad'); }
+  }
+  const others = [...new Set(items.map(i=>i.categoryOtherName).filter(Boolean))];
+  for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
+  _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
+  toast(`${items.length} item${items.length===1?'':'s'} added${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
 }
 function sheetEditItem(){
   const item = DB.items.find(i=>i.id===state.sheetData);

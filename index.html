@@ -920,6 +920,22 @@
     .feat-panel .top-card .price{font-size:1.2em;}
   }
   @media (min-width:1024px) and (max-width:1279px){ .feat-panel .desk-row-feat{grid-template-columns:repeat(3, minmax(0,1fr));} .feat-panel .desk-row-feat > .top-card:nth-child(n+7){display:none;} }
+  /* Categories on demand */
+  .cat-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-6px 0 22px;}
+  .cat-bar-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.92em; box-shadow:var(--shadow);}
+  .cat-bar-btn:hover{border-color:var(--lagoon-500);}
+  .cbb-ic{color:var(--lagoon-600); font-size:1.05em;}
+  .cat-chip{display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:999px; border:1.5px solid var(--lagoon-500); background:var(--lagoon-50); color:var(--lagoon-700); font-weight:700; font-size:.9em;}
+  .cat-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:16px 8px; margin-top:6px;}
+  .cat-grid .cat-pill{width:auto; justify-self:center; position:relative;}
+  .cat-grid .cat-label{max-width:90px; white-space:normal; text-align:center; line-height:1.25;}
+  .cat-count{position:absolute; top:-4px; right:4px; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800; line-height:20px; text-align:center;}
+  .sc-allcats{display:inline-flex; align-items:center; gap:8px; padding:7px 14px; margin-right:6px; border-radius:10px; border:none; background:var(--ink-900); color:#fff; font-weight:700; font-size:.92em; white-space:nowrap;}
+  .sc-allcats.on, .sc-allcats:hover{background:var(--lagoon-700);}
+  .desk-cats-menu{position:absolute; left:0; right:0; top:100%; background:#fff; border-top:1px solid var(--edge); border-bottom:1px solid var(--edge); box-shadow:0 24px 40px rgba(13,43,51,.14); padding:22px 0 26px; z-index:45;}
+  .desk-cats-menu .dcm-wrap{max-width:1200px; margin:0 auto; padding:0 24px;}
+  .desk-cats-menu .cat-grid{grid-template-columns:repeat(9, minmax(0,1fr)); gap:20px 12px;}
+  .site-cats{position:relative;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -4640,6 +4656,7 @@ function sheetHTML(){
   else if(state.sheet==='bulkItems') body = sheetBulkItems();
   else if(state.sheet==='editItem') body = sheetEditItem();
   else if(state.sheet==='featureItem') body = sheetFeatureItem();
+  else if(state.sheet==='categories') body = sheetCategories();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
@@ -8032,6 +8049,22 @@ function toggleHomeSwitcher(){ state.homeSwitcherOpen = !state.homeSwitcherOpen;
 // filter doesn't apply here anymore".
 function setHomeListingType(type){ state.homeListingType = type; state.homeCategory = 'All'; state.homeSwitcherOpen = false; render(); }
 function setHomeCategory(cat){ state.homeCategory = cat; render(); }
+// Categories are opened on demand (phone: this sheet; PC: the All categories
+// menu in the header) instead of always taking the top of the home page.
+function pickCategoryFromSheet(c){ state.sheet = null; state.sheetData = null; state.deskCatsOpen = false; state.homeCategory = c; if(state.screen!=='custHome') state.screen = 'custHome'; render(); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
+function categoryGridHTML(){
+  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  const counts = {}; DB.items.filter(isApprovedItem).forEach(i=>{ const c=i.category||'General'; counts[c]=(counts[c]||0)+1; });
+  return `<div class="cat-grid">${cats.map(c=>`
+    <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="pickCategoryFromSheet('${escapeAttr(c)}')">
+      <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
+      <span class="cat-label">${c}</span>
+      ${c!=='All' && counts[c] ? `<span class="cat-count">${counts[c]}</span>` : ''}
+    </button>`).join('')}</div>`;
+}
+function sheetCategories(){ return `<h2>Categories</h2>${categoryGridHTML()}`; }
+function toggleDeskCats(ev){ if(ev) ev.stopPropagation(); state.deskCatsOpen = !state.deskCatsOpen; render(); }
+document.addEventListener('click', (e)=>{ if(state.deskCatsOpen && !(e.target.closest && e.target.closest('.desk-cats-menu, .sc-allcats'))){ state.deskCatsOpen = false; render(); } });
 // Tapping the search icon blurs the field instead of doing anything to the
 // search itself - on mobile that's what actually closes the on-screen keyboard,
 // since there's no separate "search" action to submit (results already update
@@ -8402,15 +8435,11 @@ function renderCustHome(){
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">
-      <div class="section">
-        <h2 style="margin-bottom:12px;">Categories</h2>
-        <div class="cat-scroll" id="catScroll" style="margin:0 -10px; padding:2px 10px 8px;" onscroll="saveHomeCatScroll()">
-          ${cats.map(c=>`
-            <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="setHomeCategory('${c}')">
-              <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
-              <span class="cat-label">${c}</span>
-            </button>`).join('')}
-        </div>
+      <div class="cat-bar">
+        <button class="cat-bar-btn" onclick="openSheet('categories')" aria-haspopup="dialog">
+          <span class="cbb-ic" aria-hidden="true">▦</span> All categories
+        </button>
+        ${state.homeCategory!=='All' ? `<button class="cat-chip" onclick="setHomeCategory('All')" aria-label="Clear ${escapeAttr(state.homeCategory)} filter">${categoryIcon(state.homeCategory)} ${escapeAttr(state.homeCategory)} <span aria-hidden="true">✕</span></button>` : ''}
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
       ${featured.length ? `
@@ -8492,11 +8521,14 @@ function siteHeaderHTML(active){
       </div>
     </div></div>
     <nav class="site-cats" aria-label="Categories"><div class="site-wrap">
+      <button class="sc-allcats ${state.deskCatsOpen?'on':''}" aria-expanded="${!!state.deskCatsOpen}" onclick="toggleDeskCats(event)"><span aria-hidden="true">☰</span> All categories</button>
       ${Object.keys(LISTING_TYPE_META).map(k=>`<button class="sc-link type ${state.homeListingType===k && active==='custHome'?'on':''}" onclick="deskListing('${k}')">${LISTING_TYPE_META[k].label}</button>`).join('')}
       <span class="sc-sep"></span>
       ${navCats.map(c=>`<button class="sc-link ${state.homeCategory===c && active==='custHome'?'on':''}" onclick="deskPickCategory('${escapeAttr(c)}')">${c}</button>`).join('')}
       <button class="sc-link" onclick="go('custStores')">All stores</button>
-    </div></nav>
+    </div>
+    ${state.deskCatsOpen ? `<div class="desk-cats-menu" role="dialog" aria-label="All categories"><div class="dcm-wrap">${categoryGridHTML()}</div></div>` : ''}
+    </nav>
   </header>`;
 }
 // Promo banners on the PC home page: arrows switch between them; nothing
@@ -8541,12 +8573,7 @@ function renderDeskHome(){
     <div class="desk-home">
       ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `
-      <section class="desk-sec">
-        <h2>Shop by category</h2>
-        <div class="desk-tiles">
-          ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
-        </div>
-      </section>
+
       ${picks.length ? `
       <section class="desk-sec${featNow.length?' feat-panel':''}">
         <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'⭐ Featured':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
@@ -8561,6 +8588,12 @@ function renderDeskHome(){
         <div class="desk-sec-head"><h2>${gridTitle}</h2>${state.homeCategory!=='All'||state.homeSearch?`<button class="link-btn" onclick="state.homeSearch=''; deskPickCategory('All')">Clear filter</button>`:''}</div>
         <div class="top-grid desk-grid">
           ${filtered.length ? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>Nothing here yet. Try another category or clear the search.</div>`}
+        </div>
+      </section>`}
+      ${state.homeSearch || state.homeCategory!=='All' ? '' : `      <section class="desk-sec">
+        <h2>Explore categories</h2>
+        <div class="desk-tiles">
+          ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
         </div>
       </section>`}
     </div>

@@ -1015,7 +1015,8 @@
   .opt-chip.on{background:var(--lagoon-700); border-color:var(--lagoon-700); color:#fff;}
   .opt-add{display:flex; gap:6px; margin-top:8px;}
   .opt-add input{flex:1; min-width:0;}
-  .bulk-more{position:absolute; margin:38px 0 0 34px; padding:1px 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
+  .bulk-thumb-wrap{position:relative; flex-shrink:0; display:block;}
+  .bulk-more{position:absolute; right:4px; bottom:4px; z-index:1; padding:1px 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -5993,8 +5994,8 @@ function sheetBulkItems(){
     ${_bulk.rows.map((r,idx)=>`
       <div class="bulk-row ${r.errors.length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
-          ${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more">+${ex}</span>` : ''; })()}
-          ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}
+          <span class="bulk-thumb-wrap">${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more" aria-label="${ex} more photo${ex===1?'':'s'}">+${ex}</span>` : ''; })()}
+          ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}</span>
           <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>

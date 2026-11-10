@@ -883,6 +883,22 @@
     .ip-related{margin-top:48px;}
     .ip-grid{grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)) !important; gap:28px 20px !important;}
   }
+  /* Approval / featured */
+  .item-status{font-size:.78em; margin-top:4px; font-weight:600;}
+  .item-status.wait{color:var(--amber);} .item-status.bad{color:var(--red);} .item-status.feat{color:var(--lagoon-700);}
+  .feat-box{margin-top:18px; padding:16px; border-radius:16px; background:#FFF6E3; border:1px solid #F5D9A0;}
+  .feat-box h3{margin-bottom:6px;} .feat-box p{font-size:.9em;}
+  .feat-badge{position:absolute; left:8px; bottom:8px; padding:3px 9px; border-radius:99px; background:#FFF1D6; color:var(--amber); font-size:.72em; font-weight:800; box-shadow:0 1px 4px rgba(13,43,51,.15);}
+  .adm-group .adm-list{display:flex; flex-direction:column; gap:10px; margin-top:12px;}
+  .adm-item{display:flex; gap:12px; align-items:flex-start; padding:10px; border-radius:14px; background:var(--sand-bg);}
+  .adm-thumb{width:56px; height:56px; border-radius:12px; overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--lagoon-50); font-size:1.4em;}
+  .adm-thumb img{width:100%; height:100%; object-fit:cover;}
+  .adm-name{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .adm-desc{font-size:.8em; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .adm-acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
+  .adm-group{grid-column:1/-1;}
+  .cap-bar{height:10px; border-radius:99px; background:var(--sand-3); overflow:hidden; margin-top:10px;}
+  .cap-bar span{display:block; height:100%; background:linear-gradient(90deg, var(--lagoon-500), var(--ocean)); border-radius:99px;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -2711,7 +2727,7 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -2734,7 +2750,7 @@ async function loadDB(){
     return;
   }
   try{
-    const [b,i,o,d,pr,au,bk,bd,cr,cc,ad] = await Promise.all([
+    const [b,i,o,d,pr,au,bk,bd,cr,cc,ad,fr,ps] = await Promise.all([
       sb.from('businesses').select('*'),
       sb.from('items').select('*'),
       sb.from('orders').select('*'),
@@ -2745,7 +2761,9 @@ async function loadDB(){
       sb.from('auction_bids').select('*'),
       sb.from('category_requests').select('*'),
       sb.from('custom_categories').select('*'),
-      sb.from('customer_addresses').select('*')
+      sb.from('customer_addresses').select('*'),
+      sb.from('featured_requests').select('*'),
+      sb.from('platform_settings').select('*').eq('id',1).maybeSingle()
     ]);
     // Promise.all only rejects on a thrown/network-level failure - a query that
     // completes but fails server-side (e.g. an RLS policy error) resolves normally
@@ -2771,6 +2789,8 @@ DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.categoryRequests = (cr.data||[]).map(r=>fromDbRow('categoryRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
     DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
+    DB.featuredRequests = (fr.data||[]).map(featReqFromRow).sort((a,b2)=>b2.createdAt-a.createdAt);
+    if(ps.data) DB.settings = settingsFromRow(ps.data);
     mergeCustomCategories();
     // Ids only - credentials never leave the server (see business_swipe_accounts).
     const { data: swipeIds, error: swipeErr } = await sb.rpc('swipe_connected_business_ids');
@@ -3832,11 +3852,14 @@ function renderAdmin(){
   const feeStores = new Set(DB.orders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).map(o=>o.businessId)).size;
   const feesDueTotal = round2(DB.orders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).reduce((a,o)=>a+Number(o.platformFeeDue||0),0));
   const NAV = [
+    ['items','🆕','Item approvals',DB.items.filter(i=>i.approvalStatus==='pending').length],
+    ['featured','⭐','Featured',DB.featuredRequests.filter(r=>r.status==='pending').length],
     ['businesses','🏪','Stores',0],
     ['bankRequests','🏦','Bank transfers',bankPending.length],
     ['swipeRequests','💳','Swipe payments',0],
     ['catRequests','🏷️','Category ideas',catPending.length],
     ['fees','💸','Fees',feeStores],
+    ['settings','⚙️','Settings',0],
   ];
   const cur = NAV.find(n=>n[0]===state.adminTab) || NAV[0];
   const who = state.customerEmail||'';
@@ -3859,6 +3882,8 @@ function renderAdmin(){
           <h1>Overview</h1>
           <p class="admin-sub">Everything on Maldexpress that needs you, at a glance.</p>
           <div class="admin-stats">
+            ${stat('items', DB.items.filter(i=>i.approvalStatus==='pending').length, 'Items to approve', DB.items.some(i=>i.approvalStatus==='pending'))}
+            ${stat('featured', DB.featuredRequests.filter(r=>r.status==='pending').length, 'Featured requests', DB.featuredRequests.some(r=>r.status==='pending'))}
             ${stat('businesses', DB.businesses.length, 'Stores')}
             ${stat('businesses', proCount, 'On Pro')}
             ${stat('businesses', (DB.delivery||[]).length, 'Riders')}
@@ -3871,6 +3896,9 @@ function renderAdmin(){
         <div class="admin-panel">
           <h2 class="admin-panel-h">${cur[2]}</h2>
           <div class="admin-grid">
+            ${state.adminTab==='items' ? adminItemsTab() : ''}
+            ${state.adminTab==='featured' ? adminFeaturedTab() : ''}
+            ${state.adminTab==='settings' ? adminSettingsTab() : ''}
             ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
             ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
             ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
@@ -4027,6 +4055,252 @@ async function graduateApprovedCategory(req){
     it.category = req.categoryName;
     await sb.from('items').update({ category: it.category }).eq('id', it.id);
   }
+}
+
+// ---------- Item approval & featured ----------
+// New items wait for the super admin (approval_status 'pending'); customers
+// only see approved ones (the server enforces this too). Approved items can
+// be featured: paid by the store (featured_requests, approved by the admin)
+// or picked by the admin. Featured spots are limited (DB.settings); the
+// featured list is reshuffled every hour.
+const DEFAULT_SETTINGS = { featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
+if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
+if(!DB.featuredRequests) DB.featuredRequests = [];
+function settingsFromRow(r){ return { featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
+function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
+function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved'; }
+function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
+function featuredSlotsUsed(){ return DB.items.filter(isFeaturedNow).length; }
+// Same order for everyone within an hour, a new random order each hour.
+function hourSeed(){ return Math.floor(Date.now()/3600000); }
+function seededRank(id, seed){ let h = 2166136261 ^ seed; for(let k=0;k<id.length;k++){ h ^= id.charCodeAt(k); h = Math.imul(h, 16777619); } return (h>>>0); }
+function featuredItemsNow(type){
+  const seed = hourSeed();
+  return DB.items.filter(i=>isFeaturedNow(i) && (!type || (i.listingType||'buy_now')===type))
+    .filter(i=>!(i.listingType==='auction' && (()=>{ const a = auctionForItem(i.id); return !a || a.status!=='active' || Date.now()>=a.endTime; })()))
+    .sort((a,b)=>seededRank(a.id,seed)-seededRank(b.id,seed));
+}
+let _featHourTimer = null;
+function scheduleFeaturedReshuffle(){
+  clearTimeout(_featHourTimer);
+  const ms = 3600000 - (Date.now() % 3600000) + 500;
+  _featHourTimer = setTimeout(()=>{ if(state.role==='customer' && !state.sheet && (state.screen==='custHome')) render(); scheduleFeaturedReshuffle(); }, ms);
+}
+scheduleFeaturedReshuffle();
+function fmtDateTime(ms){ return new Date(ms).toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }); }
+
+// Seller: status line on each item card.
+function itemStatusNoteHTML(i){
+  if(i.approvalStatus==='pending') return `<p class="item-status wait">🕓 Waiting for Maldexpress approval. Customers can't see it yet</p>`;
+  if(i.approvalStatus==='rejected') return `<p class="item-status bad">✕ Not approved${i.approvalNote?`: ${escapeAttr(i.approvalNote)}`:''}. Edit it to send it again</p>`;
+  if(isFeaturedNow(i)) return `<p class="item-status feat">⭐ Featured until ${fmtDateTime(i.featuredUntil)}</p>`;
+  const req = DB.featuredRequests.find(r=>r.itemId===i.id && r.status==='pending');
+  if(req) return `<p class="item-status wait">⭐ Featured request waiting for approval</p>`;
+  return '';
+}
+// Seller: featured section at the bottom of Edit item.
+function editItemFeaturedHTML(item){
+  const st = DB.settings;
+  if(!isApprovedItem(item)) return `
+  <div class="feat-box"><h3>⭐ Feature this item</h3><p class="muted">You can feature it once Maldexpress has approved it.</p></div>`;
+  const req = DB.featuredRequests.find(r=>r.itemId===item.id && r.status==='pending');
+  const last = DB.featuredRequests.find(r=>r.itemId===item.id && r.status==='rejected');
+  return `
+  <div class="feat-box">
+    <h3>⭐ Feature this item</h3>
+    ${isFeaturedNow(item) ? `<p>Featured until <strong>${fmtDateTime(item.featuredUntil)}</strong>. You can extend it by another ${st.featuredDays} days.</p>` : `<p class="muted">Show it in the Featured section on the home page for ${st.featuredDays} days for ${money(st.featuredPrice)}. Featured items are shuffled every hour.</p>`}
+    ${req ? `<div class="card tight notice-info" style="margin-top:10px;"><p style="font-size:.88em;">Your request (${money(req.amount)}, ${req.paymentMethod==='swipe'?'Swipe':'bank transfer'}) is waiting for Maldexpress approval.</p></div>`
+      : `${last && last.note ? `<p class="bulk-warn" style="margin-top:8px;">Last request wasn't approved: ${escapeAttr(last.note)}</p>` : ''}
+    <button class="btn btn-outline" style="margin-top:10px;" onclick="openSheet('featureItem','${item.id}')">${isFeaturedNow(item)?'Extend':'Feature'} for ${st.featuredDays} days · ${money(st.featuredPrice)}</button>`}
+  </div>`;
+}
+function sheetFeatureItem(){
+  const item = DB.items.find(i=>i.id===state.sheetData);
+  if(!item) return `<h2>Item not found</h2>`;
+  const st = DB.settings;
+  const hasBank = !!String(st.bankAccountNumber||'').trim();
+  return `
+  <h2>Feature "${escapeAttr(item.name)}"</h2>
+  <div class="glass card tight">
+    <div class="row between"><span class="muted">Featured for</span><strong>${st.featuredDays} days</strong></div>
+    <div class="divider"></div>
+    <div class="row between"><span class="muted">Price</span><strong class="price">${money(st.featuredPrice)}</strong></div>
+  </div>
+  <p class="muted" style="font-size:.86em; margin:12px 0;">Pay Maldexpress, then we check the payment and put your item on the Featured list. It starts when approved.</p>
+  <div class="stack">
+    <div class="pay-option selected" aria-label="Bank transfer"><div class="ic">🏦</div><div class="txt"><h3>Bank transfer to Maldexpress</h3><small>Upload your slip. We check it and approve</small></div></div>
+    <div class="pay-option" style="opacity:.55;" aria-disabled="true"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Coming soon: Maldexpress's Swipe payments aren't set up yet</small></div></div>
+  </div>
+  ${hasBank ? `
+  <div class="acct-box" style="margin-top:12px;"><div class="lbl">Transfer ${money(st.featuredPrice)} to</div><div class="val">${acctValHTML(st.bankAccountName, st.bankAccountNumber)}</div></div>
+  <div class="field" style="margin-top:14px;">
+    <label>Slip / screenshot</label>
+    <input type="file" accept="image/*" id="featSlipFile" style="display:none;" onchange="previewSlip(event)">
+    <label for="featSlipFile" class="filebtn">📎 Tap to choose an image</label>
+    <div class="slip-preview-wrap" id="slipPreviewWrap" style="display:none; margin-top:10px;">
+      <img id="slipPreview" style="width:100%; border-radius:14px; display:block; max-height:200px; object-fit:contain; background:#fff; border:1px solid var(--glass-brd);">
+      <button type="button" class="slip-remove-btn" onclick="removeSlip()" title="Remove image">✕</button>
+    </div>
+  </div>
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitFeaturedRequest('${item.id}')">Send for approval</button>`
+  : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">Maldexpress hasn't added its bank account yet, so featured payments can't be made right now. Please try again later.</p></div>`}`;
+}
+async function submitFeaturedRequest(itemId){
+  const item = DB.items.find(i=>i.id===itemId); if(!item) return;
+  if(!_slipData){ toast('Choose your transfer slip first','bad'); return; }
+  const req = { id:uid('feat'), item_id:item.id, business_id:item.businessId, amount:DB.settings.featuredPrice, days:DB.settings.featuredDays, payment_method:'bank_transfer', slip_url:_slipData };
+  if(!sb){ DB.featuredRequests.unshift(featReqFromRow({ ...req, status:'pending', created_at:new Date().toISOString() })); _slipData=null; closeSheet(); toast('Sent. Maldexpress will check your payment'); render(); return; }
+  if(!requireOnline()) return;
+  const { data, error } = await sb.from('featured_requests').insert(req).select().single();
+  if(error){ toast(/featured_request_pending/.test(error.message) ? 'This item already has a request waiting' : 'Could not send: '+error.message,'bad'); return; }
+  DB.featuredRequests.unshift(featReqFromRow(data)); _slipData = null;
+  closeSheet(); toast('Sent. Maldexpress will check your payment and feature it'); render();
+}
+
+// ---------- Admin: item approvals, featured, settings ----------
+function adminApplyItems(rows){ (rows||[]).forEach(r=>{ const k = DB.items.findIndex(i=>i.id===r.id); const it = fromDbRow('items', r); if(k>=0) DB.items[k] = { ...DB.items[k], ...it }; else DB.items.push(it); }); }
+function adminErr(e){ const m = (e && e.message) || ''; return /featured_full/.test(m) ? 'All featured spots are taken. Remove one or add spots in Settings' : /item_not_approved/.test(m) ? 'Approve the item first' : /not_admin/.test(m) ? 'Only the super admin can do this' : m; }
+async function adminRpc(fn, args){
+  if(!sb){ toast('Offline preview: nothing is saved','bad'); return null; }
+  const { data, error } = await sb.rpc(fn, args);
+  if(error){ toast(adminErr(error),'bad'); return null; }
+  return data || [];
+}
+async function adminApproveItems(ids){
+  if(!ids.length) return;
+  const rows = await adminRpc('admin_approve_items', { p_ids: ids }); if(!rows) return;
+  adminApplyItems(rows); toast(`${rows.length} item${rows.length===1?'':'s'} approved and listed`); render();
+}
+async function adminRejectItems(ids){
+  if(!ids.length) return;
+  const note = (val('rejNote_'+ids[0]) || val('rejNoteAll') || '').trim();
+  const rows = await adminRpc('admin_reject_items', { p_ids: ids, p_note: note }); if(!rows) return;
+  adminApplyItems(rows); toast(`${rows.length} item${rows.length===1?'':'s'} not approved`); render();
+}
+async function adminApproveFeatured(id){
+  const rows = await adminRpc('admin_approve_featured_request', { p_id: id }); if(!rows) return;
+  if(!rows.length){ toast('That request was already handled','bad'); return; }
+  const r = featReqFromRow(rows[0]); const k = DB.featuredRequests.findIndex(x=>x.id===id); if(k>=0) DB.featuredRequests[k] = r;
+  const it = DB.items.find(i=>i.id===r.itemId); if(it){ it.featuredUntil = r.endsAt; it.featuredSource = 'paid'; }
+  toast('Approved. The item is on the Featured list'); render();
+}
+async function adminRejectFeatured(id){
+  const note = (val('frNote_'+id)||'').trim();
+  const rows = await adminRpc('admin_reject_featured_request', { p_id: id, p_note: note }); if(!rows) return;
+  const k = DB.featuredRequests.findIndex(x=>x.id===id); if(k>=0 && rows[0]) DB.featuredRequests[k] = featReqFromRow(rows[0]);
+  toast('Request rejected'); render();
+}
+async function adminFeatureItem(itemId, days){
+  const rows = await adminRpc('admin_feature_item', { p_item_id: itemId, p_days: days }); if(!rows) return;
+  adminApplyItems(rows); toast(days>0 ? 'Added to Featured' : 'Removed from Featured'); render();
+}
+async function adminSaveSettings(){
+  const slots = Math.round(Number(val('set_slots'))), price = Number(val('set_price')), days = Math.round(Number(val('set_days')));
+  if(!(slots>=1 && slots<=200)){ toast('Featured spots must be 1 to 200','bad'); return; }
+  if(!(price>=0)){ toast('Enter a featured price','bad'); return; }
+  if(!(days>=1 && days<=60)){ toast('Featured days must be 1 to 60','bad'); return; }
+  const row = { featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
+  if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
+  const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
+  if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
+  DB.settings = settingsFromRow(data); toast('Settings saved'); render();
+}
+function adminItemThumb(i){ return `<span class="adm-thumb">${itemThumbHTML(i)}</span>`; }
+function adminItemLine(i){
+  const typeLbl = i.listingType==='auction'?'Auction':i.listingType==='rental'?'Rental':'Buy now';
+  return `<div style="min-width:0; flex:1;"><strong class="adm-name">${escapeAttr(i.name)}</strong><p class="muted" style="font-size:.84em;">${typeLbl} · ${escapeAttr(i.category==='Other'&&i.categoryOtherName?i.categoryOtherName:i.category||'General')} · <span class="price">${money(i.price)}</span>${i.listingType!=='auction'&&i.stock!=null?` · ${i.stock} in stock`:''}</p>${i.description?`<p class="muted adm-desc">${escapeAttr(i.description)}</p>`:''}</div>`;
+}
+function adminItemsTab(){
+  const pending = DB.items.filter(i=>i.approvalStatus==='pending').sort((a,b)=>(a.submittedAt||0)-(b.submittedAt||0));
+  const byStore = {};
+  pending.forEach(i=>{ (byStore[i.businessId] = byStore[i.businessId] || []).push(i); });
+  const rejected = DB.items.filter(i=>i.approvalStatus==='rejected').slice(0, 20);
+  if(!pending.length && !rejected.length) return `<div class="empty"><span class="ic">✅</span>No items waiting for approval. New items from stores show up here.</div>`;
+  return `
+  ${Object.entries(byStore).map(([bizId, items])=>{ const biz = DB.businesses.find(b=>b.id===bizId); const ids = JSON.stringify(items.map(i=>i.id)).replace(/"/g,'&quot;');
+    return `
+    <div class="glass card adm-group">
+      <div class="row between" style="gap:10px; flex-wrap:wrap;">
+        <div><h3>${escapeAttr(biz?biz.name:'Unknown store')}</h3><p class="muted" style="font-size:.84em;">${items.length} new item${items.length===1?'':'s'} · ${escapeAttr(bizIsland(biz))}</p></div>
+        ${items.length>1 ? `<div class="row" style="gap:8px;"><button class="btn btn-primary btn-sm" onclick="adminApproveItems(${ids})">Approve all ${items.length}</button><button class="btn btn-outline btn-sm" onclick="adminRejectItems(${ids})">Reject all</button></div>` : ''}
+      </div>
+      <div class="adm-list">
+        ${items.map(i=>`
+        <div class="adm-item">
+          ${adminItemThumb(i)}
+          ${adminItemLine(i)}
+          <div class="adm-acts">
+            <button class="btn btn-primary btn-sm" onclick="adminApproveItems(['${i.id}'])">Approve</button>
+            <button class="btn btn-ghost btn-sm" onclick="adminRejectItems(['${i.id}'])">Reject</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="field" style="margin:10px 0 0;"><input id="rejNote_${items[0].id}" placeholder="Reason if you reject (optional, shown to the store)"></div>
+    </div>`; }).join('')}
+  ${rejected.length ? `<h3 style="grid-column:1/-1; margin-top:8px;">Not approved</h3>${rejected.map(i=>{ const biz = DB.businesses.find(b=>b.id===i.businessId); return `
+    <div class="glass card tight"><div class="row" style="gap:12px; align-items:flex-start;">${adminItemThumb(i)}${adminItemLine(i)}</div>
+      <p class="muted" style="font-size:.84em; margin-top:6px;">${escapeAttr(biz?biz.name:'')}${i.approvalNote?` · ${escapeAttr(i.approvalNote)}`:''}</p>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="adminApproveItems(['${i.id}'])">Approve anyway</button></div>`; }).join('')}` : ''}`;
+}
+function adminFeaturedTab(){
+  const st = DB.settings, used = featuredSlotsUsed(), free = Math.max(0, st.featuredSlots - used);
+  const pending = DB.featuredRequests.filter(r=>r.status==='pending');
+  const live = DB.items.filter(isFeaturedNow).sort((a,b)=>a.featuredUntil-b.featuredUntil);
+  const q = (state.adminFeatSearch||'').trim().toLowerCase();
+  const pickable = DB.items.filter(i=>isApprovedItem(i) && !isFeaturedNow(i) && (!q || i.name.toLowerCase().includes(q) || (DB.businesses.find(b=>b.id===i.businessId)||{name:''}).name.toLowerCase().includes(q))).slice(0, 12);
+  return `
+  <div class="glass card adm-capacity" style="grid-column:1/-1;">
+    <div class="row between"><strong>Featured spots</strong><span><strong>${used}</strong> of ${st.featuredSlots} used</span></div>
+    <div class="cap-bar"><span style="width:${Math.min(100, Math.round(used/Math.max(1,st.featuredSlots)*100))}%"></span></div>
+    <p class="muted" style="font-size:.84em; margin-top:6px;">${money(st.featuredPrice)} for ${st.featuredDays} days. The Featured section is shuffled every hour. Change spots and price in Settings.</p>
+  </div>
+  <h3 style="grid-column:1/-1;">Requests to approve${pending.length?` (${pending.length})`:''}</h3>
+  ${pending.length ? pending.map(r=>{ const it = DB.items.find(i=>i.id===r.itemId); const biz = DB.businesses.find(b=>b.id===r.businessId); return `
+    <div class="glass card">
+      <div class="row" style="gap:12px; align-items:flex-start;">${it?adminItemThumb(it):''}${it?adminItemLine(it):'<div>Item removed</div>'}</div>
+      <p class="muted" style="font-size:.86em; margin-top:8px;">${escapeAttr(biz?biz.name:'')} paid <strong>${money(r.amount)}</strong> by ${r.paymentMethod==='swipe'?'Swipe':'bank transfer'} for ${r.days} days · ${fmtDateTime(r.createdAt)}</p>
+      ${r.slipUrl ? `<img src="${r.slipUrl}" alt="Transfer slip" style="width:100%; border-radius:12px; margin-top:10px; max-height:220px; object-fit:contain; background:#fff; border:1px solid var(--edge);">` : ''}
+      <div class="field" style="margin:10px 0 0;"><input id="frNote_${r.id}" placeholder="Reason if you reject (optional)"></div>
+      <div class="row" style="gap:8px; margin-top:10px;">
+        <button class="btn btn-primary btn-sm" ${free<=0 && !(it&&isFeaturedNow(it))?'disabled title="No free spots"':''} onclick="adminApproveFeatured('${r.id}')">Approve and feature</button>
+        <button class="btn btn-outline btn-sm" onclick="adminRejectFeatured('${r.id}')">Reject</button>
+      </div>
+    </div>`; }).join('') : `<div class="empty" style="padding:22px;">No featured requests right now</div>`}
+  <h3 style="grid-column:1/-1;">On Featured now (${live.length})</h3>
+  ${live.length ? live.map(i=>{ const biz = DB.businesses.find(b=>b.id===i.businessId); return `
+    <div class="glass card tight">
+      <div class="row" style="gap:12px; align-items:flex-start;">${adminItemThumb(i)}${adminItemLine(i)}</div>
+      <p class="muted" style="font-size:.84em; margin-top:6px;">${escapeAttr(biz?biz.name:'')} · ${i.featuredSource==='admin'?'Picked by you':'Paid'} · until ${fmtDateTime(i.featuredUntil)}</p>
+      <div class="row" style="gap:8px; margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="adminFeatureItem('${i.id}', ${st.featuredDays})">+${st.featuredDays} days</button><button class="btn btn-outline btn-sm" onclick="adminFeatureItem('${i.id}', 0)">Remove</button></div>
+    </div>`; }).join('') : `<div class="empty" style="padding:22px;">Nothing is featured yet</div>`}
+  <h3 style="grid-column:1/-1;">Feature any item</h3>
+  <div class="field" style="grid-column:1/-1;"><input id="adminFeatSearch" type="search" placeholder="Search items or stores…" value="${escapeAttr(state.adminFeatSearch||'')}" oninput="state.adminFeatSearch=this.value; render(); const el=document.getElementById('adminFeatSearch'); el.focus(); el.setSelectionRange(el.value.length, el.value.length);"></div>
+  ${pickable.map(i=>{ const biz = DB.businesses.find(b=>b.id===i.businessId); return `
+    <div class="glass card tight">
+      <div class="row" style="gap:12px; align-items:flex-start;">${adminItemThumb(i)}${adminItemLine(i)}</div>
+      <p class="muted" style="font-size:.84em; margin-top:6px;">${escapeAttr(biz?biz.name:'')}</p>
+      <div class="row" style="gap:8px; margin-top:8px; align-items:center;">
+        <select id="fdays_${i.id}" aria-label="Days" style="width:auto; padding:8px 10px;">${[1,3,7,14,30].map(d=>`<option value="${d}" ${d===st.featuredDays?'selected':''}>${d} day${d===1?'':'s'}</option>`).join('')}</select>
+        <button class="btn btn-primary btn-sm" ${free<=0?'disabled title="No free spots"':''} onclick="adminFeatureItem('${i.id}', Number(document.getElementById('fdays_${i.id}').value))">Feature</button>
+      </div>
+    </div>`; }).join('') || `<div class="empty" style="padding:22px;">No items match</div>`}`;
+}
+function adminSettingsTab(){
+  const st = DB.settings;
+  return `
+  <div class="glass card" style="grid-column:1/-1; max-width:640px;">
+    <h3>Featured</h3>
+    <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
+      <div class="field" style="flex:1; min-width:140px;"><label for="set_slots">Featured spots</label><input id="set_slots" type="number" min="1" max="200" value="${st.featuredSlots}"></div>
+      <div class="field" style="flex:1; min-width:140px;"><label for="set_price">Price (MVR)</label><input id="set_price" type="number" min="0" step="0.01" value="${st.featuredPrice}"></div>
+      <div class="field" style="flex:1; min-width:140px;"><label for="set_days">Days featured</label><input id="set_days" type="number" min="1" max="60" value="${st.featuredDays}"></div>
+    </div>
+    <h3 style="margin-top:8px;">Maldexpress bank account</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
+    <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
+    <div class="field"><label for="set_bank_no">Account number</label><input id="set_bank_no" inputmode="numeric" value="${escapeAttr(st.bankAccountNumber||'')}" placeholder="e.g. 7730000000000"></div>
+    <button class="btn btn-primary" onclick="adminSaveSettings()">Save settings</button>
+  </div>`;
 }
 function adminSearchInput(v){
   state.adminSearch = v;
@@ -4344,6 +4618,7 @@ function sheetHTML(){
   else if(state.sheet==='addItem') body = sheetAddItem();
   else if(state.sheet==='bulkItems') body = sheetBulkItems();
   else if(state.sheet==='editItem') body = sheetEditItem();
+  else if(state.sheet==='featureItem') body = sheetFeatureItem();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
@@ -4738,7 +5013,8 @@ async function startProPayment(method){
 function sheetUpgradeBankSlip(){
   return `
   <h2>Bank transfer — Pro upgrade</h2>
-  <p class="muted">MVR 500 one-time. Upload your transfer slip and we'll review it.</p>
+  <p class="muted">${money(500)} one-time. Upload your transfer slip and we'll review it.</p>
+  ${String(DB.settings.bankAccountNumber||'').trim() ? `<div class="acct-box" style="margin-top:10px;"><div class="lbl">Transfer ${money(500)} to</div><div class="val">${acctValHTML(DB.settings.bankAccountName, DB.settings.bankAccountNumber)}</div></div>` : ''}
   <div class="field" style="margin-top:14px;">
     <label>Slip / screenshot</label>
     <input type="file" accept="image/*" id="proSlipFile" style="display:none;" onchange="previewSlip(event)">
@@ -4818,8 +5094,9 @@ function renderBizItems(biz,t){
 // see the plain "Other" bucket until it's approved (see submitCategoryRequest()/
 // adminResolveCategoryRequest()).
 function itemCatPendingNoteHTML(i){
-  if(i.category!=='Other' || !i.categoryOtherName) return '';
-  return `<p class="muted" style="font-size:.76em; margin-top:2px;">🕓 "${i.categoryOtherName}" - pending category approval</p>`;
+  const st = itemStatusNoteHTML(i);
+  if(i.category!=='Other' || !i.categoryOtherName) return st;
+  return `<p class="muted" style="font-size:.76em; margin-top:2px;">🕓 "${i.categoryOtherName}" - pending category approval</p>` + st;
 }
 function bizItemCard(i){
   const thumb = itemThumbHTML(i);
@@ -5115,7 +5392,7 @@ async function submitAddItem(){
   const description = val('i_desc');
   toast('Saving item…');
   const imageUrl = await uploadItemPhoto();
-  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description};
+  const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now()};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -5129,7 +5406,7 @@ async function submitAddItem(){
     }
   }
   _itemPhotoFile = null;
-  closeSheet(); toast(listingType==='auction' ? 'Auction listed!' : 'Item added'); render();
+  closeSheet(); toast(sb ? 'Item added. It shows to customers once Maldexpress approves it' : (listingType==='auction' ? 'Auction listed!' : 'Item added')); render();
 }
 
 // ---------- Upload a list of items (CSV template) ----------
@@ -5398,6 +5675,7 @@ async function submitBulkItems(){
     }
   }
   const items = rows.map(r=>r.item);
+  items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
   DB.items.push(...items);
   const saved = await saveDB('items', items);
   if(saved === false){
@@ -5416,7 +5694,7 @@ async function submitBulkItems(){
   const others = [...new Set(items.map(i=>i.categoryOtherName).filter(Boolean))];
   for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
   _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
-  toast(`${items.length} item${items.length===1?'':'s'} added${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
+  toast(`${items.length} item${items.length===1?'':'s'} added${sb?'. They show to customers once Maldexpress approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
 }
 function sheetEditItem(){
   const item = DB.items.find(i=>i.id===state.sheetData);
@@ -5486,11 +5764,13 @@ function sheetEditItem(){
     <label for="editItemPhoto" class="filebtn">📎 ${item.imageUrl?'Change photo':'Add a photo'}</label>
     <img id="editItemPreview" src="${item.imageUrl||''}" style="width:100%; border-radius:14px; margin-top:10px; ${item.imageUrl?'':'display:none;'} max-height:200px; object-fit:cover;">
   </div>
-  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>`;
+  <button class="btn btn-primary" style="margin-top:14px;" onclick="submitEditItem('${item.id}')">Save changes</button>
+  ${editItemFeaturedHTML(item)}`;
 }
 async function submitEditItem(itemId){
   const item = DB.items.find(i=>i.id===itemId);
   if(!item) return;
+  if(item.approvalStatus==='rejected'){ item.approvalStatus = 'pending'; item.approvalNote = ''; }
   const name = val('e_name');
   if(!name){ toast('Enter an item name','bad'); return; }
   item.name = name;
@@ -7209,7 +7489,7 @@ function renderCustFavourites(){
 // by store. Reached from the drawer's "Browse stores" item.
 function renderCustStoresList(){
   const stores = DB.businesses
-    .map(b=>({ biz:b, items: DB.items.filter(i=>i.businessId===b.id) }))
+    .map(b=>({ biz:b, items: DB.items.filter(i=>i.businessId===b.id && isApprovedItem(i)) }))
     .filter(s=>s.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar('Browse stores', `${stores.length} store${stores.length===1?'':'s'}`)}
@@ -7293,6 +7573,7 @@ function homeFilteredItems(){
   const q = (state.homeSearch||'').trim().toLowerCase();
   const wantType = state.homeListingType || 'buy_now';
   return DB.items.filter(i=>{
+    if(!isApprovedItem(i)) return false;
     const itemType = i.listingType || 'buy_now';
     if(itemType !== wantType) return false;
     // A settled/ended (or expired-but-not-yet-settled) auction has nothing left to bid
@@ -7821,6 +8102,7 @@ function topSellingCardHTML(item, showName=true){
       ${favBtnHTML(item.id)}
       ${oosStickerHTML(item)}
       ${ratingBadgeHTML(item.businessId)}
+      ${isFeaturedNow(item)?`<span class="feat-badge">⭐ Featured</span>`:''}
       ${isAuction?auctionTimeBadgeHTML(item.id):''}
       ${isRental?`<button class="top-add-btn" ${bookedNow?'disabled style="opacity:.4;"':''} onclick="event.stopPropagation(); ${soon?`openBookRentalItem('${item.id}')`:`openRentItem('${item.id}')`}" title="${soon?'Book this':bookedNow?'Currently booked':'Rent this'}">${soon?'🕒':bookedNow?'🔒':'📅'}</button>`:''}
     </div>
@@ -7923,7 +8205,7 @@ function itemDetailRowsHTML(item){
   return rows.map(([k,v])=>`<div class="idr"><span class="idr-k">${k}</span><span class="idr-v">${v}</span></div>`).join('');
 }
 function relatedItemsFor(item, n){
-  const pool = DB.items.filter(i=>i.id!==item.id);
+  const pool = DB.items.filter(i=>i.id!==item.id && isApprovedItem(i));
   const sameCat = pool.filter(i=>(i.category||'General')===(item.category||'General'));
   const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
   return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
@@ -7936,7 +8218,7 @@ function renderCustItem(){
   const isAuction = item.listingType==='auction', isRental = item.listingType==='rental';
   const related = relatedItemsFor(item, 12);
   const relIds = new Set(related.map(i=>i.id));
-  const moreFromStore = DB.items.filter(i=>i.businessId===item.businessId && i.id!==item.id && !relIds.has(i.id)).slice(0, 12);
+  const moreFromStore = DB.items.filter(i=>i.businessId===item.businessId && i.id!==item.id && !relIds.has(i.id) && isApprovedItem(i)).slice(0, 12);
   const typeLbl = isAuction ? 'Auction' : isRental ? 'Rental' : 'Buy now';
   document.getElementById('app').innerHTML = wrapShell('customer','custItem', `
     <div class="item-page">
@@ -8086,7 +8368,7 @@ function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
   const filtered = homeFilteredItems();
-  const featured = filtered.slice(0, 8);
+  const featured = featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i));
   // Fixed master list (see MARKETPLACE_CATEGORIES) rather than only categories that
   // already have an item in them - so a shopper can browse into a category before
   // any business has listed anything there yet, same as a real marketplace app.
@@ -8110,15 +8392,14 @@ function renderCustHome(){
         </div>
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
+      ${featured.length ? `
       <div class="section">
         <h2 style="margin-bottom:12px;">Featured</h2>
-        ${featured.length ? `
           <div class="featured-scroll" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
           </div>
           <div class="dots" id="featuredDots">${featured.map((_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>
-        ` : `<div class="empty"><span class="ic">✨</span>Nothing to feature yet</div>`}
-      </div>
+      </div>` : ''}
       <div class="section">
         <h2 style="margin-bottom:12px;">Top selling</h2>
         <div class="top-grid">
@@ -8229,7 +8510,8 @@ const DESK_TILE_TINTS = ['#DDF5F2','#FFE6DE','#E2ECFF','#E3F4E7','#FFF1D9','#F0E
 function renderDeskHome(){
   const filtered = homeFilteredItems();
   const allOfType = DB.items.filter(i=>(i.listingType||'buy_now')===(state.homeListingType||'buy_now'));
-  const picks = allOfType.filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>!(i.discountPercent>0))).slice(0, 6);
+  const featNow = featuredItemsNow(state.homeListingType||'buy_now');
+  const picks = featNow.length ? featNow.slice(0, 12) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
   const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
   const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? 'More to love' : typeLabel;
@@ -8245,8 +8527,8 @@ function renderDeskHome(){
       </section>
       ${picks.length ? `
       <section class="desk-sec">
-        <div class="desk-sec-head"><div><h2>Today’s picks</h2><p class="muted">${state.homeListingType==='buy_now'?'Paid by Swipe, delivered by riders on your island':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
-        <div class="desk-row">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
+        <div class="desk-sec-head"><div><h2>${featNow.length?'Featured':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
+        <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
         <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you directly through Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
@@ -8305,7 +8587,7 @@ function renderCustStore(){
   // starts the category filter over - it's scoped per-store, so a filter
   // picked while looking at one store's items has no meaning for another's.
   if(state._lastStoreBizId !== biz.id){ state.storeCategoryFilter = 'All'; state._lastStoreBizId = biz.id; }
-  const items = DB.items.filter(i=>i.businessId===biz.id);
+  const items = DB.items.filter(i=>i.businessId===biz.id && isApprovedItem(i));
   settleExpiredAuctions(items);
   const buyNowItems = items.filter(i=>(i.listingType||'buy_now')==='buy_now');
   const auctionItems = items.filter(i=>i.listingType==='auction');

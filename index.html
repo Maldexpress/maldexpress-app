@@ -503,11 +503,15 @@
   .notif-section-head.open .chev{transform:rotate(180deg);}
 
   .home-search-wrap{
-    flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:0 6px 0 18px;
-    border-radius:16px; background:#fff; border:none; color:var(--ink); box-shadow:0 6px 18px rgba(8,60,80,.18);
+    flex:1; min-width:0; height:44px; display:flex; align-items:center; gap:8px; padding:0 6px 0 14px;
+    border-radius:999px; background:rgba(255,255,255,.96); border:1px solid rgba(255,255,255,.7); color:var(--ink); box-shadow:0 4px 14px rgba(8,60,80,.14);
   }
-  .home-search-wrap:focus-within{box-shadow:0 0 0 4px rgba(255,255,255,.45), 0 6px 18px rgba(8,60,80,.18);}
-  .home-search-wrap input{flex:1; min-width:0; border:none; background:transparent; padding:14px 0; color:var(--ink); outline:none;}
+  .home-search-wrap:focus-within{box-shadow:0 0 0 3px rgba(255,255,255,.5), 0 4px 14px rgba(8,60,80,.14);}
+  .home-search-wrap .hs-ic{display:flex; color:var(--lagoon-700); flex-shrink:0;}
+  .home-search-wrap .hs-ic svg{width:17px; height:17px;}
+  .home-search-wrap input{flex:1; min-width:0; height:100%; border:none; background:transparent; padding:0; color:var(--ink); outline:none; font-size:.95em; -webkit-appearance:none; appearance:none;}
+  .home-search-wrap input::-webkit-search-cancel-button{display:none;}
+  .hs-clear{flex-shrink:0; width:28px; height:28px; border-radius:50%; border:none; background:var(--sand-2); color:var(--ink-dim); font-size:.75em; display:flex; align-items:center; justify-content:center;}
   .home-search-wrap input::placeholder{color:var(--ink-400);}
   .field-icon{flex-shrink:0; border:none; background:var(--sunset); color:#fff; width:40px; height:40px; border-radius:12px; padding:0; cursor:pointer; display:flex; align-items:center; justify-content:center;}
 
@@ -516,7 +520,20 @@
     display:flex; align-items:center; gap:6px; padding:12px 14px; border-radius:14px;
     background:var(--surface); border:1px solid var(--edge); color:var(--ink); font-weight:700; font-size:.88em; white-space:nowrap;
   }
-  .switcher-pill.accent{background:rgba(255,255,255,.2); border-color:rgba(255,255,255,.4); color:#fff;}
+  .switcher-pill.accent{background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.45); color:#fff;}
+  .search-row .switcher-pill.accent{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em;}
+  .search-row .sw-ic{font-size:1.05em; line-height:1;}
+  .home-mini{--p:0; position:fixed; top:0; left:0; right:0; z-index:60; display:flex; align-items:center; gap:calc(8px * var(--p)); padding:calc(8px + env(safe-area-inset-top)) 16px 8px;
+    color:#fff; background:
+      radial-gradient(60% 140% at 100% 0%, rgba(255,255,255,.22), transparent 60%),
+      linear-gradient(100deg, #19C3B4 0%, #0FA3A3 45%, #1E6FD9 100%);
+    box-shadow:0 4px 16px rgba(8,60,80,calc(.22 * var(--p)));
+    visibility:hidden; pointer-events:none;}
+  .home-mini.show{visibility:visible; pointer-events:auto;}
+  .home-mini .mini-mark{flex-shrink:0; width:calc(40px * var(--p)); height:40px; opacity:var(--p); padding:0; overflow:hidden; border-radius:12px;}
+  .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
+  .home-mini .search-row{flex:1; min-width:0;}
+  @media (min-width:1024px){ .home-mini{display:none;} }
   .switcher-pill:active{transform:scale(.96);}
   .switcher-caret{font-size:.85em; opacity:.85; transition:transform .15s ease; display:inline-block;}
   .switcher-dropdown{position:absolute; top:calc(100% + 8px); right:0; z-index:40; width:max-content; min-width:100%; display:flex; flex-direction:column; gap:2px; padding:6px; border-radius:16px; background:var(--surface) !important; box-shadow:var(--shadow-lift) !important;}
@@ -5386,7 +5403,7 @@ function onPhotosPicked(e){
   if(files.length > room) toast(`Up to ${PHOTO_MAX} photos per item, so only ${room} more were added`,'bad');
   files.slice(0, room).forEach(f=>{
     if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose JPEG, PNG, WEBP or GIF images','bad'); return; }
-    if(f.size > IMAGE_MAX_BYTES){ toast(`${f.name} is over 5MB`,'bad'); return; }
+    if(f.size > 20*1024*1024){ toast(`${f.name} is over 20MB`,'bad'); return; }   // shrunk before upload (shrinkPhoto)
     const slot = { file:f, preview:'' }; _photoSlots.push(slot);
     const r = new FileReader(); r.onload = ()=>{ slot.preview = r.result; redrawPhotoSlots(); }; r.readAsDataURL(f);
   });
@@ -5417,9 +5434,55 @@ function previewItemPhoto(e, previewId='itemPhotoPreview'){
 // storage RLS policies check against that same prefix, so no join to
 // businesses is needed there. Returns null (photo skipped) rather than
 // throwing when there's no backend or no file was chosen.
+// Make a photo small before it's uploaded without visible quality loss:
+// at most PHOTO_MAX_SIDE px on the long side, re-encoded as WebP (JPEG where
+// the browser can't write WebP). Small photos are left as they are, and the
+// original is kept if the new one wouldn't be smaller.
+const PHOTO_MAX_SIDE = 1600, PHOTO_QUALITY = 0.86;
+async function shrinkPhoto(file){
+  try{
+    if(!file || /gif$/i.test(file.type)) return file;
+    const bmp = await createImageBitmap(file);
+    const big = Math.max(bmp.width, bmp.height);
+    if(big <= PHOTO_MAX_SIDE && file.size <= 350*1024){ bmp.close && bmp.close(); return file; }
+    const k = Math.min(1, PHOTO_MAX_SIDE / big);
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    let blob = await new Promise(r=>c.toBlob(r, 'image/webp', PHOTO_QUALITY));
+    if(!blob || blob.type !== 'image/webp') blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', 0.9));
+    if(!blob || blob.size >= file.size) return file;
+    const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
+    return new File([blob], file.name.replace(/\.[^.]+$/,'') + '.' + ext, { type: blob.type });
+  }catch(e){ return file; }
+}
+// Read photos out of a .zip in the browser (stored or deflate entries; uses
+// DecompressionStream). Folders and macOS "__MACOSX" / "._" files are skipped.
+async function photosFromZip(zipFile){
+  const buf = new Uint8Array(await zipFile.arrayBuffer()); const dv = new DataView(buf.buffer);
+  let eocd = -1; for(let i = buf.length - 22; i >= Math.max(0, buf.length - 66000); i--){ if(dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; } }
+  if(eocd < 0) throw new Error('not a zip file');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const out = []; const dec = new TextDecoder();
+  for(let n = 0; n < count; n++){
+    if(dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = dec.decode(buf.subarray(p + 46, p + 46 + nlen)); p += 46 + nlen + xlen + clen;
+    const base = name.split('/').pop();
+    if(!base || /(^|\/)__MACOSX\//.test(name) || base.startsWith('._') || !/\.(jpe?g|png|webp|gif)$/i.test(base)) continue;
+    const start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    let data = buf.slice(start, start + csize);
+    if(method === 8){ data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer()); }
+    else if(method !== 0) continue;
+    const ext = base.split('.').pop().toLowerCase();
+    out.push(new File([data], base, { type: ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/' + ext }));
+  }
+  return out;
+}
 async function uploadItemPhoto(fileArg){
-  const file = fileArg || _itemPhotoFile;
+  let file = fileArg || _itemPhotoFile;
   if(!file || !sb) return null;
+  file = await shrinkPhoto(file);
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   // Storage doesn't accept Firebase sign-ins directly, so the photo goes
   // through the upload-item-photo function, which checks the sign-in and
@@ -5801,10 +5864,17 @@ function bulkBuildRow(data, line, bizId){
 // Photos picked together with the sheet, keyed by lower-case file name (with
 // and without the extension), so "rice.jpg", "Rice.JPG" and "rice" all match.
 let _bulkPhotos = {};
-function onBulkPhotos(ev){
-  const files = [...(ev.target.files||[])].filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+async function onBulkPhotos(ev){
+  const picked = [...(ev.target.files||[])]; ev.target.value = '';
+  let files = picked.filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
+  for(const z of picked.filter(f=>/\.zip$/i.test(f.name) || /zip/.test(f.type))){
+    if(typeof DecompressionStream === 'undefined'){ toast('This browser can\u2019t open .zip files. Update it, or unzip and choose the photos instead','bad'); continue; }
+    toast('Opening '+z.name+'…');
+    try{ const got = await photosFromZip(z); files = files.concat(got); toast(`${got.length} photo${got.length===1?'':'s'} from ${z.name}`); }
+    catch(e){ toast('Could not open '+z.name+': '+(e.message||e),'bad'); }
+  }
   files.forEach(f=>{ const k=f.name.toLowerCase(); _bulkPhotos[k]=f; _bulkPhotos[k.replace(/\.[^.]+$/,'')]=f; });
-  if(!files.length) toast('Pick image files (JPG, PNG or WebP)','bad');
+  if(!files.length) toast('Pick image files (JPG, PNG or WebP) or a .zip of them','bad');
   render();
 }
 function bulkPhotoCount(){ return new Set(Object.values(_bulkPhotos)).size; }
@@ -5900,9 +5970,11 @@ function sheetBulkItems(){
     <label for="bulkFile" class="filebtn">📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
   </div>
   <div class="field file">
+    <input type="file" accept=".zip,application/zip,application/x-zip-compressed" id="bulkZipFile" style="display:none;" onchange="onBulkPhotos(event)">
+    <label for="bulkZipFile" class="filebtn">🗜️ Upload a .zip of photos</label>
     <input type="file" accept="image/*" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
-    <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos (optional)'}</label>
-    <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
+    <label for="bulkPhotoFiles" class="filebtn" style="margin-top:8px;">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} ready · add more photos` : 'Or choose photos (optional)'}</label>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">Upload one .zip with all the photos, or pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
   </div>
   <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
   ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}
@@ -5947,22 +6019,28 @@ async function submitBulkItems(){
   const rows = _bulk.rows.filter(r=>!r.errors.length).slice(0, room);
   if(!rows.length){ toast('Nothing to add','bad'); return; }
   toast(`Adding ${rows.length} item${rows.length===1?'':'s'}…`);
+  // Every photo for every row (cover + extras from the photo column), uploaded
+  // a few at a time with one running count.
   let photoFails = 0, done = 0;
-  for(const r of rows){
+  const jobs = [];   // {r, slot, file|url}
+  rows.forEach(r=>{
     const ph = bulkPhotoFor(r);
-    if(ph.kind==='url') r.item.imageUrl = ph.url;
-    else if(ph.kind==='file' && !sb){ r.item.imageUrl = bulkThumbURL(ph.file); }   // preview without a server
-    else if(ph.kind==='file'){
-      toast(`Uploading photos… ${++done} of ${rows.filter(x=>bulkPhotoFor(x).kind==='file').length}`);
-      const url = await uploadItemPhoto(ph.file);
-      if(url) r.item.imageUrl = url; else photoFails++;
+    r._imgs = new Array(PHOTO_MAX).fill(null);
+    if(ph.kind==='url') r._imgs[0] = ph.url;
+    else if(ph.kind==='file') jobs.push({ r, slot:0, file:ph.file });
+    bulkExtraPhotos(r).forEach((x,k)=>{ if(x.kind==='url') r._imgs[k+1] = x.url; else if(x.kind==='file') jobs.push({ r, slot:k+1, file:x.file }); });
+  });
+  let next = 0;
+  async function worker(){
+    while(next < jobs.length){
+      const j = jobs[next++];
+      const url = sb ? await uploadItemPhoto(j.file) : bulkThumbURL(j.file);   // no server: local preview
+      if(url) j.r._imgs[j.slot] = url; else photoFails++;
+      done++; if(sb && (done % 3 === 0 || done === jobs.length)) toast(`Uploading photos… ${done} of ${jobs.length}`);
     }
   }
-  for(const r of rows){   // extra photos from the photo column
-    const extra = [];
-    for(const x of bulkExtraPhotos(r)){ if(x.kind==='url') extra.push(x.url); else if(x.kind==='file'){ const u = sb ? await uploadItemPhoto(x.file) : bulkThumbURL(x.file); if(u) extra.push(u); } }
-    r.item.images = [r.item.imageUrl, ...extra].filter(Boolean).slice(0, PHOTO_MAX);
-  }
+  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+  rows.forEach(r=>{ const imgs = r._imgs.filter(Boolean).slice(0, PHOTO_MAX); r.item.images = imgs; r.item.imageUrl = imgs[0] || r.item.imageUrl || null; delete r._imgs; });
   const items = rows.map(r=>r.item);
   items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
   DB.items.push(...items);
@@ -8302,7 +8380,7 @@ function handleEdgeSwipeEnd(){
   } else {
     app.style.transition = 'transform .2s ease-out';
     app.style.transform = 'translateX(0)';
-    setTimeout(()=>{ if(!_edgeSwipeActive) app.style.transition = 'none'; }, 200);
+    setTimeout(()=>{ if(!_edgeSwipeActive){ app.style.transition = 'none'; app.style.transform = ''; } }, 200);   // no transform left behind: it would pin position:fixed headers to #app
   }
   _edgeSwipeDx = 0;
 }
@@ -8314,29 +8392,62 @@ const LISTING_TYPE_META = {
   auction: { icon:'🔨', label:'Auctions' },
   rental:  { icon:'🔁', label:'Rentals' }
 };
-function homeSearchRowHTML(){
+// where = 'hero' (the search under the island scene) or 'mini' (the small
+// header that slides in once Home is scrolled past the hero).
+function homeSearchRowHTML(where='hero'){
   const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
   const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);
+  const inputId = where==='mini' ? 'homeSearchMini' : 'homeSearchInput';
+  const open = state.homeSwitcherOpen === where;
   return `
-  <div class="row" style="gap:8px;">
+  <div class="row search-row ${where}" style="gap:8px;">
     <div class="home-search-wrap">
-      <input id="homeSearchInput" placeholder="Search items or stores…" value="${state.homeSearch||''}" oninput="updateHomeSearch(this.value)">
-      <button type="button" class="field-icon" style="${state.homeSearch?'opacity:1;':''}" onclick="dismissHomeSearchKeyboard()" title="Search" aria-label="Search">${ICON_SEARCH}</button>
+      <span class="hs-ic" aria-hidden="true">${ICON_SEARCH}</span>
+      <input id="${inputId}" type="search" enterkeyhint="search" placeholder="Search items or stores" aria-label="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="updateHomeSearch(this.value, '${inputId}')" onkeydown="if(event.key==='Enter') this.blur()">
+      ${state.homeSearch ? `<button type="button" class="hs-clear" aria-label="Clear search" onclick="updateHomeSearch('', '${inputId}')">✕</button>` : ''}
     </div>
     <div class="switcher-wrap">
-      <button class="switcher-pill accent" onclick="toggleHomeSwitcher()">
-        <span>${cur.icon}</span>
+      <button class="switcher-pill accent" aria-haspopup="true" aria-expanded="${open}" onclick="toggleHomeSwitcher('${where}')">
+        <span class="sw-ic" aria-hidden="true">${cur.icon}</span>
         <span>${cur.label}</span>
-        <span class="switcher-caret" style="${state.homeSwitcherOpen?'transform:rotate(180deg);':''}">▾</span>
+        <span class="switcher-caret" style="${open?'transform:rotate(180deg);':''}">▾</span>
       </button>
-      ${state.homeSwitcherOpen ? `
+      ${open ? `
       <div class="switcher-dropdown glass">
         ${others.map(k=>`<button class="switcher-pill" onclick="setHomeListingType('${k}')"><span>${LISTING_TYPE_META[k].icon}</span><span>${LISTING_TYPE_META[k].label}</span></button>`).join('')}
       </div>` : ''}
     </div>
   </div>`;
 }
-function toggleHomeSwitcher(){ state.homeSwitcherOpen = !state.homeSwitcherOpen; render(); }
+function toggleHomeSwitcher(where='hero'){ state.homeSwitcherOpen = state.homeSwitcherOpen===where ? false : where; render(); }
+// Small sticky header on the phone Home: logo, search and the Buy now switcher,
+// in the hero's lagoon colours. The hero scrolls up with the page; when its
+// search row reaches the top it "locks" there (the small header takes over at
+// exactly that spot), then over the next MINI_GROW px the logo slides in
+// beside the search and the shadow fades in.
+const MINI_GROW = 60;
+let _miniP = -1;   // -1 hidden, 0..1 locked and growing; kept across render()s
+function homeMiniHeaderHTML(){
+  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  const p = keep ? Math.max(_miniP, 1) : _miniP;
+  return `<div class="home-mini ${p>=0?'show':''}" id="homeMini" style="--p:${Math.max(0,p)}">
+    <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>${BRAND_MARK_SVG}</button>
+    ${homeSearchRowHTML('mini')}
+  </div>`;
+}
+function updateHomeMiniHeader(){
+  const el = document.getElementById('homeMini'); if(!el) return;
+  const row = document.querySelector('.search-row.hero'); if(!row) return;
+  const lockAt = parseFloat(getComputedStyle(el).paddingTop) || 8;   // where the small header's search sits
+  const past = lockAt - row.getBoundingClientRect().top;               // px the hero search has gone above that
+  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  _miniP = keep ? 1 : (past < 0 ? -1 : Math.min(1, past / MINI_GROW));
+  el.classList.toggle('show', _miniP >= 0);
+  el.style.setProperty('--p', String(Math.max(0, _miniP)));
+  const mark = el.querySelector('.mini-mark'); if(mark) mark.tabIndex = _miniP < 0.5 ? -1 : 0;
+}
+document.body.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
+window.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
 // Switching Buy Now/Auction/Rental resets the category filter back to "All" -
 // a category picked while looking at one listing type (say "Bakery" under
 // Rentals) can easily have nothing in it under a different one, which would
@@ -8368,10 +8479,10 @@ function dismissHomeSearchKeyboard(){
   const el = document.getElementById('homeSearchInput');
   if(el) el.blur();
 }
-function updateHomeSearch(v){
+function updateHomeSearch(v, inputId='homeSearchInput'){
   state.homeSearch = v;
   render();
-  const el = document.getElementById('homeSearchInput');
+  const el = document.getElementById(inputId);
   if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
 }
 // The exact same card component as Top Selling (just narrower, via the
@@ -8744,11 +8855,13 @@ function renderCustHome(){
   // already have an item in them - so a shopper can browse into a category before
   // any business has listed anything there yet, same as a real marketplace app.
   const cats = [...MARKETPLACE_CATEGORIES, 'All'];
+  setTimeout(updateHomeMiniHeader, 0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
+    ${homeMiniHeaderHTML()}
     <div class="home-hero">
       ${homeHeaderHTML()}
       ${HERO_SCENE_SVG}
-      ${homeSearchRowHTML()}
+      ${homeSearchRowHTML('hero')}
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">

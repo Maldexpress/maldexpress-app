@@ -2727,8 +2727,9 @@ async function saveDB(part, only){
     // upsert if the batch includes even one row this session doesn't own.
     const rows = (only || DB[part]).map(o=>toDbRow(part,o));
     const { error } = await sb.from(TABLES[part]).upsert(rows);
-    if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); }
-  }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); }
+    if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); return false; }
+    return true;
+  }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); return false; }
 }
 // Every order mutation that touches a payment/payout column now goes through one of
 // the eight SECURITY DEFINER functions below instead of a client-side field write +
@@ -4746,11 +4747,18 @@ async function uploadItemPhoto(fileArg){
   const file = fileArg || _itemPhotoFile;
   if(!file || !sb) return null;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `${state.customerId}/${uid('img')}.${ext}`;
-  const { error } = await sb.storage.from('product-images').upload(path, file, { cacheControl:'3600', upsert:false, contentType:file.type });
-  if(error){ toast('Photo upload failed: '+error.message, 'bad'); return null; }
-  const { data } = sb.storage.from('product-images').getPublicUrl(path);
-  return data.publicUrl;
+  // Storage doesn't accept Firebase sign-ins directly, so the photo goes
+  // through the upload-item-photo function, which checks the sign-in and
+  // saves it in this user's own folder (see supabase/functions/upload-item-photo).
+  try{
+    const { data, error } = await sb.functions.invoke('upload-item-photo', { body: file, headers: { 'x-file-ext': ext, 'Content-Type': file.type || 'application/octet-stream' } });
+    if(error || !data || !data.url){
+      let msg = error ? error.message : 'no link returned';
+      try{ const b = error && error.context && await error.context.json(); if(b && b.error) msg = b.error; }catch(e){}
+      toast('Photo upload failed: '+msg, 'bad'); return null;
+    }
+    return data.url;
+  }catch(e){ toast('Photo upload failed: '+(e.message||e), 'bad'); return null; }
 }
 
 // Category dropdown for Add/Edit item. Picking "Other" reveals a text field
@@ -4976,7 +4984,7 @@ async function submitAddItem(){
   const imageUrl = await uploadItemPhoto();
   const item = {id:uid('it'), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description};
   DB.items.push(item);
-  saveDB('items', [item]);
+  if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
   if(listingType==='auction'){
     const now = Date.now();
@@ -5212,7 +5220,14 @@ async function submitBulkItems(){
   }
   const items = rows.map(r=>r.item);
   DB.items.push(...items);
-  await saveDB('items', items);
+  const saved = await saveDB('items', items);
+  if(saved === false){
+    // Nothing was stored, so don't show the items as if they were.
+    const ids = new Set(items.map(i=>i.id));
+    DB.items = DB.items.filter(i=>!ids.has(i.id));
+    render();
+    return;
+  }
   const now = Date.now();
   const auctions = rows.filter(r=>r.auction).map(r=>({ id:uid('auc'), itemId:r.item.id, businessId:biz.id, startingPrice:r.auction.startingPrice, bidIncrement:r.auction.bidIncrement, startTime:now, endTime:now + r.auction.days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null }));
   if(auctions.length){

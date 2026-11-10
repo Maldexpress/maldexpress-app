@@ -688,25 +688,66 @@
   .switch.on span{transform:translateX(22px);}
   .rider-status.is-online{border-color:var(--palm); background:#F1FBF6;}
 
-  /* ---------- Admin ---------- */
-  .admin{min-height:100vh; padding-bottom:40px;}
-  .admin-hero{position:relative; overflow:hidden; background:linear-gradient(150deg, #0D2B33, #0B5560 60%, #0FA3A3); color:#fff; padding:calc(22px + env(safe-area-inset-top)) 16px 20px; border-radius:0 0 28px 28px;}
-  .admin-hero > *{position:relative;}
-  .admin-kicker{color:#9FEDE4; font-weight:700; font-size:.86em; letter-spacing:.04em;}
-  .admin-hero h1{color:#fff; font-size:2em;}
-  .admin-who{color:rgba(255,255,255,.75); font-size:.88em; margin-top:4px; word-break:break-word;}
-  .admin-signout{background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff;}
+  /* ---------- Admin (Super Admin console) ----------
+     Same look as the shop: white top bar with the logo, a lagoon overview
+     banner with the numbers, sections as a side menu on PC (chips on
+     phones) and white cards for each store / request. */
+  .admin{min-height:100vh; padding-bottom:48px;}
+  .admin-top{position:sticky; top:0; z-index:30; background:rgba(255,255,255,.95); -webkit-backdrop-filter:saturate(180%) blur(14px); backdrop-filter:saturate(180%) blur(14px); border-bottom:1px solid var(--edge); margin:0 calc(50% - 50vw);}
+  .admin-top-in{max-width:1280px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:calc(10px + env(safe-area-inset-top)) 16px 10px;}
+  .admin-logo{display:flex; align-items:center; gap:10px; background:none; border:none; padding:0; min-width:0;}
+  .admin-logo .site-logo-mark, .admin-land-mark{width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, #19C3B4, var(--ocean)); flex-shrink:0;}
+  .admin-logo .site-logo-mark svg, .admin-land-mark svg{width:32px; height:32px;}
+  .admin-land-mark{width:56px; height:56px; border-radius:16px; margin-bottom:18px;}
+  .admin-land-mark svg{width:46px; height:46px;}
+  .admin-logo-txt{display:flex; flex-direction:column; align-items:flex-start; line-height:1.1;}
+  .admin-logo .site-logo-word{font-family:var(--display); font-weight:800; font-size:1.2em; letter-spacing:-.03em; color:var(--ink);}
+  .admin-badge{font-size:.72em; font-weight:800; color:var(--lagoon-700); background:var(--lagoon-50); padding:2px 8px; border-radius:99px; margin-top:3px;}
+  .admin-top-r{display:flex; align-items:center; gap:10px; min-width:0;}
+  .admin-who{display:flex; align-items:center; gap:8px; min-width:0; color:var(--ink-dim); font-size:.88em;}
+  .admin-who .site-av{width:30px; height:30px; border-radius:10px; background:linear-gradient(135deg, var(--lagoon-500), var(--ocean)); color:#fff; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:800; flex-shrink:0;}
+  .admin-who-mail{display:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;}
+  .admin-layout{padding:0 16px;}
+  .admin-side{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:14px 0 4px; margin:0 -16px; padding-left:16px; padding-right:16px;}
+  .admin-nav{display:flex; align-items:center; gap:8px; flex-shrink:0; padding:9px 14px; border-radius:12px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.9em; white-space:nowrap;}
+  .admin-nav:hover{background:var(--sand-2);}
+  .admin-nav.on{background:var(--lagoon-50); border-color:var(--lagoon-500); color:var(--lagoon-700);}
+  .an-ic{font-size:1.05em;}
+  .admin-hero{position:relative; overflow:hidden; margin:14px 0 22px; padding:22px 18px 20px; border-radius:24px; color:#fff;
+    background:radial-gradient(90% 70% at 100% 0%, rgba(255,255,255,.25), transparent 60%), linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
+  .admin-hero::after{content:""; position:absolute; right:-40px; bottom:-60px; width:220px; height:220px; border-radius:50%; pointer-events:none; opacity:.35;
+    background:repeating-radial-gradient(circle, rgba(255,255,255,0) 0 16px, rgba(255,255,255,.35) 16px 17.5px);}
+  .admin-hero > *{position:relative; z-index:1;}
+  .admin-hero h1{color:#fff; font-size:1.8em;}
+  .admin-sub{color:rgba(255,255,255,.9); margin-top:4px; font-size:.95em;}
   .admin-stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px;}
-  .admin-stat{display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:14px; border-radius:16px; border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.12); color:#fff;}
-  .admin-stat strong{font-family:var(--display); font-size:1.7em; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums;}
-  .admin-stat span{font-size:.84em; color:rgba(255,255,255,.78); font-weight:600;}
-  .admin-stat.needs{border-color:#FFC2B4; background:rgba(255,106,77,.28);}
-  .admin-stat.needs strong{color:#fff;}
-  .admin-body{padding:18px 16px 0;}
-  .admin-body .tabs{margin-bottom:16px; flex-wrap:wrap; width:auto;}
-  .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:4px;}
+  .admin-stat{display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:14px; border-radius:16px; border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.16); color:#fff; transition:background .2s ease;}
+  .admin-stat:hover{background:rgba(255,255,255,.24);}
+  .admin-stat strong{font-family:var(--display); font-size:1.6em; font-weight:800; line-height:1.1; font-variant-numeric:tabular-nums;}
+  .admin-stat span{font-size:.84em; color:rgba(255,255,255,.92); font-weight:600;}
+  .admin-stat.needs{background:#fff; border-color:#fff; color:var(--sunset-dk);}
+  .admin-stat.needs span{color:var(--ink);}
+  .admin-panel-h{font-size:1.35em; margin-bottom:14px;}
+  .admin-grid{display:grid; grid-template-columns:1fr; gap:12px;}
+  .admin-grid > .glass.card{margin-bottom:0 !important;}
+  .admin-grid > .field, .admin-grid > .empty{grid-column:1/-1; margin-bottom:0 !important;}
+  .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:auto;}
   .admin-store{margin-bottom:12px;}
   .admin-av{width:44px; height:44px; border-radius:14px; background:var(--lagoon-50); color:var(--lagoon-700); font-family:var(--display); font-weight:800; font-size:1em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  @media (min-width:1024px){
+    .admin-top-in{max-width:1280px; padding:14px 40px;}
+    .admin-who-mail{display:inline;}
+    .admin-layout{max-width:1200px; margin:0 auto; padding:28px 0 0; display:grid; grid-template-columns:240px minmax(0,1fr); gap:32px; align-items:start;}
+    .admin-side{position:sticky; top:96px; flex-direction:column; gap:4px; overflow:visible; margin:0; padding:12px; background:var(--surface); border:1px solid var(--edge); border-radius:20px; box-shadow:var(--shadow);}
+    .admin-nav{border:none; padding:12px 14px; font-size:.96em; width:100%;}
+    .admin-hero{margin:0 0 30px; padding:34px 36px 30px; border-radius:28px;}
+    .admin-hero h1{font-size:2.4em;}
+    .admin-stats{grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px;}
+    .admin-stats > .admin-stat:last-child{grid-column:span 1;}
+    .admin-grid{grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px;}
+    .admin #app, .admin-main{min-width:0;}
+  }
+  @media (min-width:1440px){ .admin-grid{grid-template-columns:repeat(3, minmax(0,1fr));} }
 
   /* Shown when the Supabase library couldn't be downloaded (see sb setup). */
   .offline-banner{position:relative; z-index:2; margin:10px 16px 0; padding:12px 14px; border-radius:14px; background:#FFF1D6; color:var(--amber); font-size:.88em; font-weight:600;}
@@ -768,9 +809,6 @@
     .toast-wrap{bottom:32px;}
     .landing{max-width:640px; margin:0 auto;}
     .landing-mark h1{font-size:3.2em;}
-    .admin-hero{padding:32px 40px 28px; border-radius:0 0 32px 32px; margin:0 -40px;}
-    .admin-stats{grid-template-columns:repeat(4, 1fr);}
-    .admin-body{padding:24px 0 0;}
   }
   @media (min-width:1440px){
     .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));}
@@ -3622,7 +3660,8 @@ function renderAdmin(){
     if(state.sheet!=='signIn'){ state.sheet='signIn'; state.sheetData={intent:'admin'}; }
     app.innerHTML = `
     <div class="landing" style="justify-content:flex-start; padding-top:80px;">
-      <div class="landing-mark"><h1>Super Admin</h1><p>Sign in to continue</p></div>
+      <span class="site-logo-mark admin-land-mark">${BRAND_MARK_SVG}</span>
+      <div class="landing-mark"><h1>Super Admin</h1><p>Sign in with your admin account to manage stores, payments and fees.</p></div>
     </div>
     ${sheetHTML()}`;
     return;
@@ -3630,6 +3669,7 @@ function renderAdmin(){
   if(!state.isAdmin){
     app.innerHTML = `
     <div class="landing" style="justify-content:flex-start; padding-top:80px;">
+      <span class="site-logo-mark admin-land-mark">${BRAND_MARK_SVG}</span>
       <div class="landing-mark"><h1>Not authorized</h1><p>${state.customerEmail} doesn't have Super Admin access on this account.</p></div>
       <button class="btn btn-outline" style="margin-top:16px;" onclick="signOutCustomer()">Sign out</button>
     </div>`;
@@ -3645,39 +3685,62 @@ function renderAdmin(){
   const catPending = DB.categoryRequests.filter(r=>r.status==='pending');
   const proCount = DB.businesses.filter(b=>b.tier==='pro').length;
   const feeStores = new Set(DB.orders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).map(o=>o.businessId)).size;
-  const tab = (key,label,count)=>`<button class="tab ${state.adminTab===key?'active':''}" onclick="state.adminTab='${key}'; render();">${label}${count?` <span class="tab-count">${count}</span>`:''}</button>`;
+  const feesDueTotal = round2(DB.orders.filter(o=>o.platformFeeDue!=null && !o.feeSettledAt).reduce((a,o)=>a+Number(o.platformFeeDue||0),0));
+  const NAV = [
+    ['businesses','🏪','Stores',0],
+    ['bankRequests','🏦','Bank transfers',bankPending.length],
+    ['swipeRequests','💳','Swipe payments',0],
+    ['catRequests','🏷️','Category ideas',catPending.length],
+    ['fees','💸','Fees',feeStores],
+  ];
+  const cur = NAV.find(n=>n[0]===state.adminTab) || NAV[0];
+  const who = state.customerEmail||'';
+  const stat = (key,num,label,needs)=>`<button class="admin-stat ${needs?'needs':''}" onclick="state.adminTab='${key}'; render();"><strong>${num}</strong><span>${label}</span></button>`;
   app.innerHTML = `
   <div class="admin">
-    <header class="admin-hero">
-      <div class="row between" style="align-items:flex-start;">
-        <div><p class="admin-kicker">Maldexpress</p><h1>Admin</h1></div>
-        <button class="btn btn-sm admin-signout" onclick="signOutCustomer()">Sign out</button>
+    <header class="admin-top"><div class="admin-top-in">
+      <button class="admin-logo" aria-label="Admin home" onclick="adminGoHome()"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="admin-logo-txt"><span class="site-logo-word">Maldexpress</span><span class="admin-badge">Super Admin</span></span></button>
+      <div class="admin-top-r">
+        <span class="admin-who" title="${escapeAttr(who)}"><span class="site-av">${escapeAttr((who||'?')[0].toUpperCase())}</span><span class="admin-who-mail">${escapeAttr(who)}</span></span>
+        <button class="btn btn-ghost btn-sm" onclick="signOutCustomer()">Sign out</button>
       </div>
-      <p class="admin-who">Signed in as ${escapeAttr(state.customerEmail||'')}</p>
-      <div class="admin-stats">
-        <button class="admin-stat" onclick="state.adminTab='businesses'; render();"><strong>${DB.businesses.length}</strong><span>Stores</span></button>
-        <button class="admin-stat" onclick="state.adminTab='businesses'; render();"><strong>${proCount}</strong><span>On Pro</span></button>
-        <button class="admin-stat ${bankPending.length?'needs':''}" onclick="state.adminTab='bankRequests'; render();"><strong>${bankPending.length}</strong><span>Transfers to check</span></button>
-        <button class="admin-stat ${catPending.length?'needs':''}" onclick="state.adminTab='catRequests'; render();"><strong>${catPending.length}</strong><span>Category ideas</span></button>
-      </div>
-    </header>
-    <div class="admin-body">
-      <div class="tabs">
-        ${tab('businesses','Stores')}
-        ${tab('bankRequests','Bank transfers',bankPending.length)}
-        ${tab('swipeRequests','Swipe')}
-        ${tab('catRequests','Categories',catPending.length)}
-        ${tab('fees','Fees',feeStores)}
-      </div>
-      ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
-      ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
-      ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
-      ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
-      ${state.adminTab==='fees' ? adminFeesTab() : ''}
+    </div></header>
+    <div class="admin-layout">
+      <nav class="admin-side" aria-label="Admin sections">
+        ${NAV.map(([k,ic,label,count])=>`<button class="admin-nav ${state.adminTab===k?'on':''}" ${state.adminTab===k?'aria-current="page"':''} onclick="state.adminTab='${k}'; render();"><span class="an-ic">${ic}</span><span class="an-lbl">${label}</span>${count?`<span class="tab-count">${count}</span>`:''}</button>`).join('')}
+      </nav>
+      <section class="admin-main">
+        <div class="admin-hero">
+          <h1>Overview</h1>
+          <p class="admin-sub">Everything on Maldexpress that needs you, at a glance.</p>
+          <div class="admin-stats">
+            ${stat('businesses', DB.businesses.length, 'Stores')}
+            ${stat('businesses', proCount, 'On Pro')}
+            ${stat('businesses', (DB.delivery||[]).length, 'Riders')}
+            ${stat('fees', (DB.orders||[]).length, 'Orders')}
+            ${stat('bankRequests', bankPending.length, 'Transfers to check', bankPending.length)}
+            ${stat('catRequests', catPending.length, 'Category ideas', catPending.length)}
+            ${stat('fees', money(feesDueTotal), 'Fees owed to Maldexpress', feesDueTotal>0)}
+          </div>
+        </div>
+        <div class="admin-panel">
+          <h2 class="admin-panel-h">${cur[2]}</h2>
+          <div class="admin-grid">
+            ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
+            ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
+            ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
+            ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
+            ${state.adminTab==='fees' ? adminFeesTab() : ''}
+          </div>
+        </div>
+      </section>
     </div>
   </div>
   ${sheetHTML()}`;
+  const onNav = app.querySelector('.admin-nav.on'), side = app.querySelector('.admin-side');
+  if(onNav && side && side.scrollWidth > side.clientWidth) side.scrollLeft = Math.max(0, onNav.offsetLeft - 16);
 }
+function adminGoHome(){ state.adminTab='businesses'; state.adminSearch=''; state.sheet=null; render(); document.body.scrollTop=0; document.documentElement.scrollTop=0; }
 function adminBusinessesTab(list){
   return `
   <div class="field" style="margin-bottom:14px;">

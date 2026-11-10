@@ -1017,10 +1017,26 @@ function fbErrorText(e){
   if(c==='auth/invalid-email') return "That email address doesn't look right";
   if(c==='auth/weak-password') return 'Use a password with at least 6 characters';
   if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Incorrect mobile/email or password. New here? Sign up below';
-  if(c==='auth/too-many-requests') return 'Too many tries. Wait a few minutes and try again';
+  if(c==='auth/too-many-requests') return 'Firebase paused emails for this account after several tries. Wait about 15 minutes, then tap Resend email';
+  if(c==='auth/quota-exceeded') return 'The daily email limit was reached. Try again tomorrow, or contact Maldexpress';
+  if(c==='auth/internal-error') return 'The sign-in service had a problem sending the email. Try Resend email in a minute';
   if(c==='auth/network-request-failed') return "Can't reach the sign-in service. Check your connection";
   if(c==='auth/unauthorized-continue-uri' || c==='auth/unauthorized-domain') return "This site address isn't allowed in Firebase yet (Authentication > Settings > Authorized domains)";
-  return (e && e.message) || 'Something went wrong';
+  return ((e && e.message) || 'Something went wrong') + (c ? ` (${c})` : '');
+}
+// Last reason a verification email couldn't be sent, shown on the
+// Confirm your email screen; and a cooldown so Resend isn't hammered (Firebase
+// blocks the account for a while after too many sends).
+let _verifySendError = '', _verifyResendAt = 0, _verifyTimer = null;
+function startVerifyCooldown(sec){
+  _verifyResendAt = Date.now() + sec*1000;
+  clearInterval(_verifyTimer);
+  _verifyTimer = setInterval(()=>{
+    const el = document.getElementById('resendVerifyBtn'); const left = Math.ceil((_verifyResendAt-Date.now())/1000);
+    if(!el){ clearInterval(_verifyTimer); return; }
+    if(left<=0){ el.disabled=false; el.textContent='Resend email'; clearInterval(_verifyTimer); }
+    else { el.disabled=true; el.textContent=`Resend email in ${left}s`; }
+  }, 1000);
 }
 /* ---- SQL to run once in Supabase → SQL Editor ----
 create extension if not exists "pgcrypto";
@@ -9223,7 +9239,8 @@ async function signInWithIdentifierPassword(){
     // Signed in to Firebase but not verified yet: the database treats this
     // as signed out, so finish verification first.
     _pendingVerifyEmail = email; _pendingSignupPassword = pass;
-    try{ await fbSendVerification(u); }catch(e){ console.warn(e); }
+    _verifySendError = '';
+    if(Date.now() >= _verifyResendAt){ try{ await fbSendVerification(u); startVerifyCooldown(60); }catch(e){ console.warn(e); _verifySendError = fbErrorText(e); } }
     openSheet('verifyEmail');
     return;
   }
@@ -9302,8 +9319,9 @@ async function submitSignUp(){
   // The account exists from here on: a failed name/email step shouldn't
   // strand the user, they can resend from the next screen.
   try{ await cred.user.updateProfile({ displayName: name }); }catch(e){ console.warn(e); }
-  try{ await fbSendVerification(cred.user); }
-  catch(e){ console.warn(e); toast("Account created, but the email didn't send. Tap Resend email", 'bad'); }
+  _verifySendError = '';
+  try{ await fbSendVerification(cred.user); startVerifyCooldown(60); }
+  catch(e){ console.warn(e); _verifySendError = fbErrorText(e); toast("Account created, but the email didn't send: "+_verifySendError, 'bad'); }
   _pendingVerifyEmail = email;
   _signupInFlight = false;
   _pendingSignupPassword = pass;
@@ -9446,14 +9464,16 @@ function sheetPolicy(){
 function sheetVerifyEmail(){
   return `
   <h2>Confirm your email</h2>
-  <p class="muted">We sent an email to <strong>${_pendingVerifyEmail}</strong>.</p>
+  ${_verifySendError
+    ? `<div class="card tight notice-warn"><p style="font-size:.88em;"><strong>The email to ${escapeAttr(_pendingVerifyEmail||'')} didn't send.</strong> ${escapeAttr(_verifySendError)}</p></div>`
+    : `<p class="muted">We sent an email to <strong>${escapeAttr(_pendingVerifyEmail||'')}</strong>. It can take a few minutes.</p>`}
   <ol class="verify-steps">
     <li>Open it and tap the link to verify your email.</li>
     <li>Come back here and tap the button below.</li>
   </ol>
   <button class="btn btn-primary" onclick="confirmedSignIn()">I've confirmed my email</button>
-  <button class="link-btn" style="margin-top:12px; padding-left:0;" onclick="resendVerifyCode()">Resend email</button>
-  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam folder. It comes from noreply@maldexpress.firebaseapp.com.</p>`;
+  <button class="link-btn" id="resendVerifyBtn" style="margin-top:12px; padding-left:0;" onclick="resendVerifyCode()" ${Date.now()<_verifyResendAt?'disabled':''}>${Date.now()<_verifyResendAt?`Resend email in ${Math.ceil((_verifyResendAt-Date.now())/1000)}s`:'Resend email'}</button>
+  <p class="muted" style="font-size:.82em; margin-top:12px;">Can't find it? Check your spam or junk folder and search for "maldexpress". It comes from noreply@maldexpress.firebaseapp.com.</p>`;
 }
 async function resendVerifyCode(){
   if(!requireOnline()) return;
@@ -9462,7 +9482,9 @@ async function resendVerifyCode(){
     try{ u = (await fbAuth.signInWithEmailAndPassword(_pendingVerifyEmail, _pendingSignupPassword)).user; }catch(e){ toast(fbErrorText(e),'bad'); return; }
   }
   if(!u){ toast('Sign in again to resend the email','bad'); return; }
-  try{ await fbSendVerification(u); }catch(e){ toast(fbErrorText(e),'bad'); return; }
+  if(Date.now() < _verifyResendAt){ toast('Wait a moment before sending another email','bad'); return; }
+  try{ await fbSendVerification(u); }catch(e){ _verifySendError = fbErrorText(e); render(); toast(_verifySendError,'bad'); return; }
+  _verifySendError = ''; startVerifyCooldown(60); render();
   toast('Email sent again. Check your inbox and spam folder');
 }
 function sheetSetupMobile(){

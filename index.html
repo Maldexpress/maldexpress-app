@@ -5868,6 +5868,7 @@ async function onBulkPhotos(ev){
   const picked = [...(ev.target.files||[])]; ev.target.value = '';
   let files = picked.filter(f=>/^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|heic)$/i.test(f.name));
   for(const z of picked.filter(f=>/\.zip$/i.test(f.name) || /zip/.test(f.type))){
+    if(typeof DecompressionStream === 'undefined'){ toast('This browser can\u2019t open .zip files. Update it, or unzip and choose the photos instead','bad'); continue; }
     toast('Opening '+z.name+'…');
     try{ const got = await photosFromZip(z); files = files.concat(got); toast(`${got.length} photo${got.length===1?'':'s'} from ${z.name}`); }
     catch(e){ toast('Could not open '+z.name+': '+(e.message||e),'bad'); }
@@ -5969,9 +5970,11 @@ function sheetBulkItems(){
     <label for="bulkFile" class="filebtn">📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
   </div>
   <div class="field file">
-    <input type="file" accept="image/*,.zip,application/zip" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
-    <label for="bulkPhotoFiles" class="filebtn">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} picked · add more` : 'Choose photos or a .zip (optional)'}</label>
-    <p class="muted" style="font-size:.8em; margin-top:6px;">Pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
+    <input type="file" accept=".zip,application/zip,application/x-zip-compressed" id="bulkZipFile" style="display:none;" onchange="onBulkPhotos(event)">
+    <label for="bulkZipFile" class="filebtn">🗜️ Upload a .zip of photos</label>
+    <input type="file" accept="image/*" multiple id="bulkPhotoFiles" style="display:none;" onchange="onBulkPhotos(event)">
+    <label for="bulkPhotoFiles" class="filebtn" style="margin-top:8px;">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} ready · add more photos` : 'Or choose photos (optional)'}</label>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">Upload one .zip with all the photos, or pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
   </div>
   <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
   ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}

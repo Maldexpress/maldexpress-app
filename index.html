@@ -1017,6 +1017,19 @@
   .opt-add input{flex:1; min-width:0;}
   .bulk-thumb-wrap{position:relative; flex-shrink:0; display:block;}
   .bulk-more{position:absolute; right:4px; bottom:4px; z-index:1; padding:1px 6px; border-radius:99px; background:var(--lagoon-700); color:#fff; font-size:.68em; font-weight:800;}
+  /* Live support */
+  .ticket-card{display:block; width:100%; text-align:left; margin-bottom:8px; background:var(--surface); border:1px solid var(--edge);}
+  .sup-badge{display:inline-block; min-width:18px; padding:0 6px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.72em; font-weight:800; line-height:18px; text-align:center;}
+  .sup-thread{display:flex; flex-direction:column; gap:10px; max-height:46vh; overflow-y:auto; padding:4px 2px;}
+  .sup-msg{max-width:86%; padding:10px 12px; border-radius:16px; background:var(--sand-2);}
+  .sup-msg.me{align-self:flex-end; background:var(--lagoon-50); border-bottom-right-radius:6px;}
+  .sup-msg.them{align-self:flex-start; background:#fff; border:1px solid var(--edge); border-bottom-left-radius:6px;}
+  .sup-who{font-size:.72em; color:var(--ink-dim); font-weight:700; margin-bottom:3px;}
+  .sup-body{font-size:.92em; line-height:1.45; word-break:break-word;}
+  .sup-slip img{display:block; width:100%; max-height:260px; object-fit:contain; background:#fff; border-radius:10px; margin-top:8px; border:1px solid var(--edge);}
+  .sup-reply{display:flex; gap:8px; align-items:flex-end; margin-top:12px;}
+  .sup-reply textarea{flex:1; min-width:0; resize:vertical;}
+  .slip-gone{background:var(--sand-2); margin-top:10px;}
   /* ---------- PC website (customer side) ---------- */
   .site-head, .site-foot{display:none;}
   @media (min-width:1024px){
@@ -2847,14 +2860,14 @@ function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
-  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0),
+  if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
     swipeFee:r.swipe_fee!=null?Number(r.swipe_fee):null, platformFee:r.platform_fee!=null?Number(r.platform_fee):null,
     platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null,
     originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
-  if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
+  if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
   if(part==='bids') return { id:r.id, auctionId:r.auction_id, bidderId:r.bidder_id, bidAmount:Number(r.bid_amount), createdAt:new Date(r.created_at).getTime() };
   if(part==='categoryRequests') return { id:r.id, businessId:r.business_id, businessName:r.business_name, categoryName:r.category_name, status:r.status, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, island:r.island||'', harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
@@ -3980,9 +3993,11 @@ function renderAdmin(){
     ['bankRequests','🏦','Bank transfers',bankPending.length],
     ['swipeRequests','💳','Swipe payments',0],
     ['catRequests','🏷️','Category ideas',catPending.length],
+    ['support','🎧','Live support',_support.tickets.filter(t=>t.status==='open').length],
     ['fees','💸','Fees',feeStores],
     ['settings','⚙️','Settings',0],
   ];
+  if(!_support.loaded && !_support.loading) loadSupport().then(()=>{ if(state.adminMode) render(); });
   const cur = NAV.find(n=>n[0]===state.adminTab) || NAV[0];
   const who = state.customerEmail||'';
   const stat = (key,num,label,needs)=>`<button class="admin-stat ${needs?'needs':''}" onclick="state.adminTab='${key}'; render();"><strong>${num}</strong><span>${label}</span></button>`;
@@ -4026,6 +4041,7 @@ function renderAdmin(){
             ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
             ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
             ${state.adminTab==='fees' ? adminFeesTab() : ''}
+            ${state.adminTab==='support' ? adminSupportTab() : ''}
           </div>
         </div>
       </section>
@@ -4034,6 +4050,21 @@ function renderAdmin(){
   ${sheetHTML()}`;
   const onNav = app.querySelector('.admin-nav.on'), side = app.querySelector('.admin-side');
   if(onNav && side && side.scrollWidth > side.clientWidth) side.scrollLeft = Math.max(0, onNav.offsetLeft - 16);
+}
+function adminSupportTab(){
+  const f = state.adminSupFilter || 'open';
+  const list = _support.tickets.filter(t=> f==='all' ? true : f==='open' ? t.status!=='closed' : t.status==='closed');
+  const counts = { open:_support.tickets.filter(t=>t.status!=='closed').length, closed:_support.tickets.filter(t=>t.status==='closed').length, all:_support.tickets.length };
+  return `<div style="grid-column:1/-1;" class="row" >
+      ${['open','closed','all'].map(k=>`<button class="tab ${f===k?'active':''}" onclick="state.adminSupFilter='${k}'; render();">${{open:'Open',closed:'Closed',all:'All'}[k]} (${counts[k]})</button>`).join('')}
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="loadSupport().then(render)">↻ Refresh</button>
+    </div>
+    ${!_support.loaded ? `<p class="muted">Loading…</p>` : list.length ? list.map(t=>`
+    <button class="glass card ticket-card" onclick="openTicket('${t.id}')">
+      <div class="row between" style="gap:8px;"><strong>${escapeAttr(t.subject)}</strong>${ticketStatusPill(t)}</div>
+      <p class="muted" style="font-size:.82em; margin-top:4px;">${SUPPORT_TOPICS[t.topic]||'Support'}${ticketRefLabel(t)?' · '+ticketRefLabel(t):''} · ${({business:'Store',delivery:'Rider',customer:'Customer'}[t.role]||'')}${t.businessId?' '+escapeAttr((DB.businesses.find(b=>b.id===t.businessId)||{}).name||''):''}</p>
+      <p class="muted" style="font-size:.78em;">${escapeAttr(t.userEmail||'')} · ${new Date(t.updatedAt).toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</p>
+    </button>`).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">🎧</span>No ${f==='closed'?'closed ':f==='open'?'open ':''}tickets.</div>`}`;
 }
 function adminGoHome(){ state.adminTab='businesses'; state.adminSearch=''; state.sheet=null; render(); document.body.scrollTop=0; document.documentElement.scrollTop=0; }
 function adminBusinessesTab(list){
@@ -4571,12 +4602,14 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
       <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">🛵</span> Delivery payouts</button>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSupport()"><span class="ic">🎧</span> Live support${supportUnreadBadge()}</button>
     `;
   } else if(role==='delivery'){
     items = `
       <button class="drawer-item" onclick="go('delHome')"><span class="ic">🏠</span> My jobs</button>
       <button class="drawer-item" onclick="go('delHistory')"><span class="ic">🧾</span> History</button>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('delSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSupport()"><span class="ic">🎧</span> Live support${supportUnreadBadge()}</button>
     `;
   } else {
     items = `
@@ -4588,6 +4621,7 @@ function drawerHTML(role){
       <button class="drawer-item" onclick="go('custStores')"><span class="ic">🏪</span> Browse stores</button>
       <div class="divider"></div>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('custSettings')"><span class="ic">⚙️</span> Settings</button>
+      <button class="drawer-item" onclick="toggleDrawer(false); openSupport()"><span class="ic">🎧</span> Live support${supportUnreadBadge()}</button>
       <div class="divider"></div>
       <button class="drawer-item" onclick="toggleDrawer(false); enterRole('business')"><span class="ic">🏪</span> List your business</button>
       <button class="drawer-item" onclick="toggleDrawer(false); enterRole('delivery')"><span class="ic">🛵</span> Deliver with us</button>
@@ -4748,6 +4782,9 @@ function sheetHTML(){
   else if(state.sheet==='featureItem') body = sheetFeatureItem();
   else if(state.sheet==='categories') body = sheetCategories();
   else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
+  else if(state.sheet==='support') body = sheetSupport();
+  else if(state.sheet==='supportNew') body = sheetSupportNew();
+  else if(state.sheet==='supportTicket') body = sheetSupportTicket();
   else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
@@ -4988,6 +5025,197 @@ async function submitDelSignup(){
   state.role='delivery';
   go('delHome', {activeDelId:d.id});
   toast('Welcome aboard! Jobs will show here');
+}
+
+
+/* =================== LIVE SUPPORT =================== */
+// Tickets (support_tickets / support_messages). Anyone signed in opens one
+// from the menu; the super admin answers in Admin -> Live support. Bank slips
+// leave the database 3 hours after the store confirms them (purge-slips); a
+// store that needs one asks here and support sends it back into the ticket
+// (support-send-slip), where only the store's own app can open it.
+const SLIP_HOLD_HOURS = 3;
+const SUPPORT_TOPICS = { slip:'Bank slip request', order:'Order problem', payment:'Payment', delivery:'Delivery', account:'My account', other:'Something else' };
+let _support = { tickets:[], msgs:{}, loaded:false, loading:false };
+let _supportPoll = null;
+function supportUnreadBadge(){ const n = _support.tickets.filter(t=>t.status==='answered' && !t._seen).length; return n ? ` <span class="sup-badge">${n}</span>` : ''; }
+function supRow(r){ return { id:r.id, userId:r.user_id, userEmail:r.user_email, role:r.role, businessId:r.business_id, orderId:r.order_id, bookingId:r.booking_id, topic:r.topic, subject:r.subject, status:r.status, createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at).getTime() }; }
+function supMsgRow(r){ return { id:r.id, ticketId:r.ticket_id, senderId:r.sender_id, fromAdmin:!!r.from_admin, body:r.body||'', attachment:r.attachment||null, createdAt:new Date(r.created_at).getTime() }; }
+async function loadSupport(){
+  if(!sb){ _support.loaded = true; return; }
+  if(_support.loading) return; _support.loading = true;
+  try{
+    const { data, error } = await sb.from('support_tickets').select('*').order('updated_at', { ascending:false }).limit(200);
+    if(!error){ const seen = Object.fromEntries(_support.tickets.map(t=>[t.id, t._seen])); _support.tickets = (data||[]).map(supRow); _support.tickets.forEach(t=>{ t._seen = seen[t.id]; }); }
+    _support.loaded = true;
+  } finally { _support.loading = false; }
+}
+async function loadTicketMsgs(id){
+  if(!sb) return;
+  const { data, error } = await sb.from('support_messages').select('*').eq('ticket_id', id).order('created_at');
+  if(!error) _support.msgs[id] = (data||[]).map(supMsgRow);
+}
+function needSignInForSupport(){ if(sb && !state.authed){ toast('Sign in to contact support'); openSheet('signIn'); return true; } return false; }
+async function openSupport(){
+  if(needSignInForSupport()) return;
+  openSheet('support'); await loadSupport(); if(state.sheet==='support') render();
+}
+let _supportDraft = null;   // { topic, orderId, bookingId }
+function openNewTicket(draft){
+  if(needSignInForSupport()) return;
+  _supportDraft = draft || {}; openSheet('supportNew');
+}
+async function openTicket(id){
+  const t = _support.tickets.find(x=>x.id===id); if(t) t._seen = true;
+  openSheet('supportTicket', id); await loadTicketMsgs(id); if(state.sheet==='supportTicket') { render(); scrollTicketToEnd(); }
+  clearInterval(_supportPoll);
+  _supportPoll = setInterval(async ()=>{
+    if(state.sheet!=='supportTicket' || state.sheetData!==id || document.hidden){ if(state.sheet!=='supportTicket') clearInterval(_supportPoll); return; }
+    const before = (_support.msgs[id]||[]).length;
+    await loadTicketMsgs(id);
+    if((_support.msgs[id]||[]).length !== before) redrawTicketThread(id);
+  }, 10000);
+}
+function ticketStatusPill(t){ return t.status==='answered' ? `<span class="status-pill ok">Replied</span>` : t.status==='closed' ? `<span class="status-pill">Closed</span>` : `<span class="status-pill wait">Open</span>`; }
+function ticketRefLabel(t){ return t.orderId ? `Order #${String(t.orderId).slice(-6).toUpperCase()}` : t.bookingId ? `Booking #${String(t.bookingId).slice(-6).toUpperCase()}` : ''; }
+function sheetSupport(){
+  const list = _support.tickets.filter(t=>isAdminView() || t.userId===state.customerId || !sb);
+  return `<h2>Live support</h2>
+  <p class="muted" style="margin-bottom:12px;">Ask Maldexpress anything about an order, a payment, a delivery or your account. We reply here.</p>
+  <button class="btn btn-primary" onclick="openNewTicket()">＋ New ticket</button>
+  <h3 style="margin:18px 0 8px;">Your tickets</h3>
+  ${!_support.loaded ? `<p class="muted">Loading…</p>` : list.length ? list.map(t=>`
+    <button class="card tight ticket-card" onclick="openTicket('${t.id}')">
+      <div class="row between" style="gap:8px;"><strong>${escapeAttr(t.subject)}</strong>${ticketStatusPill(t)}</div>
+      <p class="muted" style="font-size:.82em; margin-top:4px;">${SUPPORT_TOPICS[t.topic]||'Support'}${ticketRefLabel(t)?' · '+ticketRefLabel(t):''} · ${fmtDateShort(new Date(t.updatedAt).toISOString().slice(0,10))}</p>
+    </button>`).join('') : `<div class="empty"><span class="ic">🎧</span>No tickets yet.</div>`}`;
+}
+function supportOrderChoices(){
+  // A store picks from its own orders; a customer from theirs.
+  if(state.role==='business'){ const b = currentBiz(); return b ? DB.orders.filter(o=>o.businessId===b.id) : []; }
+  if(state.role==='delivery') return DB.orders.filter(o=>o.deliveryPersonId===state.activeDelId);
+  return DB.orders.filter(o=>!sb || o.customerId===state.customerId);
+}
+function sheetSupportNew(){
+  const d = _supportDraft || {};
+  const orders = supportOrderChoices().sort((a,b)=>b.createdAt-a.createdAt).slice(0,40);
+  const o = d.orderId ? DB.orders.find(x=>x.id===d.orderId) : null;
+  const bk = d.bookingId ? DB.bookings.find(x=>x.id===d.bookingId) : null;
+  return `<h2>New ticket</h2>
+  <div class="field"><label for="st_topic">What is it about?</label><select id="st_topic">${Object.entries(SUPPORT_TOPICS).map(([k,v])=>`<option value="${k}" ${d.topic===k?'selected':''}>${v}</option>`).join('')}</select></div>
+  ${bk ? `<div class="field"><label>Booking</label><p><strong>${escapeAttr(bk.itemName||'Booking')}</strong> · #${bk.id.slice(-6).toUpperCase()}</p><input type="hidden" id="st_booking" value="${bk.id}"></div>` : `
+  <div class="field"><label for="st_order">Order (optional)</label><select id="st_order"><option value="">Not about an order</option>${orders.map(x=>`<option value="${x.id}" ${x.id===(o&&o.id)?'selected':''}>#${x.id.slice(-6).toUpperCase()} · ${escapeAttr(x.customerName||x.businessName||'')} · ${money(x.total)}</option>`).join('')}</select></div>`}
+  <div class="field"><label for="st_subject">Subject</label><input id="st_subject" maxlength="120" value="${escapeAttr(d.topic==='slip' ? 'Please send me the bank slip' : '')}" placeholder="A few words, e.g. Order not delivered"></div>
+  <div class="field"><label for="st_body">Message</label><textarea id="st_body" rows="4" maxlength="4000" placeholder="Tell us what happened">${d.topic==='slip' ? 'I need the bank transfer slip for this order.' : ''}</textarea></div>
+  <button class="btn btn-primary" onclick="submitTicket()">Send to support</button>`;
+}
+async function submitTicket(){
+  const topic = val('st_topic') || 'other', subject = val('st_subject').trim(), body = val('st_body').trim();
+  const orderId = val('st_order') || null, bookingId = val('st_booking') || null;
+  if(!subject){ toast('Add a subject','bad'); return; }
+  if(!body){ toast('Write a message','bad'); return; }
+  const id = uid('tk');
+  const row = { id, user_email: state.customerEmail||null, role: state.role==='business'?'business':state.role==='delivery'?'delivery':'customer',
+    business_id: state.role==='business' ? (state.activeBizId||null) : null, order_id: orderId, booking_id: bookingId, topic, subject };
+  if(sb){
+    const { error } = await sb.from('support_tickets').insert(row);
+    if(error){ toast('Could not send: '+error.message,'bad'); return; }
+    const m = await sb.from('support_messages').insert({ id: uid('sm'), ticket_id: id, body });
+    if(m.error){ toast('Ticket made, but the message failed: '+m.error.message,'bad'); }
+    await loadSupport();
+  } else {
+    _support.tickets.unshift(supRow({ ...row, user_id: state.customerId||'demo', status:'open', created_at:new Date().toISOString(), updated_at:new Date().toISOString() }));
+    _support.msgs[id] = [supMsgRow({ id: uid('sm'), ticket_id:id, sender_id: state.customerId||'demo', from_admin:false, body, created_at:new Date().toISOString() })];
+    _support.loaded = true;
+  }
+  toast('Sent. Support will reply here');
+  openTicket(id);
+}
+async function attachmentHTML(att){
+  if(!att) return '';
+  let url = att.slip_url || null;
+  if(!url && att.slip_enc){ try{ const out = await decryptForMe(att.slip_enc, att.slip_iv, att.slip_keys); url = out && out.url; }catch(e){} }
+  if(!url) return `<p class="muted" style="font-size:.8em; margin-top:6px;">🔒 Bank slip attached. Only the store and the customer of this order can open it.</p>`;
+  return `<a href="${escapeAttr(url)}" download="slip-${escapeAttr(String(att.ref||'').slice(-6))}" class="sup-slip"><img src="${escapeAttr(url)}" alt="Bank transfer slip"></a><p class="muted" style="font-size:.76em;">Tap and hold the slip to save it.</p>`;
+}
+function ticketThreadHTML(id){
+  const msgs = _support.msgs[id];
+  const t = _support.tickets.find(x=>x.id===id) || {};
+  const them = ({business:'Store',delivery:'Rider',customer:'Customer'}[t.role]) || 'Customer';
+  if(!msgs) return `<p class="muted">Loading…</p>`;
+  return msgs.map(m=>`<div class="sup-msg ${m.fromAdmin?'them':'me'}">
+      <div class="sup-who">${m.fromAdmin?'Maldexpress support':(isAdminView()?them:'You')} · ${new Date(m.createdAt).toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+      ${m.body ? `<div class="sup-body">${escapeAttr(m.body).replace(/\n/g,'<br>')}</div>` : ''}
+      ${m.attachment ? `<div class="sup-att" data-att="${m.id}"><p class="muted" style="font-size:.8em;">Opening slip…</p></div>` : ''}
+    </div>`).join('') || `<p class="muted">No messages yet.</p>`;
+}
+async function fillAttachments(id){
+  for(const m of (_support.msgs[id]||[]).filter(m=>m.attachment)){
+    const el = document.querySelector(`.sup-att[data-att="${m.id}"]`); if(el) el.innerHTML = await attachmentHTML(m.attachment);
+  }
+}
+function redrawTicketThread(id){ const el = document.getElementById('supThread'); if(el){ el.innerHTML = ticketThreadHTML(id); fillAttachments(id); scrollTicketToEnd(); } }
+function scrollTicketToEnd(){ const el = document.getElementById('supThread'); if(el){ el.scrollTop = el.scrollHeight; } fillAttachments(state.sheetData); }
+function sheetSupportTicket(){
+  const id = state.sheetData; const t = _support.tickets.find(x=>x.id===id);
+  if(!t) return `<h2>Ticket</h2><p class="muted">Not found.</p>`;
+  const admin = isAdminView();
+  const canSendSlip = admin && (t.orderId || t.bookingId);
+  return `<button class="link-btn" onclick="${admin?'closeSheet()':'openSupport()'}">‹ ${admin?'Close':'All tickets'}</button>
+  <div class="row between" style="gap:8px; margin-top:6px;"><h2 style="margin:0;">${escapeAttr(t.subject)}</h2>${ticketStatusPill(t)}</div>
+  <p class="muted" style="font-size:.82em; margin:4px 0 10px;">${SUPPORT_TOPICS[t.topic]||'Support'}${ticketRefLabel(t)?' · '+ticketRefLabel(t):''}${admin && t.userEmail?' · '+escapeAttr(t.userEmail):''}${admin?' · '+({business:'Store',delivery:'Rider',customer:'Customer'}[t.role]||''):''}</p>
+  <div class="sup-thread" id="supThread">${ticketThreadHTML(id)}</div>
+  ${t.status==='closed' ? `<p class="muted" style="margin-top:10px;">This ticket is closed.${admin?'':' Open a new one if you still need help.'}</p>` : `
+  <div class="sup-reply"><textarea id="sup_reply" rows="2" maxlength="4000" placeholder="Write a reply" aria-label="Reply"></textarea><button class="btn btn-primary btn-sm" onclick="sendTicketReply('${id}')">Send</button></div>
+  <div class="row" style="gap:8px; margin-top:8px; flex-wrap:wrap;">
+    ${canSendSlip ? `<button class="btn btn-ghost btn-sm" onclick="supportSendSlip('${id}')">📎 Send the slip</button>` : ''}
+    <button class="btn btn-ghost btn-sm" onclick="closeTicket('${id}')">${admin?'Close ticket':'Mark as solved'}</button>
+  </div>`}`;
+}
+async function sendTicketReply(id){
+  const body = val('sup_reply').trim(); if(!body) return;
+  if(sb){
+    const { error } = await sb.from('support_messages').insert({ id: uid('sm'), ticket_id: id, body });
+    if(error){ toast('Could not send: '+error.message,'bad'); return; }
+    await loadTicketMsgs(id); await loadSupport();
+  } else {
+    (_support.msgs[id] = _support.msgs[id]||[]).push(supMsgRow({ id: uid('sm'), ticket_id:id, sender_id:'demo', from_admin:isAdminView(), body, created_at:new Date().toISOString() }));
+    const t = _support.tickets.find(x=>x.id===id); if(t){ t.status = isAdminView() ? 'answered' : 'open'; t.updatedAt = Date.now(); }
+  }
+  const inp = document.getElementById('sup_reply'); if(inp) inp.value = '';
+  redrawTicketThread(id);
+}
+async function closeTicket(id){
+  if(sb){ const { error } = await sb.from('support_tickets').update({ status:'closed' }).eq('id', id); if(error){ toast('Could not close: '+error.message,'bad'); return; } await loadSupport(); }
+  else { const t = _support.tickets.find(x=>x.id===id); if(t) t.status = 'closed'; }
+  toast('Ticket closed'); render();
+}
+async function supportSendSlip(id){
+  if(!sb){ toast('Needs the live server'); return; }
+  toast('Sending the slip…');
+  try{
+    const { data, error } = await sb.functions.invoke('support-send-slip', { body:{ ticket_id:id } });
+    let msg = error ? error.message : (data && data.error);
+    if(error){ try{ const b = error.context && await error.context.json(); if(b && b.error) msg = b.error; }catch(e){} }
+    if(msg){ toast(msg,'bad'); return; }
+  }catch(e){ toast('Could not send: '+(e.message||e),'bad'); return; }
+  await loadTicketMsgs(id); await loadSupport(); redrawTicketThread(id); toast('Slip sent to the ticket');
+}
+function isAdminView(){ return !!(typeof isAdminMode === 'function' ? isAdminMode() : state.adminMode); }
+// Shown to the store once a slip is confirmed: kept for 3 hours, then removed.
+function slipKeptNoteHTML(rec, kind){
+  if(!rec) return '';
+  const ref = kind==='booking' ? { topic:'slip', bookingId:rec.id } : { topic:'slip', orderId:rec.id };
+  if(rec.slipArchivedAt || (rec.slipConfirmedAt && !rec.slipDataUrl && Date.now() - rec.slipConfirmedAt > SLIP_HOLD_HOURS*3600000)){
+    return `<div class="card tight slip-gone"><p style="font-size:.84em;">The bank slip was removed ${SLIP_HOLD_HOURS} hours after you confirmed it. Need a copy?</p>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick='openNewTicket(${JSON.stringify(ref)})'>🎧 Ask Live support for the slip</button></div>`;
+  }
+  if(rec.slipConfirmedAt && rec.slipDataUrl){
+    const until = new Date(rec.slipConfirmedAt + SLIP_HOLD_HOURS*3600000);
+    return `<div class="card tight"><img src="${rec.slipDataUrl}" alt="Bank transfer slip" style="width:100%; border-radius:12px; max-height:200px; object-fit:contain; background:#fff;">
+      <p class="muted" style="font-size:.78em; margin-top:6px;">Kept until ${until.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })}, then removed. Save it now if you need it, or ask Live support later.</p></div>`;
+  }
+  return '';
 }
 
 /* =================== BUSINESS SIDE =================== */
@@ -6251,6 +6479,7 @@ function bookingCardBiz(bk){
         ${bk.slipDataUrl ? `<img src="${bk.slipDataUrl}" style="width:100%; border-radius:12px; max-height:220px; object-fit:contain; background:#fff; border:1px solid var(--glass-brd);">` : `<p class="muted" style="font-size:.8em;">(slip image not available)</p>`}
       </div>
       <button class="btn btn-good btn-sm" style="width:100%; margin-top:10px;" onclick="markBookingChargeCollected('${bk.id}')">Mark charge collected</button>` : ''}
+    ${bk.chargeStatus==='collected' ? `<div class="status-pill ok" style="display:inline-block;">Charge collected</div>${slipKeptNoteHTML(bk, 'booking')}` : ''}
   </div>`;
 }
 function sheetAcceptBooking(){
@@ -6443,7 +6672,7 @@ function orderDetailBizBody(o){
         </div>
         <button class="btn btn-good" style="margin-top:12px;" onclick="approveOrderPayment('${o.id}')">Mark payment received ✓</button>`;
     } else {
-      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>${isBuyNowOrder(o) && (o.paymentStatus==='paid'||o.paymentStatus==='settled') ? transferFeeRowsHTML(o) : ''}`;
+      actionArea = `<div class="status-pill ok" style="display:inline-block;">Payment received</div>${slipKeptNoteHTML(o, 'order')}${isBuyNowOrder(o) && (o.paymentStatus==='paid'||o.paymentStatus==='settled') ? transferFeeRowsHTML(o) : ''}`;
     }
   } else if(o.paymentMethod==='cash_on_pickup'){
     // A rental paid in cash goes straight to the renter (you) - no rider ever

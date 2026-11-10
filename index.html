@@ -2875,7 +2875,7 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
 // store approves) or cash (the store marks it received). Swipe shows only
 // when the store has connected it.
 function payChoiceHTML(biz, cash, label){
-  const swipe = biz && biz.swipeConnected;
+  const swipe = bizTakesSwipe(biz);
   if(!swipe && _selectedPay==='swipe') _selectedPay = 'transfer';
   const on = m => _selectedPay===m ? ' selected' : '';
   return `
@@ -2939,10 +2939,14 @@ function swipeOrderNeedsPayment(o){ return o && o.paymentMethod==='swipe' && o.p
 function isBuyNowOrder(o){ return o && !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id); }
 function buyNowNeedsPayment(o){ return swipeOrderNeedsPayment(o) || (o && o.paymentMethod==='transfer' && isBuyNowOrder(o) && o.paymentStatus!=='paid' && o.paymentStatus!=='settled'); }
 function bizHasBankAccount(biz){ return !!(biz && String(biz.accountNumber||'').trim()); }
-function bizCanTakeOrders(biz){ return !!(biz && (biz.swipeConnected || bizHasBankAccount(biz))); }
+// Swipe is offered only once the admin has switched it on (Admin -> Settings,
+// after the Swipe server keys are added) and the store has connected it.
+function swipeLive(){ return SWIPE_PREVIEW || !!(DB.settings && DB.settings.swipeEnabled); }
+function bizTakesSwipe(biz){ return !!(biz && biz.swipeConnected && swipeLive()); }
+function bizCanTakeOrders(biz){ return !!(biz && (bizTakesSwipe(biz) || bizHasBankAccount(biz))); }
 const TRANSFER_FEE_RATE = 0.05;   // Maldexpress fee on Buy now bank-transfer orders (no Swipe charge to split)
 let _ckPay = {};                  // checkout: chosen payment per store id
-function ckPayFor(biz){ if(!biz.swipeConnected) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
+function ckPayFor(biz){ if(!bizTakesSwipe(biz)) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
 function setCkPay(bizId, m){ _ckPay[bizId] = m; refreshCheckoutCards(); }
 async function approveOrderRequest(id){
   const o = DB.orders.find(x=>x.id===id);
@@ -3233,8 +3237,8 @@ function jobVisibleToRider(o, d){
   if(!d) return false;
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const from = o.originIsland || bizIsland(biz);
-  if(!d.island) return true;   // rider hasn't picked an island yet: show everything
-  const sameArea = isGreaterMale(from) ? isGreaterMale(d.island) : from===d.island;
+  const riderIsland = d.island || 'Malé';   // same rule as the server (rider_can_see_open_order)
+  const sameArea = isGreaterMale(from) ? isGreaterMale(riderIsland) : from===riderIsland;
   if(sameArea) return true;
   if(riderIsLive(d) && biz && biz.lat!=null && biz.lng!=null) return kmBetween(d.lat, d.lng, biz.lat, biz.lng) <= NEARBY_KM;
   return false;
@@ -4100,10 +4104,10 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
 function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved'; }
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
@@ -4236,7 +4240,7 @@ async function adminSaveSettings(){
   if(!(slots>=1 && slots<=200)){ toast('Featured spots must be 1 to 200','bad'); return; }
   if(!(price>=0)){ toast('Enter a featured price','bad'); return; }
   if(!(days>=1 && days<=60)){ toast('Featured days must be 1 to 60','bad'); return; }
-  const row = { featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
+  const row = { swipe_enabled: !!(document.getElementById('set_swipe')||{}).checked, featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -4332,6 +4336,9 @@ function adminSettingsTab(){
       <div class="field" style="flex:1; min-width:140px;"><label for="set_price">Price (MVR)</label><input id="set_price" type="number" min="0" step="0.01" value="${st.featuredPrice}"></div>
       <div class="field" style="flex:1; min-width:140px;"><label for="set_days">Days featured</label><input id="set_days" type="number" min="1" max="60" value="${st.featuredDays}"></div>
     </div>
+    <h3 style="margin-top:8px;">Swipe payments</h3>
+    <label class="chk-row" style="margin:8px 0 6px;"><input type="checkbox" id="set_swipe" ${st.swipeEnabled?'checked':''}><span class="chk-circle">${'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6l3 3 5-6"/></svg>'}</span><span>Swipe is set up. Offer Swipe at checkout for stores that connected it</span></label>
+    <p class="muted" style="font-size:.84em; margin-bottom:12px;">Turn this on only after the Swipe server keys (SWIPE_TOKEN_URL and SWIPE_API_BASE_URL) are added in Supabase. While it's off, customers pay by bank transfer.</p>
     <h3 style="margin-top:8px;">Maldexpress bank account</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
     <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
@@ -4742,7 +4749,7 @@ function planCompareOverlayHTML(){
     </div>
   </div>`;
 }
-function submitBizSignup(){
+async function submitBizSignup(){
   if(sb && !state.authed){ toast('Sign in first','bad'); return; }
   const name=val('f_name'), owner=val('f_owner'), phone=val('f_phone'), cat=getCatChecklistValue('f_cat'), acc=val('f_acc'), accname=val('f_accname');
   if(!name||!owner||!acc||!accname){ toast('Please fill in store name, owner, and account details','bad'); return; }
@@ -4753,7 +4760,8 @@ function submitBizSignup(){
   // of the seller retyping it every time - see itemCatFieldHTML().
   const catOtherName = cat.split(',').map(s=>s.trim()).includes('Other') ? getCatOtherName('f_cat') : '';
   const biz = {id:uid('biz'), ownerId:state.customerId, island, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
-  DB.businesses.push(biz); saveDB('businesses');
+  DB.businesses.push(biz);
+  if(await saveDB('businesses', [biz]) === false){ DB.businesses = DB.businesses.filter(b=>b!==biz); return; }
   maybeSubmitCategoryRequest('f_cat', biz);
   closeSheet();
   state.role='business';
@@ -4880,7 +4888,7 @@ function sheetDelSignup(){
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitDelSignup()">Start delivering</button>`;
 }
-function submitDelSignup(){
+async function submitDelSignup(){
   if(sb && !state.authed){ toast('Sign in first','bad'); return; }
   const name = state.customerName;
   const phone = state.customerPhone || val('d_phone');
@@ -4889,7 +4897,8 @@ function submitDelSignup(){
   if(!island){ toast('Pick the island you deliver on','bad'); return; }
   if(!state.customerPhone) state.customerPhone = phone;
   const d = {id:uid('del'), userId:state.customerId, name, phone, island, online:false, lat:null, lng:null, locationUpdatedAt:null};
-  DB.delivery.push(d); saveDB('delivery');
+  DB.delivery.push(d);
+  if(await saveDB('delivery', [d]) === false){ DB.delivery = DB.delivery.filter(x=>x!==d); return; }
   closeSheet();
   state.role='delivery';
   go('delHome', {activeDelId:d.id});
@@ -4954,6 +4963,7 @@ function renderBizHome(biz,t){
       </div>
 
       <div class="section">
+        ${biz.swipeConnected && !swipeLive() ? `<div class="card tight notice-info" style="margin-bottom:10px;"><p style="font-size:.86em;">Your Swipe account is saved. Customers will see Swipe once Maldexpress switches Swipe payments on; until then they pay you by bank transfer.</p></div>` : ''}
         <div class="section-head"><h2>Payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
         ${biz.swipeConnected ? `
         <div class="glass card">
@@ -5016,10 +5026,10 @@ function sheetUpgrade(){
         <div class="ic" style="width:40px;height:40px;font-size:1.1em;">🏦</div>
         <div class="txt"><h3 style="font-size:1em;">Bank transfer</h3><small>Upload a slip — reviewed by our team</small></div>
       </button>
-      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('swipe')">
+${swipeLive() ? `      <button class="glass role-card" style="padding:14px;" onclick="startProPayment('swipe')">
         <div class="ic" style="width:40px;height:40px;font-size:1.1em;">💳</div>
         <div class="txt"><h3 style="font-size:1em;">Pay with Swipe</h3><small>Instant activation once payment confirms</small></div>
-      </button>
+      </button>` : ''}
     </div>`;
 }
 async function startProPayment(method){
@@ -6651,12 +6661,12 @@ function useStoreLocation(){
   if(!navigator.geolocation){ toast("This device can't share its location",'bad'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     biz.lat = pos.coords.latitude; biz.lng = pos.coords.longitude;
-    saveDB('businesses');
-    const el = document.getElementById('s_loc_txt'); if(el) el.textContent = `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})`;
-    toast('Store location saved');
+    saveDB('businesses', [biz]).then(ok=>{ if(ok===false) return;
+      const el = document.getElementById('s_loc_txt'); if(el) el.textContent = `Saved (${biz.lat.toFixed(4)}, ${biz.lng.toFixed(4)})`;
+      toast('Store location saved'); });
   }, err=>toast(err && err.code===1 ? 'Location permission was denied. Allow it in your browser settings' : "Couldn't get your location",'bad'), { enableHighAccuracy:true, timeout:15000 });
 }
-function saveBizSettings(){
+async function saveBizSettings(){
   const biz = currentBiz();
   biz.name = val('s_name')||biz.name;
   biz.ownerName = val('s_owner')||biz.ownerName;
@@ -6667,7 +6677,7 @@ function saveBizSettings(){
   biz.accountName = val('s_accname')||biz.accountName;
   biz.accountNumber = val('s_acc')||biz.accountNumber;
   biz.island = pickedIsland('s_isl') || biz.island || 'Malé';
-  saveDB('businesses');
+  if(await saveDB('businesses', [biz]) === false) return;
   maybeSubmitCategoryRequest('s_cat', biz);
   closeSheet(); toast('Settings saved'); render();
 }
@@ -6858,12 +6868,13 @@ function sheetDelSettings(){
   ${sb ? `<button class="btn btn-outline" style="margin-top:10px;" onclick="signOutCustomer()">Sign out</button>` : ''}
   `;
 }
-function saveDelSettings(){
+async function saveDelSettings(){
   const d = currentDel();
   const name = val('ds_name');
   if(!name){ toast('Enter your name','bad'); return; }
   d.name = name; d.phone = val('ds_phone');
-  saveDB('delivery'); closeSheet(); toast('Settings saved'); render();
+  if(await saveDB('delivery', [d]) === false) return;
+  closeSheet(); toast('Settings saved'); render();
 }
 
 /* =================== CUSTOMER SETTINGS ==================== */
@@ -8982,7 +8993,7 @@ function storeCheckoutCardHTML(g){
       : route===undefined ? `<div class="card tight notice-info" style="margin-top:12px;"><p style="font-size:.88em;">Pick your atoll and island above.</p></div>`
       : !bizCanTakeOrders(biz) ? `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">${biz.name} can't take orders yet because it hasn't added a way to get paid.</p></div>`
       : (()=>{ const pay = ckPayFor(biz); const amt = zoneRoute?` <span id="ck_swipe_${biz.id}">${money(total)}</span>`:' the total';
-        const both = biz.swipeConnected && bizHasBankAccount(biz);
+        const both = bizTakesSwipe(biz) && bizHasBankAccount(biz);
         return `
     ${both ? `<div class="stack" role="radiogroup" aria-label="How you'll pay ${escapeAttr(biz.name)}" style="margin-top:12px; gap:8px;">
       <button type="button" class="pay-option${pay==='swipe'?' selected':''}" role="radio" aria-checked="${pay==='swipe'}" onclick="setCkPay('${biz.id}','swipe')"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Pay in the Swipe app after the store confirms</small></div></button>
@@ -9435,8 +9446,8 @@ async function submitRentItem(itemId){
     deliveryPartnerPayout: 0, payoutStatus: null,
     deliveryPersonId:null, deliveryPersonName:null,
     needsDeliveryPartner: false, rentalPayoutTiming: null,
-    paymentMethod: _selectedPay==='swipe' && biz.swipeConnected ? 'swipe' : _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
-    paymentStatus: _selectedPay==='swipe' && biz.swipeConnected ? 'awaiting_swipe' : _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
+    paymentMethod: _selectedPay==='swipe' && bizTakesSwipe(biz) ? 'swipe' : _selectedPay==='transfer' ? 'transfer' : 'cash_on_pickup',
+    paymentStatus: _selectedPay==='swipe' && bizTakesSwipe(biz) ? 'awaiting_swipe' : _selectedPay==='transfer' ? 'pending_transfer' : 'pending_cash',
     status:'placed', createdAt: Date.now(), slipDataUrl:null,
     rentalDays: _rentDays, rentalItemId: item.id, rentalFulfillment: fulfillment,
     // See mark_rental_fulfilled/mark_delivered's payment_status='paid' gate -
@@ -9730,7 +9741,13 @@ async function sendPasswordReset(){
   if(!fbAuth){ toast("Can't reach the sign-in service. Check your connection",'bad'); return; }
   const id = val('auth_identifier');
   let email = id && id.includes('@') ? id : null;
-  if(id && !email && sb){ const { data } = await sb.rpc('resolve_login_email', { p_phone: id }); email = data || null; }
+  if(id && !email && sb){
+    // Reset by mobile number: the server sends the email; it never tells the
+    // browser which address belongs to the number.
+    const { data, error } = await sb.functions.invoke('phone-login', { body: { action:'reset', phone: id } });
+    if(error){ let m='Could not send the reset email'; try{ const b = await error.context.json(); if(b && b.error) m = b.error; }catch(_){} toast(m,'bad'); return; }
+    toast((data && data.message) || 'If that number has an account, we sent a reset email'); return;
+  }
   if(!email){ toast('Enter your email (or mobile number) above first','bad'); return; }
   try{ await fbSendPasswordReset(email); toast(`Password reset email sent to ${email}`); }
   catch(e){ toast(fbErrorText(e),'bad'); }
@@ -9747,9 +9764,11 @@ async function signInWithIdentifierPassword(){
   if(identifier.includes('@')){
     email = identifier;
   } else {
-    const { data: resolvedEmail, error: lookupErr } = await sb.rpc('resolve_login_email', { p_phone: identifier });
-    if(lookupErr || !resolvedEmail){ toast('No account found for that mobile number','bad'); return; }
-    email = resolvedEmail;
+    // The server checks the password before it says which email the number
+    // belongs to (see supabase/functions/phone-login).
+    const { data, error } = await sb.functions.invoke('phone-login', { body: { action:'signin', phone: identifier, password: pass } });
+    if(error || !data || !data.email){ let m = 'Incorrect mobile/email or password. New here? Sign up below'; try{ const b = error && await error.context.json(); if(b && b.error) m = b.error; }catch(_){} toast(m,'bad'); return; }
+    email = data.email;
   }
   let cred;
   try{ cred = await fbAuth.signInWithEmailAndPassword(email, pass); }
@@ -10506,9 +10525,19 @@ async function submitSlip(id){
   if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
   if(o && Math.abs(enteredAmount - o.total) > 0.01){ toast(`That amount doesn't match this order's total (${money(o.total)})`, 'bad'); return; }
   if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
-  const updated = await callOrderRpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData }, id);
+  if(sb){
+    const { data, error } = await sb.rpc('submit_transfer_slip', { p_order_id: id, p_slip_url: slipData, p_amount: enteredAmount, p_account: enteredAccount });
+    if(error){
+      const m = error.message||'';
+      toast(/slip_amount_mismatch/.test(m) ? `That amount doesn't match this order's total (${money(o.total)})` : /slip_account_mismatch/.test(m) ? "That account number doesn't match the store's account" : 'Could not submit the slip: '+m, 'bad');
+      return;
+    }
+    if(!data || !data.length){ toast("This order isn't waiting for a transfer yet. The store has to approve it first",'bad'); return; }
+    const upd = fromDbRow('orders', data[0]); await decryptOrderRow(upd, data[0]);
+    const k = DB.orders.findIndex(x=>x.id===id); if(k>=0) DB.orders[k] = upd;
+  }
+  if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again",'bad'); return; }
   _slipData = null;
-  if(!updated) return;
   closeSheet(); toast('Slip submitted — waiting for store approval'); render();
 }
 // Same shape as sheetUploadSlip()/submitSlip() above, for a rental booking's

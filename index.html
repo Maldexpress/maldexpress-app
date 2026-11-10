@@ -6478,8 +6478,9 @@ function renderBizOrders(biz){
   // open (payment not yet confirmed, or the item not yet in the customer's
   // hands) - see isOrderFullyFulfilled() - and only moves down into the
   // completed Orders list once both are actually done.
-  const activeOrders = myOrders.filter(o=>!isOrderFullyFulfilled(o));
-  const completedOrders = myOrders.filter(o=>isOrderFullyFulfilled(o));
+  const isClosed = o=>['declined','cancelled'].includes(o.status);   // declined / cancelled orders aren't active
+  const activeOrders = myOrders.filter(o=>!isClosed(o) && !isOrderFullyFulfilled(o));
+  const completedOrders = myOrders.filter(o=>isClosed(o) || isOrderFullyFulfilled(o));
   document.getElementById('app').innerHTML = wrapShell('business','bizOrders', `
     ${topbar('Orders & payments')}
     <div style="padding:4px 16px 0;">
@@ -6863,7 +6864,7 @@ function orderDetailBizBody(o){
   // already changed hands, so the window to adjust the total closes. See
   // apply_order_discount() in the schema above for the actual enforcement;
   // this is just the affordance to use it.
-  const canDiscount = !o.rentalItemId && (o.paymentStatus==='pending_transfer' || o.paymentStatus==='pending_cash');
+  const canDiscount = !o.rentalItemId && o.status!=='declined' && (o.paymentStatus==='pending_transfer' || o.paymentStatus==='pending_cash');
   if(canDiscount){
     actionArea += o.discountAmount>0 ? `
     <div class="glass card tight" style="margin-top:10px;">
@@ -6872,7 +6873,6 @@ function orderDetailBizBody(o){
       <button class="btn btn-outline btn-sm" style="width:100%; margin-top:6px;" onclick="applyOrderDiscount('${o.id}')">Update discount</button>
     </div>` : `
     <div class="glass card tight" style="margin-top:10px;">
-      <p class="muted" style="font-size:.82em; margin-bottom:8px;">Want to knock something off before the customer pays?</p>
       <div class="row" style="gap:8px; align-items:center;">
         <div class="field" style="margin:0; flex:1;"><input type="number" min="0" id="orderDiscount_${o.id}" placeholder="Discount (MVR)"></div>
         <button class="btn btn-outline btn-sm" style="flex-shrink:0;" onclick="applyOrderDiscount('${o.id}')">Apply</button>
@@ -6880,7 +6880,8 @@ function orderDetailBizBody(o){
     </div>`;
   }
   const discountLine = o.discountAmount>0 ? `<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>` : '';
-  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee (${routeLabel(o)}) · ${o.deliveryPersonName?`rider ${o.deliveryPersonName}`:'no rider yet'}${(routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval') ? '' : (buyerPaidFee?'':' · covered by you, not charged to buyer')}</span><span>${(routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval') ? 'Set when you approve' : money(payoutAmt)}</span></div>`;
+  const feeTBD = routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval';
+  const deliveryLine = o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery fee</span><span>${feeTBD ? '—' : buyerPaidFee ? money(payoutAmt) : 'Free'}</span></div>`;
   // An 'on_return' rental's own o.total only ever holds the advance due at
   // checkout (see submitRentItem()) - the rental fee itself lives separately
   // in rentalFeeAmount, so it needs its own line here or the order would
@@ -6890,8 +6891,7 @@ function orderDetailBizBody(o){
     <h2>Order #${o.id.slice(-5).toUpperCase()}</h2>
     <p class="muted" style="margin-bottom:8px;">${o.receiverName && o.receiverName!==o.customerName ? `${o.customerName} → ${o.receiverName}` : o.customerName} · ${new Date(o.createdAt).toLocaleString()}</p>
     ${contactHTML(o.customerPhone || o.receiverPhone, 'Customer')}
-    ${o.route && o.route!=='male_zone' ? `<p class="route-note">⛴️ ${routeLabel(o)}</p>` : ''}
-    ${o.deliveryTargetType==='pickup' ? `
+    ${o.status==='declined' ? '' : o.deliveryTargetType==='pickup' ? `
     <div class="glass card tight" style="margin-bottom:12px;">
       <p class="muted" style="font-size:.78em; margin-bottom:4px;">📦 Pickup from</p>
       <p style="font-weight:700;">${o.pickupLocation||'—'}</p>

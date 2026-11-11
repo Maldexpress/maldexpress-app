@@ -1018,6 +1018,18 @@
   .gal-arrow{font-size:calc(var(--fs)*1.6) !important; position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.92); color:var(--ink); line-height:1; box-shadow:0 2px 8px rgba(13,43,51,.2); display:flex; align-items:center; justify-content:center;}
   .gal-arrow.prev{left:10px;} .gal-arrow.next{right:10px;}
   .gal-count{position:absolute; right:10px; bottom:10px; padding:3px 9px; border-radius:99px; background:rgba(13,43,51,.7); color:#fff; font-size:calc(var(--fs)*.8) !important; line-height:1.4; font-weight:700;}
+  .ip-photo.gal{display:block;}
+  .gal-track{display:flex; width:100%; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; outline:none;}
+  .gal-track::-webkit-scrollbar{display:none;}
+  .gal-slide{flex:0 0 100%; height:100%; scroll-snap-align:center; scroll-snap-stop:always; display:flex; align-items:center; justify-content:center;}
+  .gal-slide img{width:100%; height:100%; object-fit:contain; background:#fff; user-select:none; -webkit-user-drag:none;}
+  .gal .gal-arrow{transition:opacity .35s ease, transform .35s ease;}
+  .gal.idle .gal-arrow{opacity:0; pointer-events:none;}
+  .gal.idle .gal-arrow.prev{transform:translate(-8px,-50%);}
+  .gal.idle .gal-arrow.next{transform:translate(8px,-50%);}
+  .gal-count{transition:opacity .35s ease;}
+  .gal-thumb{transition:border-color .2s ease, transform .2s ease;}
+  .gal-thumb.on{transform:scale(1.04);}
   .gal-thumbs{display:flex; gap:8px; margin-top:10px; overflow-x:auto; scrollbar-width:none;}
   .gal-thumb{flex:0 0 64px; height:64px; border-radius:12px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--sand-2);}
   .gal-thumb img{width:100%; height:100%; object-fit:cover;}
@@ -4058,7 +4070,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(applyReveal);
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -9378,14 +9390,50 @@ function relatedItemsFor(item, n){
   const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
   return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
 }
-function galleryGo(itemId, i){ state.galleryIdx = state.galleryIdx || {}; state.galleryIdx[itemId] = i; render(); }
+// Item photos: a swipeable strip (scroll-snap). Arrows, thumbnails and the
+// "2 / 5" counter follow the swipe without re-rendering. The arrows show
+// while the photo is touched / hovered and fade out ~2 s after.
+function galleryGo(itemId, i){
+  const tr = document.getElementById('galTrack_'+itemId); if(!tr) return;
+  const n = tr.children.length; i = (i + n) % n;
+  tr.scrollTo({ left: i * tr.clientWidth, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+  galWake(itemId);
+}
+function galStep(itemId, d){ const tr = document.getElementById('galTrack_'+itemId); if(!tr) return; galleryGo(itemId, Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + d); }
+function galScrolled(itemId){
+  const tr = document.getElementById('galTrack_'+itemId); if(!tr) return;
+  const n = tr.children.length, idx = Math.min(n-1, Math.max(0, Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth))));
+  (state.galleryIdx = state.galleryIdx || {})[itemId] = idx;
+  const c = document.getElementById('galCount_'+itemId); if(c) c.textContent = `${idx+1} / ${n}`;
+  document.querySelectorAll(`#galThumbs_${itemId} .gal-thumb`).forEach((t,k)=>{ t.classList.toggle('on', k===idx); t.setAttribute('aria-current', k===idx ? 'true' : 'false'); });
+  galWake(itemId);
+}
+let _galTimers = {};
+function galWake(itemId){
+  const g = document.getElementById('gal_'+itemId); if(!g) return;
+  g.classList.remove('idle'); clearTimeout(_galTimers[itemId]);
+  _galTimers[itemId] = setTimeout(()=>{ const el = document.getElementById('gal_'+itemId); if(el && !el.matches(':hover')) el.classList.add('idle'); }, 2200);
+}
+// After a re-render (e.g. picking a size) keep the photo that was showing.
+function restoreGalleries(){
+  document.querySelectorAll('.gal-track').forEach(tr=>{
+    const id = tr.id.replace('galTrack_',''); const idx = (state.galleryIdx||{})[id] || 0;
+    if(idx && Math.round(tr.scrollLeft / Math.max(1,tr.clientWidth)) !== idx) tr.scrollLeft = idx * tr.clientWidth;
+    if(!tr._woke){ tr._woke = true; galWake(id); }
+  });
+}
 function itemGalleryHTML(item){
   const imgs = itemImages(item);
   const n = imgs.length; const idx = Math.min(((state.galleryIdx||{})[item.id]||0), Math.max(0,n-1));
-  return `<div class="ip-photo">${n ? `<img src="${imgs[idx]}" alt="${escapeAttr(item.name)} photo ${idx+1} of ${n}">` : itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}
-      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galleryGo('${item.id}', ${(idx-1+n)%n})">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galleryGo('${item.id}', ${(idx+1)%n})">›</button><span class="gal-count">${idx+1} / ${n}</span>` : ''}
+  if(!n) return `<div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>`;
+  return `<div class="ip-photo gal" id="gal_${item.id}" onpointerdown="galWake('${item.id}')" onpointermove="galWake('${item.id}')" onmouseleave="this.classList.add('idle')">
+      <div class="gal-track" id="galTrack_${item.id}" onscroll="galScrolled('${item.id}')" aria-label="${escapeAttr(item.name)} photos" tabindex="0" onkeydown="if(event.key==='ArrowRight'){event.preventDefault(); galStep('${item.id}',1);} if(event.key==='ArrowLeft'){event.preventDefault(); galStep('${item.id}',-1);}">
+        ${imgs.map((u,i)=>`<div class="gal-slide"><img src="${u}" alt="${escapeAttr(item.name)} photo ${i+1} of ${n}" ${i?'loading="lazy"':''} draggable="false"></div>`).join('')}
+      </div>
+      ${favBtnHTML(item.id)}${oosStickerHTML(item)}
+      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galStep('${item.id}',-1)">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galStep('${item.id}',1)">›</button><span class="gal-count" id="galCount_${item.id}">${idx+1} / ${n}</span>` : ''}
     </div>
-    ${n>1 ? `<div class="gal-thumbs">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
+    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
 }
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);

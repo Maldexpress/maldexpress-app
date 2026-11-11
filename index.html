@@ -925,6 +925,11 @@
     background:radial-gradient(120% 90% at 0% 0%, #FFE8A3 0%, rgba(255,232,163,0) 55%), radial-gradient(120% 100% at 100% 100%, #CDEBFF 0%, rgba(205,235,255,0) 60%), linear-gradient(135deg, #FFF4D1 0%, #EAF6FF 100%);
     border:1px solid #F1D58A; box-shadow:0 10px 30px rgba(200,150,30,.12);}
   .feat-title{color:#7A5200;}
+  /* Phones: the Sunlit Picks band runs edge to edge */
+  @media (max-width:1023px){
+    .feat-panel{margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-radius:0; border-left:none; border-right:none; padding:20px 20px 14px;}
+    .feat-panel .featured-scroll.feat-grid{margin:0 -20px; padding:4px 20px 8px; scroll-padding:0 20px; grid-auto-columns:calc((100% - 40px - 3*8px) / 4);}
+  }
   .spon-tag{display:inline-block; vertical-align:middle; margin-left:6px; padding:2px 8px; border-radius:99px; background:rgba(122,82,0,.12); color:#7A5200; font-family:var(--body, inherit); font-size:.5em; font-weight:800; letter-spacing:.4px; text-transform:uppercase;}
   .feat-panel .featured-scroll .top-card{flex:0 0 68%;}
   /* Sponsored: one row, 4 small cards on screen, swipe for more */

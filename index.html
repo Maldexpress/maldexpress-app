@@ -16,6 +16,13 @@
 <meta name="apple-mobile-web-app-title" content="Maldexpress">
 <meta name="theme-color" content="#0FA3A3">
 <title>Maldexpress</title>
+<meta name="description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Maldexpress">
+<meta property="og:title" content="Maldexpress · Shop every island">
+<meta property="og:description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
+<meta property="og:image" content="https://maldexpress.github.io/maldexpress-app/icons/icon-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Plus+Jakarta+Sans:wght@400..800&display=swap" rel="stylesheet">
 <!-- Real Supabase client (replaces the in-browser mock used for the Claude
@@ -1210,6 +1217,17 @@
   .pf-rev-name{font-size:.8em; font-weight:700; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .pf-rev-cta{font-size:.76em; font-weight:800; color:#B9780A;}
   @media (min-width:1024px){ .pf{max-width:760px; margin:0 auto;} .pf-grid{grid-template-columns:repeat(6,1fr);} }
+  /* Share */
+  .share-fab{position:absolute; top:10px; right:10px; z-index:3; width:40px; height:40px; border-radius:50%; border:none; background:rgba(255,255,255,.94); color:var(--ink); box-shadow:0 2px 8px rgba(13,43,51,.18); display:flex; align-items:center; justify-content:center;}
+  .share-card{display:flex; gap:12px; align-items:center; padding:12px; border-radius:16px; background:var(--sand-2); margin-bottom:14px;}
+  .share-card img, .share-ic{width:56px; height:56px; border-radius:12px; object-fit:cover; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center; font-size:1.6em;}
+  .share-card p{font-size:.8em; margin-top:2px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .share-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px 6px; margin-bottom:14px;}
+  .share-opt{display:flex; flex-direction:column; align-items:center; gap:6px; padding:6px 2px; border:none; background:none; color:var(--ink); font-size:.76em; font-weight:700; text-decoration:none;}
+  .share-dot{width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--display); font-weight:800; font-size:1.35em; box-shadow:0 3px 10px rgba(13,43,51,.15);}
+  .share-link{display:flex; gap:8px;}
+  .share-link input{flex:1; min-width:0; font-size:.8em;}
+  .share-store{display:flex; gap:12px; align-items:center; margin-bottom:14px; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); border:1px solid var(--edge);}
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -4879,6 +4897,8 @@ function chooseDel(id){ state.role='delivery'; go('delHome', {activeDelId:id}); 
 // glyphs), used wherever those icons appear so they read as icons, not emoji.
 const ICON_HAMBURGER = `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>`;
 const ICON_BELL = `<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a5 5 0 0 0-5 5v3c0 1.3-1 3-2 4h14c-1-1-2-2.7-2-4V8a5 5 0 0 0-5-5z"/><path d="M9 19a3 3 0 0 0 6 0"/></svg>`;
+const ICON_LINK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>`;
+const ICON_SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
 const ICON_CHEVRON_DOWN = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 // Cart line select/deselect circle - a thin white outline circle always, with a
@@ -5096,6 +5116,7 @@ function sheetHTML(){
   else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
   else if(state.sheet==='support') body = sheetSupport();
   else if(state.sheet==='writeReview') body = sheetWriteReview();
+  else if(state.sheet==='share') body = sheetShare();
   else if(state.sheet==='supportNew') body = sheetSupportNew();
   else if(state.sheet==='supportTicket') body = sheetSupportTicket();
   else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
@@ -5613,6 +5634,75 @@ function showOpeningAd(preview){
 }
 
 
+
+/* =================== SHARING =================== */
+// Every item and store has its own link: <app>/?item=<id> or ?store=<id>.
+// Opening it goes straight to that page (applyDeepLink() on startup). The Share
+// panel offers the phone's own share menu (Instagram, Snapchat, … whatever is
+// installed) plus direct WhatsApp / Viber / Telegram / Facebook / Messenger /
+// X / Email buttons and Copy link.
+const APP_URL = location.origin + location.pathname;
+function shareLink(kind, id){ return `${APP_URL}?${kind}=${encodeURIComponent(id)}`; }
+function applyDeepLink(){
+  if(state.adminMode) return;
+  const q = new URLSearchParams(location.search);
+  const itemId = q.get('item'), storeId = q.get('store');
+  if(!itemId && !storeId) return;
+  history.replaceState(null, '', APP_URL);   // don't reopen it on every reload
+  if(itemId){
+    const it = DB.items.find(i=>i.id===itemId && isApprovedItem(i));
+    if(it){ state.role = 'customer'; state.screen = 'custHome'; openItemDetail(it.id); return; }
+    toast('That item is no longer listed','bad');
+  }
+  if(storeId){
+    const b = DB.businesses.find(x=>x.id===storeId);
+    if(b){ state.role = 'customer'; go('custStore', { browseBizId:b.id, storeTab:'buyNow' }); return; }
+    toast('That store is no longer on Maldexpress','bad');
+  }
+}
+function shareData(kind, id){
+  if(kind==='item'){
+    const it = DB.items.find(i=>i.id===id); if(!it) return null;
+    const biz = DB.businesses.find(b=>b.id===it.businessId);
+    const price = it.listingType==='auction' ? 'Auction' : it.listingType==='rental' ? itemPriceLine(it) : money(effectivePrice(it));
+    return { title: it.name, text: `${it.name} · ${price}${biz?` at ${biz.name}`:''} on Maldexpress`, url: shareLink('item', id), image: itemImages(it)[0] || '' };
+  }
+  const b = DB.businesses.find(x=>x.id===id); if(!b) return null;
+  const n = DB.items.filter(i=>i.businessId===b.id && isApprovedItem(i)).length;
+  return { title: b.name, text: `Shop ${b.name} on Maldexpress${n?` · ${n} item${n===1?'':'s'}`:''}${b.island?` · ${bizIsland(b)}`:''}`, url: shareLink('store', id), image: '' };
+}
+let _shareTarget = null;
+function openShare(kind, id){ _shareTarget = { kind, id }; openSheet('share'); }
+function sheetShare(){
+  const d = _shareTarget && shareData(_shareTarget.kind, _shareTarget.id);
+  if(!d) return `<h2>Share</h2><p class="muted">Nothing to share.</p>`;
+  const u = encodeURIComponent(d.url), t = encodeURIComponent(d.text), both = encodeURIComponent(d.text + ' ' + d.url);
+  const opts = [
+    ['WhatsApp','#25D366','https://wa.me/?text='+both,'W'],
+    ['Viber','#7360F2','viber://forward?text='+both,'V'],
+    ['Telegram','#229ED9',`https://t.me/share/url?url=${u}&text=${t}`,'T'],
+    ['Facebook','#1877F2','https://www.facebook.com/sharer/sharer.php?u='+u,'f'],
+    ['Messenger','#0084FF','fb-messenger://share/?link='+u,'m'],
+    ['X','#111111',`https://twitter.com/intent/tweet?text=${t}&url=${u}`,'X'],
+    ['Email','#0E7C86',`mailto:?subject=${encodeURIComponent(d.title)}&body=${both}`,'@'],
+  ];
+  return `<h2>Share ${_shareTarget.kind==='item'?'this item':'this store'}</h2>
+  <div class="share-card">${d.image ? `<img src="${escapeAttr(d.image)}" alt="">` : `<span class="share-ic">${_shareTarget.kind==='item'?'🛍️':'🏪'}</span>`}<div style="min-width:0;"><strong>${escapeAttr(d.title)}</strong><p class="muted">${escapeAttr(d.text)}</p></div></div>
+  ${navigator.share ? `<button class="btn btn-primary" style="margin-bottom:12px;" onclick="nativeShare()">📤 Share to any app (Instagram, Snapchat, …)</button>` : ''}
+  <div class="share-grid">${opts.map(([n,c,href,ic])=>`<a class="share-opt" href="${escapeAttr(href)}" target="_blank" rel="noopener" onclick="setTimeout(closeSheet, 300)"><span class="share-dot" style="background:${c};">${ic}</span><span>${n}</span></a>`).join('')}
+    <button class="share-opt" onclick="copyShareLink()"><span class="share-dot" style="background:#5B6B70;">${ICON_LINK}</span><span>Copy link</span></button></div>
+  <div class="share-link"><input readonly value="${escapeAttr(d.url)}" aria-label="Share link" onclick="this.select()"><button class="btn btn-ghost btn-sm" onclick="copyShareLink()">Copy</button></div>`;
+}
+async function nativeShare(){
+  const d = _shareTarget && shareData(_shareTarget.kind, _shareTarget.id); if(!d) return;
+  try{ await navigator.share({ title:d.title, text:d.text, url:d.url }); closeSheet(); }catch(e){ /* cancelled */ }
+}
+async function copyShareLink(){
+  const d = _shareTarget && shareData(_shareTarget.kind, _shareTarget.id); if(!d) return;
+  try{ await navigator.clipboard.writeText(d.url); toast('Link copied'); }
+  catch(e){ const i = document.querySelector('.share-link input'); if(i){ i.select(); document.execCommand && document.execCommand('copy'); toast('Link copied'); } }
+}
+
 /* =================== BESTSELLERS =================== */
 // Units sold THROUGH THE APP per item (item_sales(): delivered orders paid by
 // Swipe, or by a bank transfer whose slip was uploaded and confirmed in the
@@ -5778,6 +5868,7 @@ function renderBizHome(biz,t){
     <div style="padding:4px 16px 0;">
       ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
+      <div class="card share-store"><div style="flex:1; min-width:0;"><strong>Share your store</strong><p class="muted" style="font-size:.84em;">Send your store link on WhatsApp, Viber, Instagram, Facebook… Buyers open it straight to your items.</p></div><button class="btn btn-primary btn-sm" onclick="openShare('store','${biz.id}')">${ICON_SHARE} Share</button></div>
       <div class="row" style="gap:10px; margin:14px 0 18px;">
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
@@ -6874,6 +6965,7 @@ function sheetEditItem(){
     <button class="btn btn-ghost" style="flex:1;" onclick="setItemsPaused(['${item.id}'], ${!item.paused}).then(()=>closeSheet())">${item.paused?'Resume listing':'Pause listing'}</button>
     <button class="btn btn-ghost danger-txt" style="flex:1;" onclick="askDeleteItems(['${item.id}'])">Delete listing</button>
   </div>
+  ${isApprovedItem(item) ? `<button class="btn btn-ghost" style="margin-top:8px;" onclick="openShare('item','${item.id}')">${ICON_SHARE} Share this item</button>` : ''}
   ${editItemFeaturedHTML(item)}`;
 }
 async function submitEditItem(itemId){
@@ -9619,12 +9711,13 @@ function restoreGalleries(){
 function itemGalleryHTML(item){
   const imgs = itemImages(item);
   const n = imgs.length; const idx = Math.min(((state.galleryIdx||{})[item.id]||0), Math.max(0,n-1));
-  if(!n) return `<div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>`;
+  if(!n) return `<div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}<button class="share-fab" aria-label="Share this item" onclick="openShare('item','${item.id}')">${ICON_SHARE}</button></div>`;
   return `<div class="ip-photo gal" id="gal_${item.id}" onpointerdown="galWake('${item.id}')" onpointermove="galWake('${item.id}')" onmouseleave="this.classList.add('idle')">
       <div class="gal-track" id="galTrack_${item.id}" onscroll="galScrolled('${item.id}')" aria-label="${escapeAttr(item.name)} photos" tabindex="0" onkeydown="if(event.key==='ArrowRight'){event.preventDefault(); galStep('${item.id}',1);} if(event.key==='ArrowLeft'){event.preventDefault(); galStep('${item.id}',-1);}">
         ${imgs.map((u,i)=>`<div class="gal-slide"><img src="${u}" alt="${escapeAttr(item.name)} photo ${i+1} of ${n}" ${i?'loading="lazy"':''} draggable="false"></div>`).join('')}
       </div>
       ${favBtnHTML(item.id)}${oosStickerHTML(item)}
+      <button class="share-fab" aria-label="Share this item" onclick="event.stopPropagation(); openShare('item','${item.id}')">${ICON_SHARE}</button>
       ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galStep('${item.id}',-1)">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galStep('${item.id}',1)">›</button><span class="gal-count" id="galCount_${item.id}">${idx+1} / ${n}</span>` : ''}
     </div>
     ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
@@ -10061,7 +10154,7 @@ function renderCustStore(){
   }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions ${catFilter==='All'?'right now':'in this category'}</div>`;
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${topbar(biz.name, biz.category)}
+    ${topbar(biz.name, biz.category, { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
     <div style="padding:4px 16px 0;">
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
@@ -12276,6 +12369,7 @@ window.addEventListener('unhandledrejection', e=>{
       ensureLiveRefresh();
     }catch(e){ console.error('Live updates failed to start:', e); }
   }
+  try{ applyDeepLink(); }catch(e){ console.error('Share link failed:', e); }
   try{ render(); }
   catch(e){ console.error('Render failed:', e); document.getElementById('app').innerHTML = startupErrorHTML(e); }
 })();

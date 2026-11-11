@@ -9354,6 +9354,45 @@ function handleEdgeSwipeEnd(){
   }
   _edgeSwipeDx = 0;
 }
+// Swipe between tabs: on any screen with a row of .tab buttons (cart stores,
+// My Voyages, a store's Buy Now / Auction / Rental, My items categories,
+// admin lists), a sideways swipe on the screen presses the next / previous
+// tab and the content slides in from that side. Swipes that start on the
+// left edge (Back), in sheets, in side-scrolling rows or on form fields are
+// left alone.
+let _tabSw = null;
+function tabSwipeStart(e){
+  const t = e.touches && e.touches[0]; if(!t || e.touches.length > 1) { _tabSw = null; return; }
+  if(t.clientX <= EDGE_SWIPE_ZONE + 6 || state.sheet || state.drawerOpen){ _tabSw = null; return; }
+  const el = e.target;
+  if(el.closest && el.closest('.rail, .featured-scroll, .feat-grid, .gal-track, .gal-thumbs, .tabs, .sel-bar, input, textarea, select, .sheet-wrap, .drawer, .open-ad, .desk-row-feat, .cat-drop, [data-noswipe]')){ _tabSw = null; return; }
+  _tabSw = { x:t.clientX, y:t.clientY, t:Date.now() };
+}
+function tabSwipeEnd(e){
+  const s0 = _tabSw; _tabSw = null; if(!s0) return;
+  const t = e.changedTouches && e.changedTouches[0]; if(!t) return;
+  const dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+  if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.8 || Date.now() - s0.t > 700) return;
+  swipeTabs(dx < 0 ? 1 : -1);
+}
+function swipeTabs(dir){
+  const bar = [...document.querySelectorAll('#app .tabs')].find(b=>!b.closest('.sheet-wrap, .drawer') && b.offsetParent);
+  if(!bar) return false;
+  const tabs = [...bar.querySelectorAll('.tab')]; const cur = tabs.findIndex(b=>b.classList.contains('active'));
+  const next = tabs[cur + dir]; if(!next) return false;
+  next.click();
+  requestAnimationFrame(()=>{
+    if(REDUCED_MOTION) return;
+    const nb = [...document.querySelectorAll('#app .tabs')].find(b=>!b.closest('.sheet-wrap, .drawer') && b.offsetParent);
+    if(!nb) return;
+    const act = nb.querySelector('.tab.active'); if(act && act.scrollIntoView) act.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
+    let el = nb.nextElementSibling;
+    while(el){ if(getComputedStyle(el).position !== 'fixed' && el.animate) el.animate([{ transform:`translateX(${dir*36}px)`, opacity:.25 }, { transform:'none', opacity:1 }], { duration:280, easing:'cubic-bezier(.2,.8,.2,1)' }); el = el.nextElementSibling; }
+  });
+  return true;
+}
+document.addEventListener('touchstart', tabSwipeStart, { passive:true });
+document.addEventListener('touchend', tabSwipeEnd, { passive:true });
 document.addEventListener('touchstart', handleEdgeSwipeStart, { passive:true });
 document.addEventListener('touchmove', handleEdgeSwipeMove, { passive:true });
 document.addEventListener('touchend', handleEdgeSwipeEnd, { passive:true });

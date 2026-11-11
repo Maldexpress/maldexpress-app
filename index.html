@@ -943,6 +943,12 @@
   .feat-panel .feat-grid .top-card .price{font-size:.78em; white-space:nowrap;}
   .feat-panel .feat-grid .top-card .info .muted, .feat-panel .feat-grid .top-card .info small{font-size:.66em;}
   .feat-panel .feat-grid .feat-badge{display:none;}
+  /* small cards: discount sits inside the bottom of the photo; no rating chip or delivery line */
+  .img-disc{display:none;}
+  .feat-panel .feat-grid .img-disc{display:block; position:absolute; left:4px; right:4px; bottom:4px; padding:2px 0; border-radius:8px; background:rgba(14,107,72,.92); color:#fff; font-size:.62em; font-weight:800; text-align:center; line-height:1.4; z-index:2;}
+  .feat-panel .feat-grid .info .discount-badge, .feat-panel .feat-grid .rating-badge{display:none;}
+  .feat-panel .feat-grid .info .row{display:block;}
+  .feat-panel .feat-grid .info > p, .feat-panel .feat-grid .info .deliv-note, .feat-panel .feat-grid .info .muted{display:none;}
   .feat-panel .feat-grid .fav-btn{width:24px; height:24px; top:5px; left:5px;}
   .feat-panel .feat-grid .fav-btn svg{width:13px; height:13px;}
   .feat-panel .top-card .img-wrap{box-shadow:0 0 0 2px #F3C94F, 0 8px 22px rgba(160,110,10,.18);}
@@ -9448,6 +9454,7 @@ function topSellingCardHTML(item, showName=true){
       ${oosStickerHTML(item)}
       ${ratingBadgeHTML(item.businessId)}
       ${isFeaturedNow(item)?`<span class="feat-badge">⭐ Sponsored</span>`:''}
+      ${!isAuction && !isRental && item.discountPercent>0?`<span class="img-disc">-${item.discountPercent}%</span>`:''}
       ${isAuction?auctionTimeBadgeHTML(item.id):''}
       ${isRental?`<button class="top-add-btn" ${bookedNow?'disabled style="opacity:.4;"':''} onclick="event.stopPropagation(); ${soon?`openBookRentalItem('${item.id}')`:`openRentItem('${item.id}')`}" title="${soon?'Book this':bookedNow?'Currently booked':'Rent this'}">${soon?'🕒':bookedNow?'🔒':'📅'}</button>`:''}
     </div>

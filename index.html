@@ -9470,6 +9470,26 @@ function catDropHTML(){
   </div>`;
 }
 document.addEventListener('click', ()=>{ if(state.catDropOpen){ state.catDropOpen = false; render(); } });
+// Any open drop-down (Categories, Buy now / Auctions / Rentals, notifications,
+// the PC category menu) closes once the page itself is scrolled ~24px.
+// Scrolling inside the drop-down's own list doesn't count.
+let _ddScrollY = null;
+function openDropdown(){ return state.catDropOpen || state.homeSwitcherOpen || state.notifOpen || state.deskCatsOpen; }
+function pageScrollY(){ return document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0; }
+function closeDropdownsOnScroll(e){
+  if(!openDropdown()){ _ddScrollY = null; return; }
+  const t = e && e.target;
+  if(t && t.nodeType === 1 && t !== document.body && t !== document.documentElement && t.closest && t.closest('.cat-drop, .switcher-dropdown, .notif-dropdown, .desk-cats-menu')) return;
+  const y = pageScrollY();
+  if(_ddScrollY === null){ _ddScrollY = y; return; }
+  if(Math.abs(y - _ddScrollY) < 24) return;
+  _ddScrollY = null;
+  state.catDropOpen = false; state.homeSwitcherOpen = false; state.notifOpen = false; state.deskCatsOpen = false;
+  render();
+}
+document.addEventListener('scroll', closeDropdownsOnScroll, { passive:true, capture:true });
+// remember where the page was when a drop-down opened
+document.addEventListener('click', ()=>{ setTimeout(()=>{ _ddScrollY = openDropdown() ? pageScrollY() : null; }, 0); }, true);
 function listingSwitcherHTML(where='bar'){
   const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
   const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);

@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+  // iPhone/iPad zoom in when a form box with text under 16px is tapped. Telling
+  // iOS maximum-scale=1 stops that, and iOS still lets people pinch-zoom anyway.
+  // Other phones don't auto-zoom, so they keep the plain viewport (and pinch-zoom).
+  if(/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1)){
+    document.querySelector('meta[name=viewport]').setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover');
+  }
+</script>
 <!-- Add-to-Home-Screen: the Maldexpress logo (icons/) is the app icon on
      Android (manifest.webmanifest, incl. a maskable icon) and iPhone
      (apple-touch-icon). Opened from the home screen it runs full-screen. -->
@@ -139,7 +147,7 @@
   p{margin:0; line-height:1.5;}
   button{font-family:inherit; cursor:pointer; color:inherit;}
   /* iOS zooms on focus under 16px, so fields never go below it. */
-  input,select,textarea{font-family:inherit; font-size:max(16px, 1em);}
+  input,select,textarea{font-family:inherit; font-size:max(13px, 1.06em);}   /* iPhone zoom-on-tap is stopped in the viewport meta instead (see the iOS check in <head>) */
   a{color:var(--link);}
   :focus-visible{outline:2px solid var(--lagoon-500); outline-offset:3px;}
 
@@ -356,7 +364,7 @@
   .field{margin-bottom:14px;}
   .field label{display:block; font-size:.88em; color:var(--ink); margin-bottom:6px; font-weight:600;}
   .field input, .field select, .field textarea{
-    width:100%; padding:13px 15px; border-radius:12px; border:1.5px solid var(--edge); background:var(--surface);
+    width:100%; padding:10px 13px; border-radius:12px; border:1.5px solid var(--edge); background:var(--surface); min-height:42px;
     color:var(--ink); outline:none; transition:border-color .2s ease, box-shadow .2s ease;
   }
   .field select option{background:#fff; color:var(--ink);}
@@ -1229,7 +1237,7 @@
   .share-link input{flex:1; min-width:0; font-size:.8em;}
   .share-store{display:flex; gap:12px; align-items:center; margin-bottom:14px; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); border:1px solid var(--edge);}
   /* Date / time boxes: same size as other fields, never wider than their column (iPhone) */
-  input[type=date], input[type=time]{display:block; width:100%; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; text-align:left; height:50px; min-height:50px; line-height:1.2; box-sizing:border-box;}
+  input[type=date], input[type=time]{display:block; width:100%; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; text-align:left; height:42px; min-height:42px; line-height:1.2; box-sizing:border-box;}
   input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value{text-align:left;}
   .dt-row{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
   .dt-row .field{min-width:0;}

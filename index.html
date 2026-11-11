@@ -1081,6 +1081,51 @@
   .rev-pick{display:flex; justify-content:center; gap:6px;}
   .rev-pick button{border:none; background:none; font-size:2.4em; line-height:1; color:#D8DEE0; padding:2px;}
   .rev-pick button.on{color:#F2B01E;}
+  /* ---------- Motion & polish ---------- */
+  .rv{opacity:0; transform:translate3d(0,22px,0) scale(.97); transition:opacity .55s ease, transform .6s cubic-bezier(.2,.8,.2,1); transition-delay:var(--rv-d,0ms); will-change:opacity, transform;}
+  .rv.rv-in{opacity:1; transform:none;}
+  .rv:not(.rv-in){transition-delay:0ms; transition-duration:.35s;}
+  .rv.rv-now{transition:none;}
+  .rail .rv{transform:translate3d(26px,0,0) scale(.96);}
+  .rail .rv.rv-in{transform:none;}
+  .screen-in{animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
+  @keyframes screenIn{from{opacity:0;} to{opacity:1;}}   /* opacity only: a transform here would unpin the fixed header and tab bar */
+  img.img-fade{opacity:0; transition:opacity .45s ease;}
+  img.img-fade.ok{opacity:1;}
+  .img-loading{background-image:linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 70%) !important; background-size:220% 100% !important; animation:shimmer 1.2s linear infinite;}
+  @keyframes shimmer{from{background-position:120% 0;} to{background-position:-120% 0;}}
+  .top-card .img-wrap{overflow:hidden;}
+  .top-card .img-wrap img{transition:transform .5s cubic-bezier(.2,.8,.2,1), opacity .45s ease;}
+  .top-card:active .img-wrap{transform:scale(.97);}
+  @media (hover:hover){
+    .top-card:hover .img-wrap{transform:translateY(-4px); box-shadow:0 14px 30px rgba(13,43,51,.14);}
+    .top-card:hover .img-wrap img{transform:scale(1.05);}
+    .glass.card[onclick]:hover, .item-card:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(13,43,51,.12);}
+  }
+  .glass.card[onclick], .item-card{transition:transform .25s ease, box-shadow .25s ease;}
+  .glass.card[onclick]:active, .item-card:active{transform:scale(.985);}
+  .btn{transition:transform .15s ease, box-shadow .2s ease, background-color .2s ease, filter .2s ease;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary:hover{filter:brightness(1.05);}
+  .section > h2, .section-head h2{position:relative; padding-bottom:6px;}
+  .section > h2::after, .section-head h2::after{content:""; position:absolute; left:0; bottom:0; width:28px; height:3px; border-radius:3px; background:linear-gradient(90deg, var(--lagoon-500), var(--sunset));}
+  .feat-panel{overflow:hidden;}
+  .feat-panel::after{content:""; position:absolute; top:0; bottom:0; left:-60%; width:40%; pointer-events:none; background:linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.45), rgba(255,255,255,0)); transform:skewX(-18deg); animation:goldSheen 6.5s ease-in-out infinite; z-index:0;}
+  .feat-panel > *{position:relative; z-index:1;}
+  @keyframes goldSheen{0%,70%{left:-60%;} 100%{left:130%;}}
+  .home-hero .hero-scene{will-change:transform, opacity;}
+  .bottomnav .bar button{transition:color .2s ease, transform .2s ease;}
+  .bottomnav .bar button:active{transform:scale(.92);}
+  /* Header photo set by the super admin */
+  .home-hero.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.28) 0%, rgba(6,40,52,.12) 45%, rgba(10,60,90,.55) 100%), var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat;}
+  .home-hero.has-photo::before{display:none;}
+  .hero-photo-space{height:118px;}
+  .db-photo{width:100%; height:100%; object-fit:cover; border-radius:22px;}
+  .hero-prev{position:relative; height:150px; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; padding:12px; background:linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
+  .hero-prev.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.2), rgba(10,60,90,.55)), var(--hero-img) center / cover no-repeat;}
+  .hero-prev .hero-scene{height:80px; margin:0;}
+  .hero-prev-search{display:block; padding:8px 12px; border-radius:99px; background:#fff; color:var(--ink-dim); font-size:.8em;}
+  @media (prefers-reduced-motion:reduce){ .rv{opacity:1 !important; transform:none !important;} .feat-panel::after{display:none;} }
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -4010,8 +4055,70 @@ function render(){
   // Same reasoning, same pattern - see planCompareOverlayHTML() for why this
   // is an overlay rather than a sheet.
   if(_planCompareOpen) app.insertAdjacentHTML('beforeend', planCompareOverlayHTML());
+  const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
+  if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
+  render._last = _scrKey;
+  requestAnimationFrame(applyReveal);
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
+
+
+/* =================== MOTION: scroll reveal, image fade, parallax =================== */
+// Cards and sections slide + fade in as they scroll into view and fade out as
+// they leave (both directions, also in side-scrolling rows). Things already on
+// screen when the same screen re-renders (typing in search, a +/- in the
+// cart) don't replay. Nothing moves for people who ask for reduced motion.
+const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REVEAL_SEL = '.top-card, .ip-card, .glass.card, .item-card, .feat-panel, .section-head, .desk-tile, .ticket-card, .owe-tile, .admin-stat, .bulk-cta, .cat-bar, .rev-item, .rev-sum, .addr-card';
+let _rvIO = null, _rvScreen = '', _rvSeen = new Set();
+function rvKey(el){ return (el.className.split(' ')[0]||'') + '|' + (el.getAttribute('onclick') || (el.textContent||'').trim().slice(0,48)); }
+function applyReveal(){
+  if(REDUCED_MOTION || !('IntersectionObserver' in window)) return;
+  if(!_rvIO){
+    _rvIO = new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        const el = en.target;
+        if(en.isIntersecting){ el.classList.add('rv-in'); _rvSeen.add(el._rvKey); }
+        else if(el.classList.contains('rv-in')) el.classList.remove('rv-in','rv-now');
+      });
+    }, { threshold:0.08, rootMargin:'0px 0px -4% 0px' });
+  }
+  const screenKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||'', state.adminTab||''].join(':');
+  const same = screenKey === _rvScreen; _rvScreen = screenKey;
+  if(!same) _rvSeen = new Set();
+  const vh = window.innerHeight;
+  document.querySelectorAll('#app ' + REVEAL_SEL.split(', ').join(', #app ')).forEach((el, i)=>{
+    if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar') || el._rvOn) return;
+    el._rvOn = true; el._rvKey = rvKey(el);
+    const r = el.getBoundingClientRect();
+    const onScreen = r.top < vh && r.bottom > 0 && r.left < window.innerWidth && r.right > 0;
+    el.classList.add('rv');
+    if(onScreen && same && _rvSeen.has(el._rvKey)) el.classList.add('rv-in','rv-now');   // re-render: no replay
+    else el.style.setProperty('--rv-d', (onScreen ? Math.min(i % 8, 7) * 45 : 0) + 'ms');
+    _rvIO.observe(el);
+  });
+  // Photos fade in once loaded, with a soft shimmer until then.
+  document.querySelectorAll('#app .img-wrap img, #app .ip-photo img, #app .gal-thumb img').forEach(img=>{
+    if(img._fd) return; img._fd = true;
+    if(img.complete && img.naturalWidth) return;
+    const wrap = img.closest('.img-wrap, .ip-photo'); img.classList.add('img-fade'); if(wrap) wrap.classList.add('img-loading');
+    const done = ()=>{ img.classList.add('ok'); if(wrap) wrap.classList.remove('img-loading'); };
+    img.addEventListener('load', done, { once:true }); img.addEventListener('error', done, { once:true });
+  });
+  heroParallax();
+}
+// The header picture drifts up slower than the page and fades as it goes.
+function heroParallax(){
+  if(REDUCED_MOTION) return;
+  const sc = document.querySelector('.home-hero .hero-scene'); const hero = document.querySelector('.home-hero');
+  if(!sc || !hero) return;
+  const y = Math.max(0, document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0);
+  const k = Math.min(y, 300);
+  sc.style.transform = `translate3d(0, ${k*0.35}px, 0)`; sc.style.opacity = String(1 - Math.min(k/260, 1)*0.85);
+  hero.style.setProperty('--hero-shift', (k*0.25)+'px');
+}
+document.body.addEventListener('scroll', heroParallax, { passive:true });
+window.addEventListener('scroll', heroParallax, { passive:true });
 
 /* =================== SUPER ADMIN (?admin) =================== */
 function renderAdmin(){
@@ -4280,10 +4387,10 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5 };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5, heroImageUrl:'' };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5 }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5, heroImageUrl:r.hero_image_url||'' }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
 function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
@@ -4422,7 +4529,7 @@ async function adminSaveSettings(){
   if(adLink && !/^https?:\/\//i.test(adLink)){ toast('The ad link must start with https://','bad'); return; }
   const adOn = !!(document.getElementById('set_ad_on')||{}).checked;
   if(adOn && !_adDraft.url){ toast('Upload an ad image or video first','bad'); return; }
-  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null });
+  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null });
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -4525,6 +4632,15 @@ function adminSettingsTab(){
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
     <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
     <div class="field"><label for="set_bank_no">Account number</label><input id="set_bank_no" inputmode="numeric" value="${escapeAttr(st.bankAccountNumber||'')}" placeholder="e.g. 7730000000000"></div>
+    <h3 style="margin-top:18px;">Main header picture</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">The picture at the top of the app's Home. Leave it empty to use the island drawing. A wide photo works best (for example 1600×900).</p>
+    <div class="hero-admin-prev" id="heroAdminPrev">${heroAdminPreviewHTML()}</div>
+    <input type="file" id="heroFile" accept="image/*" style="display:none;" onchange="onHeroFile(event)">
+    <div class="row" style="gap:8px; margin:8px 0 4px; flex-wrap:wrap;">
+      <label for="heroFile" class="btn btn-ghost btn-sm">📷 ${_heroDraft.url?'Change picture':'Upload a picture'}</label>
+      ${_heroDraft.url ? `<button class="btn btn-ghost btn-sm" onclick="_heroDraft.url=''; render();">Use the island drawing</button>` : ''}
+    </div>
+    <p class="muted" style="font-size:.78em; margin-bottom:6px;">Press Save settings below to put it live.</p>
     <h3 style="margin-top:18px;">Opening ad</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">A full-screen picture or short video everyone sees when they open the app, for 10 seconds. They can skip it after 5 seconds.</p>
     ${chkRowHTML('set_ad_on', st.adEnabled, 'Show the opening ad')}
@@ -4537,6 +4653,20 @@ function adminSettingsTab(){
   </div>`;
 }
 let _adDraft = { url:'', type:'image', loadedFrom:null };
+let _heroDraft = { url:'', loadedFrom:null };
+function heroAdminPreviewHTML(){
+  const st = DB.settings;
+  if(_heroDraft.loadedFrom !== st){ _heroDraft = { url:st.heroImageUrl||'', loadedFrom:st }; }
+  return `<div class="hero-prev ${_heroDraft.url?'has-photo':''}" style="${_heroDraft.url?`--hero-img:url('${escapeAttr(_heroDraft.url)}')`:''}">${_heroDraft.url?'':HERO_SCENE_SVG}<span class="hero-prev-search">🔍 Search items or stores</span></div>`;
+}
+async function onHeroFile(e){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  if(!/^image\//.test(f.type)){ toast('Choose a picture (JPG, PNG or WebP)','bad'); return; }
+  toast('Uploading picture…');
+  const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+  if(!url) return;
+  _heroDraft.url = url; render(); toast('Uploaded. Press Save settings to use it');
+}
 function adAdminPreviewHTML(){
   const st = DB.settings;
   if(_adDraft.loadedFrom !== st){ _adDraft = { url:st.adMediaUrl||'', type:st.adMediaType||'image', loadedFrom:st }; }
@@ -5362,7 +5492,7 @@ async function maybeShowOpeningAd(){
   try{
     const { data } = await sb.from('platform_settings').select('ad_enabled,ad_media_url,ad_media_type,ad_link,ad_seconds,ad_skip_after').eq('id',1).maybeSingle();
     if(!data || !data.ad_enabled || !data.ad_media_url) return;
-    Object.assign(DB.settings, settingsFromRow({ ...data, swipe_enabled:DB.settings.swipeEnabled, featured_slots:DB.settings.featuredSlots, featured_price:DB.settings.featuredPrice, featured_days:DB.settings.featuredDays, bank_account_name:DB.settings.bankAccountName, bank_account_number:DB.settings.bankAccountNumber }));
+    Object.assign(DB.settings, { adEnabled:true, adMediaUrl:data.ad_media_url, adMediaType:data.ad_media_type==='video'?'video':'image', adLink:data.ad_link||'', adSeconds:data.ad_seconds||10, adSkipAfter:data.ad_skip_after!=null?data.ad_skip_after:5 });
     showOpeningAd(false);
   }catch(e){ /* no ad if it can't load */ }
 }
@@ -5562,7 +5692,7 @@ function renderBizHome(biz,t){
           <div class="row between"><span class="muted">Status</span><span class="status-pill ok">Connected</span></div>
           <div class="divider"></div>
           <div class="row between"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>
-          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you directly through Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
+          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you by bank transfer or Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
         </div>` : `
         <div class="card ${bizHasBankAccount(biz)?'notice-info':'notice-warn'}">
           <h3>${bizHasBankAccount(biz) ? 'Taking orders by bank transfer' : 'Add your bank account to take orders'}</h3>
@@ -9454,9 +9584,9 @@ function renderCustHome(){
   setTimeout(updateHomeMiniHeader, 0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${homeMiniHeaderHTML()}
-    <div class="home-hero">
+    <div class="home-hero ${DB.settings.heroImageUrl?'has-photo':''}" style="${DB.settings.heroImageUrl?`--hero-img:url('${escapeAttr(DB.settings.heroImageUrl)}')`:''}">
       ${homeHeaderHTML()}
-      ${HERO_SCENE_SVG}
+      ${DB.settings.heroImageUrl ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       ${homeSearchRowHTML('hero')}
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
@@ -9576,7 +9706,7 @@ function deskBannerHTML(){
       <p>${b.text}</p>
       <button class="db-cta" onclick="${b.act}">${b.cta}</button>
     </div>
-    <div class="db-art">${b.art==='scene' ? HERO_SCENE_SVG : `<span class="db-emoji">${b.art}</span>`}</div>
+    <div class="db-art">${b.art==='scene' ? (DB.settings.heroImageUrl ? `<img class="db-photo" src="${escapeAttr(DB.settings.heroImageUrl)}" alt="">` : HERO_SCENE_SVG) : `<span class="db-emoji">${b.art}</span>`}</div>
     <div class="db-ctrl">
       <button class="db-arrow" aria-label="Previous banner" onclick="deskBannerStep(-1)">‹</button>
       ${DESK_BANNERS.map((_,i)=>`<button class="db-dot ${i===_deskBanner?'on':''}" aria-label="Banner ${i+1}" onclick="deskBannerGo(${i})"></button>`).join('')}
@@ -9607,7 +9737,7 @@ function renderDeskHome(){
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
-        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you directly through Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
         <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
       </section>`}
       ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `

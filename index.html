@@ -808,7 +808,7 @@
     .navbtn.active{background:var(--lagoon-50); color:var(--lagoon-700);}
     .nav-badge{top:-8px; right:-10px;}
 
-    .topbar{top:68px; margin:0 -40px 18px; padding:18px 56px 16px;}
+    .topbar{top:68px; margin:0 -40px 18px; padding:18px 40px 16px;}
     .topbar .titles h1{font-size:1.6em;}
     .home-hero > .home-header{position:absolute; top:24px; right:32px; left:auto; margin:0; padding:0;}
     .home-header .brand{display:none;}
@@ -5906,7 +5906,7 @@ function renderBizHome(biz,t){
 
   document.getElementById('app').innerHTML = wrapShell('business','bizHome', `
     ${topbar(biz.name, biz.category, {badge})}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
       <div class="card share-store"><div style="flex:1; min-width:0;"><strong>Share your store</strong><p class="muted" style="font-size:.84em;">Send your store link on WhatsApp, Viber, Instagram, Facebook… Buyers open it straight to your items.</p></div><button class="btn btn-primary btn-sm" onclick="openShare('store','${biz.id}')">${ICON_SHARE} Share</button></div>
@@ -6083,7 +6083,7 @@ function renderBizItems(biz,t){
   const canAdd = myItems.length < t.limit;
   document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
     ${topbar('My items', `${myItems.length} listed`)}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="if(requireStoreBank()){ _bulk=null; _bulkPhotos={}; openSheet('bulkItems'); }">Upload a list</button></div>` : ''}
       ${!canAdd ? `<div class="card notice-warn"><p style="font-size:.88em;">You've reached the ${t.limit}-item limit. Delete or replace an item to add another.</p></div>` : ''}
       <div class="items-head">
@@ -7077,7 +7077,7 @@ function renderBizOrders(biz){
   const completedOrders = myOrders.filter(o=>isClosed(o) || isOrderFullyFulfilled(o));
   document.getElementById('app').innerHTML = wrapShell('business','bizOrders', `
     ${topbar('Orders & payments')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${myBookings.length? `
       <div class="section" style="margin-bottom:22px;">
         <div class="section-head"><h2>Rental bookings</h2></div>
@@ -7763,7 +7763,7 @@ function renderBizPayouts(biz){
   const hasBank = !!String(st.bankAccountNumber||'').trim();
   document.getElementById('app').innerHTML = wrapShell('business','bizPayouts', `
     ${topbar('Payouts', 'What you owe Maldexpress and riders')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       <div class="owe-sum">
         <div class="owe-tile ${feeTotal>0?'due':''}"><span>You owe Maldexpress</span><strong>${money(feeTotal)}</strong><small>${feeDue.length} order${feeDue.length===1?'':'s'}</small></div>
         <div class="owe-tile ${riderTotal>0?'due':''}"><span>You owe riders</span><strong>${money(riderTotal)}</strong><small>${riderDue.length} deliver${riderDue.length===1?'y':'ies'}</small></div>
@@ -8416,7 +8416,7 @@ function renderDelHome(d){
   const offers = DB.orders.filter(o=>o.pendingRiderId===d.id);
   document.getElementById('app').innerHTML = wrapShell('delivery','delHome', `
     ${topbar(d.name, d.island ? `Delivering on ${d.island}` : 'Pick your island below')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${sb && !riderHasBank(d) ? bankNeededCardHTML('rider') : ''}
       ${riderStatusCardHTML(d)}
       ${offers.length? `
@@ -8751,7 +8751,7 @@ function renderDelHistory(d){
   const done = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status==='delivered');
   document.getElementById('app').innerHTML = wrapShell('delivery','delHistory', `
     ${topbar('Delivery history')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${done.length? done.map(o=>`
         <div class="glass card" onclick="openDelOrderDetail('${o.id}')">
           <div class="row between"><h3>#${o.id.slice(-5).toUpperCase()}</h3>${riderPayoutPill(o)}</div>
@@ -8808,7 +8808,7 @@ function renderCustProfile(){
   const tile = (ic, label, val, act)=>`<button class="pf-tile" onclick="${act}"><span class="pf-ic" aria-hidden="true">${ic}</span><span class="pf-tl">${label}</span>${val!=null?`<span class="pf-tv">${val}</span>`:''}</button>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custProfile', `
     ${topbar('Profile')}
-    <div class="pf" style="padding:4px 16px 0;">
+    <div class="pf" style="padding:4px 0 0;">
       <section class="pf-hero">
         <div class="pf-av">${escapeAttr((name||'?').trim().charAt(0).toUpperCase())}</div>
         <div style="flex:1; min-width:0;">
@@ -8910,7 +8910,7 @@ function renderCustFavourites(){
   })).filter(g=>g.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custFavourites', `
     ${topbar('Treasure Chest')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${groups.length ? groups.map(g=>`
         <div class="section" style="margin-bottom:22px;">
           <h2 style="margin-bottom:12px;">${g.label}</h2>
@@ -8931,7 +8931,7 @@ function renderCustStoresList(){
     .filter(s=>s.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar('Island Stores', `${stores.length} store${stores.length===1?'':'s'}`)}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${stores.length ? stores.map(s=>`
         <div class="section">
           <div class="section-head">
@@ -10295,7 +10295,7 @@ function renderCustStore(){
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar(biz.name, biz.category, { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
         <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="setStoreTab('auction')">Auction</button>
@@ -10660,7 +10660,7 @@ function renderCustCart(){
     </div>` : '';
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
     ${topbar('Your Dhoni')}
-    <div style="padding:4px 16px ${lines.length?'190px':'0'};">
+    <div style="padding:4px 0 ${lines.length?'190px':'0'};">
       ${lines.length? `
         ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
         ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:2px 4px 6px;">
@@ -12003,7 +12003,7 @@ function renderCustOrders(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
       ${topbar('My Voyages')}
-      <div style="padding:4px 16px 0;">
+      <div style="padding:4px 0 0;">
         <div class="empty">
           <span class="ic">🔒</span>Sign in with your email to see your orders
           <button class="btn btn-primary" style="margin-top:16px;" onclick="openSheet('signIn')">Sign in</button>
@@ -12052,7 +12052,7 @@ function renderCustOrders(){
   const completed = tabFiltered.filter(o=>isOrderCompleted(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
     ${topbar('My Voyages')}
-    <div style="padding:4px 16px 0;">
+    <div style="padding:4px 0 0;">
       ${myBookings.length? `
       <div class="section" style="margin-bottom:22px;">
         <div class="section-head"><h2>Booking requests</h2></div>

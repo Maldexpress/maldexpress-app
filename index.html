@@ -1228,6 +1228,16 @@
   .share-link{display:flex; gap:8px;}
   .share-link input{flex:1; min-width:0; font-size:.8em;}
   .share-store{display:flex; gap:12px; align-items:center; margin-bottom:14px; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); border:1px solid var(--edge);}
+  /* Date / time boxes: same size as other fields, never wider than their column (iPhone) */
+  input[type=date], input[type=time]{display:block; width:100%; min-width:0; max-width:100%; -webkit-appearance:none; appearance:none; text-align:left; height:50px; min-height:50px; line-height:1.2; box-sizing:border-box;}
+  input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value{text-align:left;}
+  .dt-row{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
+  .dt-row .field{min-width:0;}
+  .dt-wrap{position:relative;}
+  .dt-ph{position:absolute; left:16px; top:50%; transform:translateY(-50%); color:var(--ink-400); pointer-events:none; font-size:.95em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:calc(100% - 28px);}
+  .dt-wrap.has-val .dt-ph{display:none;}
+  .dt-wrap input:not(:focus){color:transparent;}
+  .dt-wrap.has-val input, .dt-wrap input:focus{color:var(--ink);}
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -10749,9 +10759,9 @@ function deliveryTargetFieldsHTML(){
         ${[...new Set(boatList.map(a=>a.harbour).filter(Boolean))].map(h=>`<option value="${escapeAttr(h)}">`).join('')}
       </datalist>
     </div>
-    <div class="row" style="gap:10px;">
-      <div class="field" style="flex:1;"><label>Departure date</label><input type="date" id="c_boat_date"></div>
-      <div class="field" style="flex:1;"><label>Departure time</label><input type="time" id="c_boat_time"></div>
+    <div class="dt-row">
+      <div class="field"><label for="c_boat_date">Departure date</label><div class="dt-wrap"><input type="date" id="c_boat_date" min="${todayISODate()}" oninput="this.parentNode.classList.toggle('has-val', !!this.value)" onchange="this.parentNode.classList.toggle('has-val', !!this.value)"><span class="dt-ph" aria-hidden="true">📅 Pick a date</span></div></div>
+      <div class="field"><label for="c_boat_time">Departure time</label><div class="dt-wrap"><input type="time" id="c_boat_time" oninput="this.parentNode.classList.toggle('has-val', !!this.value)" onchange="this.parentNode.classList.toggle('has-val', !!this.value)"><span class="dt-ph" aria-hidden="true">🕐 Pick a time</span></div></div>
     </div>
     <p class="muted" style="font-size:.78em; margin-top:-8px; margin-bottom:14px;">Optional — leave blank if you're not sure yet.</p>
   </div>`;

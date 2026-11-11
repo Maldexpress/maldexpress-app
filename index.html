@@ -994,7 +994,8 @@
   .cat-open-btn{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em; max-width:42%;}
   .cat-open-btn .cob-txt{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .cat-open-btn.on{background:rgba(255,255,255,.3); border-color:#fff;}
-  .cat-bar .switcher-wrap{z-index:4;}   /* below the hero (z 5) so the categories drop-down covers it */
+  .cat-bar{position:relative; z-index:4;}   /* above Sunlit Picks so the Buy now menu shows; below the hero (z 5) so the categories drop-down covers it. Not in REVEAL_SEL: a transform here would trap the menu under the next section */
+  .cat-bar .switcher-wrap{z-index:4;}
   .cat-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-6px 0 22px;}
   .cat-bar-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.92em; box-shadow:var(--shadow);}
   .cat-bar-btn:hover{border-color:var(--lagoon-500);}
@@ -4186,7 +4187,7 @@ function render(){
 // screen when the same screen re-renders (typing in search, a +/- in the
 // cart) don't replay. Nothing moves for people who ask for reduced motion.
 const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const REVEAL_SEL = '.pf-card, .pf-stats, .top-card, .ip-card, .glass.card, .item-card, .feat-panel, .section-head, .desk-tile, .ticket-card, .owe-tile, .admin-stat, .bulk-cta, .cat-bar, .rev-item, .rev-sum, .addr-card';
+const REVEAL_SEL = '.pf-card, .pf-stats, .top-card, .ip-card, .glass.card, .item-card, .feat-panel, .section-head, .desk-tile, .ticket-card, .owe-tile, .admin-stat, .bulk-cta, .rev-item, .rev-sum, .addr-card';
 let _rvIO = null, _rvScreen = '', _rvSeen = new Set();
 function rvKey(el){ return (el.className.split(' ')[0]||'') + '|' + (el.getAttribute('onclick') || (el.textContent||'').trim().slice(0,48)); }
 function applyReveal(){

@@ -1,5 +1,6 @@
 -- Removes everything added by test_data.sql (and turns the test opening ad off).
 begin;
+delete from public.item_reviews where id like 'test_%';
 delete from public.rider_bank_accounts where rider_id like 'test_%';
 delete from public.delivery_persons where id like 'test_%';
 delete from public.items where id like 'test_%';

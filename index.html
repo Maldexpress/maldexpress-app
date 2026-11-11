@@ -1055,6 +1055,28 @@
   .open-ad-cta{position:absolute; left:50%; transform:translateX(-50%); bottom:calc(28px + env(safe-area-inset-bottom)); padding:12px 22px; border-radius:99px; background:var(--sunset); color:#fff; font-weight:800; text-decoration:none; box-shadow:0 6px 18px rgba(0,0,0,.3);}
   .ad-admin-prev{margin-top:10px;}
   .ad-admin-prev img, .ad-admin-prev video{display:block; width:100%; max-width:240px; aspect-ratio:9/16; object-fit:cover; border-radius:14px; border:1px solid var(--edge); background:#000;}
+  /* Reviews */
+  .ip-reviews{margin-top:18px; padding-top:16px; border-top:1px solid var(--edge);}
+  .ip-reviews h3{font-family:var(--display); font-size:1.1em;}
+  .stars{display:inline-flex; gap:1px; color:#D8DEE0; font-size:1em; line-height:1;}
+  .stars .on{color:#F2B01E;}
+  .stars .half{background:linear-gradient(90deg,#F2B01E 50%,#D8DEE0 50%); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .rev-chip{display:inline-flex; align-items:center; gap:6px; border:none; background:none; padding:2px 0; margin:2px 0 6px; font-size:.88em; color:var(--ink);}
+  .rev-sum{display:flex; gap:16px; align-items:center; margin:12px 0 6px; padding:12px; border-radius:16px; background:var(--sand-2);}
+  .rev-big{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:84px;}
+  .rev-big strong{font-family:var(--display); font-size:2em; line-height:1;}
+  .rev-big .muted{font-size:.74em;}
+  .rev-bars{flex:1; display:flex; flex-direction:column; gap:3px;}
+  .rev-bar{display:grid; grid-template-columns:24px 1fr 22px; align-items:center; gap:6px; font-size:.74em;}
+  .rev-bar i{display:block; height:7px; border-radius:99px; background:#E3E9EA; overflow:hidden;}
+  .rev-bar b{display:block; height:100%; background:#F2B01E; border-radius:99px;}
+  .rev-item{padding:12px 0; border-top:1px solid var(--edge);}
+  .rev-item:first-of-type{border-top:none;}
+  .rev-av{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--lagoon-50); color:var(--lagoon-700); font-weight:800; font-size:.8em; flex-shrink:0;}
+  .rev-text{font-size:.9em; line-height:1.5; margin-top:8px; word-break:break-word;}
+  .rev-pick{display:flex; justify-content:center; gap:6px;}
+  .rev-pick button{border:none; background:none; font-size:2.4em; line-height:1; color:#D8DEE0; padding:2px;}
+  .rev-pick button.on{color:#F2B01E;}
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -4830,7 +4852,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _revDraft = 0; _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -4853,6 +4875,7 @@ function sheetHTML(){
   else if(state.sheet==='categories') body = sheetCategories();
   else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
   else if(state.sheet==='support') body = sheetSupport();
+  else if(state.sheet==='writeReview') body = sheetWriteReview();
   else if(state.sheet==='supportNew') body = sheetSupportNew();
   else if(state.sheet==='supportTicket') body = sheetSupportTicket();
   else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
@@ -5367,6 +5390,106 @@ function showOpeningAd(preview){
   media.addEventListener('error', close, { once:true });
   setTimeout(start, 3000);   // slow network: start the clock anyway
   if(media.complete) start();
+}
+
+
+/* =================== REVIEWS =================== */
+// Customer reviews with 1-5 stars (item_reviews). Anyone can read; only a
+// customer with a delivered order containing the item can write one (the
+// item_review_guard trigger checks), one per item, editable.
+let _reviews = {};   // itemId -> { list:[], loaded:bool, loading:bool }
+function revRow(r){ return { id:r.id, itemId:r.item_id, userId:r.user_id, name:r.reviewer_name||'Customer', rating:Number(r.rating), comment:r.comment||'', createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at||r.created_at).getTime() }; }
+async function loadItemReviews(itemId, force){
+  const c = _reviews[itemId] || (_reviews[itemId] = { list:[], loaded:false, loading:false });
+  if(c.loading || (c.loaded && !force)) return;
+  if(!sb){ c.loaded = true; return; }
+  c.loading = true;
+  try{
+    const { data, error } = await sb.from('item_reviews').select('*').eq('item_id', itemId).order('created_at', { ascending:false }).limit(100);
+    if(!error) c.list = (data||[]).map(revRow);
+    c.loaded = true;
+  } finally { c.loading = false; }
+  if(state.screen==='custItem' && state.viewItemId===itemId && !state.sheet) render();
+}
+function reviewStats(itemId){
+  const list = (_reviews[itemId]||{}).list || [];
+  const n = list.length, avg = n ? list.reduce((a,r)=>a+r.rating,0)/n : 0;
+  const dist = [5,4,3,2,1].map(k=>({ k, c:list.filter(r=>r.rating===k).length }));
+  return { n, avg, dist, list };
+}
+function starsHTML(v, size){
+  const full = Math.round(v*2)/2;
+  return `<span class="stars" style="${size?`font-size:${size};`:''}" aria-label="${v.toFixed(1)} out of 5 stars">${[1,2,3,4,5].map(i=>`<span class="${i<=full?'on':(i-0.5===full?'half':'')}">★</span>`).join('')}</span>`;
+}
+function canReviewItem(item){
+  if(!state.authed) return false;
+  return DB.orders.some(o=>o.customerId===state.customerId && o.status==='delivered' && (o.items||[]).some(l=>l.itemId===item.id));
+}
+function myReviewFor(itemId){ return ((_reviews[itemId]||{}).list||[]).find(r=>r.userId===state.customerId); }
+function reviewSummaryChipHTML(item){
+  const c = _reviews[item.id]; if(!c || !c.loaded){ loadItemReviews(item.id); return ''; }
+  const st = reviewStats(item.id); if(!st.n) return '';
+  return `<button class="rev-chip" onclick="document.getElementById('ipReviews').scrollIntoView({behavior:'smooth', block:'start'})">${starsHTML(st.avg)} <strong>${st.avg.toFixed(1)}</strong> <span class="muted">(${st.n} review${st.n===1?'':'s'})</span></button>`;
+}
+function itemReviewsHTML(item){
+  const c = _reviews[item.id];
+  const st = reviewStats(item.id);
+  const mine = myReviewFor(item.id);
+  const can = canReviewItem(item);
+  const list = state.revShowAll === item.id ? st.list : st.list.slice(0,3);
+  return `<div class="ip-reviews" id="ipReviews">
+    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>Reviews</h3>
+      ${mine ? `<button class="link-btn" onclick="openSheet('writeReview','${item.id}')">Edit your review</button>` : can ? `<button class="btn btn-primary btn-sm" onclick="openSheet('writeReview','${item.id}')">★ Write a review</button>` : ''}
+    </div>
+    ${!c || !c.loaded ? `<p class="muted" style="font-size:.86em;">Loading reviews…</p>` : st.n ? `
+    <div class="rev-sum">
+      <div class="rev-big"><strong>${st.avg.toFixed(1)}</strong>${starsHTML(st.avg)}<span class="muted">${st.n} review${st.n===1?'':'s'}</span></div>
+      <div class="rev-bars">${st.dist.map(d=>`<div class="rev-bar"><span>${d.k}★</span><i><b style="width:${st.n?Math.round(d.c/st.n*100):0}%"></b></i><span class="muted">${d.c}</span></div>`).join('')}</div>
+    </div>
+    ${list.map(r=>`<div class="rev-item">
+      <div class="row between" style="gap:8px;"><div class="row" style="gap:8px;"><span class="rev-av">${escapeAttr((r.name||'C').trim().charAt(0).toUpperCase())}</span><div><strong style="font-size:.9em;">${escapeAttr(r.name)}</strong><div class="muted" style="font-size:.74em;">✓ Verified buyer · ${new Date(r.createdAt).toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' })}</div></div></div>${starsHTML(r.rating)}</div>
+      ${r.comment ? `<p class="rev-text">${escapeAttr(r.comment).replace(/\n/g,'<br>')}</p>` : ''}
+    </div>`).join('')}
+    ${st.n > 3 && state.revShowAll !== item.id ? `<button class="btn btn-ghost btn-sm" style="width:100%;" onclick="state.revShowAll='${item.id}'; render();">Show all ${st.n} reviews</button>` : ''}`
+    : `<p class="muted" style="font-size:.86em;">No reviews yet.${can && !mine ? ' Be the first to review it.' : ''}</p>`}
+    ${!can && !mine && state.authed ? `<p class="muted" style="font-size:.76em; margin-top:8px;">Only customers who received this item can review it.</p>` : ''}
+  </div>`;
+}
+let _revDraft = 0;
+function sheetWriteReview(){
+  const item = DB.items.find(i=>i.id===state.sheetData); if(!item) return `<h2>Item not found</h2>`;
+  const mine = myReviewFor(item.id);
+  if(!_revDraft) _revDraft = mine ? mine.rating : 0;
+  return `<h2>${mine?'Edit your review':'Write a review'}</h2>
+  <p class="muted" style="margin-bottom:12px;">${escapeAttr(item.name)}</p>
+  <div class="rev-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(i=>`<button type="button" role="radio" aria-checked="${_revDraft===i}" aria-label="${i} star${i>1?'s':''}" class="${i<=_revDraft?'on':''}" onclick="_revDraft=${i}; document.querySelectorAll('.rev-pick button').forEach((b,k)=>{ b.classList.toggle('on', k<${i}); b.setAttribute('aria-checked', String(k===${i-1})); }); document.getElementById('revLbl').textContent='${['','Poor','Fair','Good','Very good','Excellent'][i]}';">★</button>`).join('')}</div>
+  <p class="muted" id="revLbl" style="text-align:center; margin:4px 0 12px; font-weight:700;">${_revDraft?['','Poor','Fair','Good','Very good','Excellent'][_revDraft]:'Tap a star'}</p>
+  <div class="field"><label for="rev_name">Your name (shown with the review)</label><input id="rev_name" maxlength="40" value="${escapeAttr(mine ? mine.name : (state.customerName||''))}"></div>
+  <div class="field"><label for="rev_text">Your review (optional)</label><textarea id="rev_text" rows="4" maxlength="1000" placeholder="What did you like or not like?">${escapeAttr(mine ? mine.comment : '')}</textarea></div>
+  <button class="btn btn-primary" onclick="submitReview('${item.id}')">${mine?'Save review':'Post review'}</button>
+  ${mine ? `<button class="btn btn-ghost danger-txt" style="margin-top:8px;" onclick="deleteMyReview('${item.id}')">Delete review</button>` : ''}`;
+}
+async function submitReview(itemId){
+  if(!_revDraft){ toast('Tap the stars to rate it','bad'); return; }
+  const name = val('rev_name').trim() || 'Customer', comment = val('rev_text').trim();
+  const mine = myReviewFor(itemId);
+  const row = { item_id:itemId, rating:_revDraft, comment:comment||null, reviewer_name:name };
+  if(sb){
+    const res = mine ? await sb.from('item_reviews').update(row).eq('id', mine.id) : await sb.from('item_reviews').insert({ id:uid('rv'), ...row });
+    if(res.error){ toast(/review_needs_purchase/.test(res.error.message) ? 'Only customers who received this item can review it' : 'Could not post: '+res.error.message,'bad'); return; }
+    await loadItemReviews(itemId, true);
+  } else {
+    const c = _reviews[itemId] || (_reviews[itemId] = { list:[], loaded:true });
+    if(mine) Object.assign(mine, { rating:_revDraft, comment, name, updatedAt:Date.now() });
+    else c.list.unshift({ id:uid('rv'), itemId, userId:state.customerId, name, rating:_revDraft, comment, createdAt:Date.now(), updatedAt:Date.now() });
+  }
+  _revDraft = 0; closeSheet(); toast(mine ? 'Review updated' : 'Thanks for your review'); render();
+}
+async function deleteMyReview(itemId){
+  const mine = myReviewFor(itemId); if(!mine) return;
+  if(sb){ const { error } = await sb.from('item_reviews').delete().eq('id', mine.id); if(error){ toast('Could not delete: '+error.message,'bad'); return; } await loadItemReviews(itemId, true); }
+  else { const c = _reviews[itemId]; c.list = c.list.filter(r=>r!==mine); }
+  _revDraft = 0; closeSheet(); toast('Review deleted'); render();
 }
 
 /* =================== BUSINESS SIDE =================== */
@@ -9157,6 +9280,7 @@ function renderCustItem(){
             <span class="ip-type">${typeLbl}</span>
           </div>
           <h1 class="ip-name">${escapeAttr(item.name)}</h1>
+          ${reviewSummaryChipHTML(item)}
           <div class="ip-price-row">
             <span class="price ip-price">${itemPriceLine(item)}</span>
             ${!isAuction && !isRental && item.discountPercent>0 ? `<span class="ip-was">${money(item.price)}</span><span class="discount-badge">${item.discountPercent}% OFF</span>` : ''}
@@ -9174,6 +9298,7 @@ function renderCustItem(){
         <section class="ip-card">
           <h2>About this item</h2>
           ${item.description ? `<p class="ip-desc">${escapeAttr(item.description).replace(/\n/g,'<br>')}</p>` : `<p class="muted">The store hasn't added a description.</p>`}
+          ${itemReviewsHTML(item)}
           ${biz ? `
           <div class="ip-seller">
             <span class="admin-av">${escapeAttr((biz.name||'?').trim().charAt(0).toUpperCase())}</span>

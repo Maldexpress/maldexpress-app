@@ -9361,38 +9361,74 @@ function handleEdgeSwipeEnd(){
 // left edge (Back), in sheets, in side-scrolling rows or on form fields are
 // left alone.
 let _tabSw = null;
+function tabBar(){ return [...document.querySelectorAll('#app .tabs')].find(b=>!b.closest('.sheet-wrap, .drawer') && b.offsetParent); }
+// The content under the tab row that moves with the finger (never fixed bars).
+function tabPanes(bar){ const out = []; let el = bar && bar.nextElementSibling; while(el){ if(getComputedStyle(el).position !== 'fixed') out.push(el); el = el.nextElementSibling; } return out; }
 function tabSwipeStart(e){
   const t = e.touches && e.touches[0]; if(!t || e.touches.length > 1) { _tabSw = null; return; }
   if(t.clientX <= EDGE_SWIPE_ZONE + 6 || state.sheet || state.drawerOpen){ _tabSw = null; return; }
   const el = e.target;
   if(el.closest && el.closest('.rail, .featured-scroll, .feat-grid, .gal-track, .gal-thumbs, .tabs, .sel-bar, input, textarea, select, .sheet-wrap, .drawer, .open-ad, .desk-row-feat, .cat-drop, [data-noswipe]')){ _tabSw = null; return; }
-  _tabSw = { x:t.clientX, y:t.clientY, t:Date.now() };
+  const bar = tabBar(); if(!bar){ _tabSw = null; return; }
+  const tabs = [...bar.querySelectorAll('.tab')]; const cur = tabs.findIndex(b=>b.classList.contains('active'));
+  _tabSw = { x:t.clientX, y:t.clientY, t:Date.now(), dx:0, lock:null, bar, tabs, cur, panes:null };
+}
+function tabSwipeMove(e){
+  const s0 = _tabSw; if(!s0) return;
+  const t = e.touches && e.touches[0]; if(!t) return;
+  const dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+  if(s0.lock === null){
+    if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    s0.lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
+    if(s0.lock === 'x'){ s0.panes = tabPanes(s0.bar); s0.panes.forEach(p=>{ p.style.transition = 'none'; p.style.willChange = 'transform'; }); }
+  }
+  if(s0.lock !== 'x' || REDUCED_MOTION) return;
+  // follow the finger; resist at the first / last tab
+  const atEdge = (dx > 0 && s0.cur <= 0) || (dx < 0 && s0.cur >= s0.tabs.length - 1);
+  const move = atEdge ? dx * 0.25 : dx;
+  s0.dx = dx;
+  const w = window.innerWidth;
+  s0.panes.forEach(p=>{ p.style.transform = `translate3d(${move}px,0,0)`; p.style.opacity = String(1 - Math.min(Math.abs(move)/w, 1) * 0.35); });
 }
 function tabSwipeEnd(e){
   const s0 = _tabSw; _tabSw = null; if(!s0) return;
   const t = e.changedTouches && e.changedTouches[0]; if(!t) return;
   const dx = t.clientX - s0.x, dy = t.clientY - s0.y;
-  if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.8 || Date.now() - s0.t > 700) return;
-  swipeTabs(dx < 0 ? 1 : -1);
+  const dt = Math.max(1, Date.now() - s0.t), speed = Math.abs(dx) / dt;   // px per ms
+  const dir = dx < 0 ? 1 : -1;
+  const hasNext = !!s0.tabs[s0.cur + dir];
+  const go = s0.lock === 'x' && hasNext && (Math.abs(dx) > window.innerWidth * 0.22 || (speed > 0.45 && Math.abs(dx) > 40)) && Math.abs(dx) > Math.abs(dy) * 1.4;
+  const panes = s0.panes || [];
+  if(!go){   // spring back
+    panes.forEach(p=>{ p.style.transition = 'transform .32s cubic-bezier(.2,.9,.25,1), opacity .32s ease'; p.style.transform = ''; p.style.opacity = ''; setTimeout(()=>{ p.style.transition = ''; p.style.willChange = ''; }, 340); });
+    return;
+  }
+  swipeTabs(dir, panes);
 }
-function swipeTabs(dir){
-  const bar = [...document.querySelectorAll('#app .tabs')].find(b=>!b.closest('.sheet-wrap, .drawer') && b.offsetParent);
-  if(!bar) return false;
+function swipeTabs(dir, panes){
+  const bar = tabBar(); if(!bar) return false;
   const tabs = [...bar.querySelectorAll('.tab')]; const cur = tabs.findIndex(b=>b.classList.contains('active'));
   const next = tabs[cur + dir]; if(!next) return false;
-  next.click();
-  requestAnimationFrame(()=>{
-    if(REDUCED_MOTION) return;
-    const nb = [...document.querySelectorAll('#app .tabs')].find(b=>!b.closest('.sheet-wrap, .drawer') && b.offsetParent);
-    if(!nb) return;
-    const act = nb.querySelector('.tab.active'); if(act && act.scrollIntoView) act.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
-    let el = nb.nextElementSibling;
-    while(el){ if(getComputedStyle(el).position !== 'fixed' && el.animate) el.animate([{ transform:`translateX(${dir*36}px)`, opacity:.25 }, { transform:'none', opacity:1 }], { duration:280, easing:'cubic-bezier(.2,.8,.2,1)' }); el = el.nextElementSibling; }
-  });
+  const w = window.innerWidth;
+  const slideIn = ()=>{
+    next.click();
+    requestAnimationFrame(()=>{
+      const nb = tabBar(); if(!nb) return;
+      const act = nb.querySelector('.tab.active'); if(act && act.scrollIntoView) act.scrollIntoView({ inline:'center', block:'nearest', behavior:'smooth' });
+      if(REDUCED_MOTION) return;
+      tabPanes(nb).forEach(el=>{ if(el.animate) el.animate([{ transform:`translate3d(${dir*w*0.35}px,0,0)`, opacity:0 }, { transform:'none', opacity:1 }], { duration:420, easing:'cubic-bezier(.16,.84,.3,1)' }); });
+    });
+  };
+  if(REDUCED_MOTION || !panes || !panes.length){ slideIn(); return true; }
+  // glide the current tab out the way the finger went, then bring the next one in
+  panes.forEach(p=>{ p.style.transition = 'transform .22s cubic-bezier(.4,0,.6,1), opacity .22s ease'; p.style.transform = `translate3d(${-dir*w*0.45}px,0,0)`; p.style.opacity = '0'; });
+  setTimeout(slideIn, 200);
   return true;
 }
 document.addEventListener('touchstart', tabSwipeStart, { passive:true });
+document.addEventListener('touchmove', tabSwipeMove, { passive:true });
 document.addEventListener('touchend', tabSwipeEnd, { passive:true });
+document.addEventListener('touchcancel', ()=>{ if(_tabSw && _tabSw.panes) _tabSw.panes.forEach(p=>{ p.style.transform=''; p.style.opacity=''; }); _tabSw = null; }, { passive:true });
 document.addEventListener('touchstart', handleEdgeSwipeStart, { passive:true });
 document.addEventListener('touchmove', handleEdgeSwipeMove, { passive:true });
 document.addEventListener('touchend', handleEdgeSwipeEnd, { passive:true });

@@ -925,6 +925,7 @@
     background:radial-gradient(120% 90% at 0% 0%, #FFE8A3 0%, rgba(255,232,163,0) 55%), radial-gradient(120% 100% at 100% 100%, #CDEBFF 0%, rgba(205,235,255,0) 60%), linear-gradient(135deg, #FFF4D1 0%, #EAF6FF 100%);
     border:1px solid #F1D58A; box-shadow:0 10px 30px rgba(200,150,30,.12);}
   .feat-title{color:#7A5200;}
+  .spon-tag{display:inline-block; vertical-align:middle; margin-left:6px; padding:2px 8px; border-radius:99px; background:rgba(122,82,0,.12); color:#7A5200; font-family:var(--body, inherit); font-size:.5em; font-weight:800; letter-spacing:.4px; text-transform:uppercase;}
   .feat-panel .featured-scroll .top-card{flex:0 0 68%;}
   /* Sponsored: one row, 4 small cards on screen, swipe for more */
   .feat-panel .feat-grid{display:grid; grid-auto-flow:column; grid-template-rows:auto; grid-auto-columns:calc((100% - 3*8px) / 4); gap:8px; padding:4px 2px 8px;}
@@ -5640,7 +5641,7 @@ function itemReviewsHTML(item){
   const can = canReviewItem(item);
   const list = state.revShowAll === item.id ? st.list : st.list.slice(0,3);
   return `<div class="ip-reviews" id="ipReviews">
-    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>Reviews</h3>
+    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>💬 Island Voices</h3>
       ${mine ? `<button class="link-btn" onclick="openSheet('writeReview','${item.id}')">Edit your review</button>` : can ? `<button class="btn btn-primary btn-sm" onclick="openSheet('writeReview','${item.id}')">★ Write a review</button>` : ''}
     </div>
     ${!c || !c.loaded ? `<p class="muted" style="font-size:.86em;">Loading reviews…</p>` : st.n ? `
@@ -8662,7 +8663,7 @@ function renderCustProfile(){
       </div>
 
       <section class="pf-card">
-        <div class="row between"><h3>My orders</h3><button class="link-btn" onclick="state.ordersStatus=null; go('custOrders')">See all ›</button></div>
+        <div class="row between"><h3>🧭 My Voyages</h3><button class="link-btn" onclick="state.ordersStatus=null; go('custOrders')">See all ›</button></div>
         <div class="pf-stages">
           ${Object.entries(ORDER_STAGES).map(([k,v])=>`<button class="pf-stage" onclick="state.ordersStatus='${k}'; state.ordersTab='all'; go('custOrders')"><span class="pf-sic" aria-hidden="true">${v.icon}${counts[k]?`<b>${counts[k]}</b>`:''}</span><span>${v.label}</span></button>`).join('')}
         </div>
@@ -8670,12 +8671,12 @@ function renderCustProfile(){
 
       ${toReview.length ? `
       <section class="pf-card">
-        <div class="row between"><h3>Waiting for your review</h3><span class="muted" style="font-size:.8em;">${toReview.length}</span></div>
+        <div class="row between"><h3>⭐ Rate your Haul</h3><span class="muted" style="font-size:.8em;">${toReview.length}</span></div>
         <div class="rail pf-rev">${toReview.slice(0,12).map(it=>`<button class="pf-rev-item" onclick="openItemDetail('${it.id}'); setTimeout(()=>{ const r=document.getElementById('ipReviews'); if(r) r.scrollIntoView({block:'start'}); }, 350);"><span class="pf-rev-img">${itemThumbHTML(it)}</span><span class="pf-rev-name">${escapeAttr(it.name)}</span><span class="pf-rev-cta">★ Rate it</span></button>`).join('')}</div>
       </section>` : ''}
 
       <section class="pf-card">
-        <h3>Shortcuts</h3>
+        <h3>⚡ Quick Sails</h3>
         <div class="pf-grid">
           ${tile('❤️','Favourites', favs||null, "go('custFavourites')")}
           ${tile('📍','My addresses', addrs||null, 'openMyAddresses()')}
@@ -8687,7 +8688,7 @@ function renderCustProfile(){
       </section>
 
       <section class="pf-card">
-        <h3>Earn with Maldexpress</h3>
+        <h3>🤝 Join the Crew</h3>
         <div class="pf-earn">
           <button class="pf-earn-b sell" onclick="${myBiz.length ? 'goToOwnedBusiness()' : "enterRole('business')"}"><span aria-hidden="true">🏪</span><strong>${myBiz.length ? 'Your store' : 'Sell on Maldexpress'}</strong><small>${myBiz.length ? escapeAttr(myBiz[0].name) : 'Open a store and list items'}</small></button>
           <button class="pf-earn-b ride" onclick="${myDel.length ? 'goToOwnedDelivery()' : "enterRole('delivery')"}"><span aria-hidden="true">🛵</span><strong>${myDel.length ? 'Your deliveries' : 'Deliver with us'}</strong><small>${myDel.length ? 'Jobs and payouts' : 'Earn per delivery'}</small></button>
@@ -8732,7 +8733,7 @@ function signInGateHTML(label){
 function renderCustFavourites(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custFavourites', `
-      ${topbar('Your favourites')}
+      ${topbar('Treasure Chest')}
       ${signInGateHTML('view your favourites')}
     `);
     return;
@@ -8743,7 +8744,7 @@ function renderCustFavourites(){
     items: items.filter(i=>(i.listingType||'buy_now')===key)
   })).filter(g=>g.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custFavourites', `
-    ${topbar('Your favourites')}
+    ${topbar('Treasure Chest')}
     <div style="padding:4px 16px 0;">
       ${groups.length ? groups.map(g=>`
         <div class="section" style="margin-bottom:22px;">
@@ -8764,7 +8765,7 @@ function renderCustStoresList(){
     .map(b=>({ biz:b, items: DB.items.filter(i=>i.businessId===b.id && isApprovedItem(i)) }))
     .filter(s=>s.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${topbar('Browse stores', `${stores.length} store${stores.length===1?'':'s'}`)}
+    ${topbar('Island Stores', `${stores.length} store${stores.length===1?'':'s'}`)}
     <div style="padding:4px 16px 0;">
       ${stores.length ? stores.map(s=>`
         <div class="section">
@@ -8977,13 +8978,13 @@ function rentalSectionsHTML(items){
   const soon = items.filter(i=>isRentalSoon(i));
   return `
   <div class="section">
-    <h2 style="margin-bottom:12px;">Available for rent</h2>
+    <h2 style="margin-bottom:12px;">🛶 Borrow from the Islands</h2>
     <div class="top-grid">
       ${available.length? available.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">🔁</span>Nothing available to rent right now</div>`}
     </div>
   </div>
   <div class="section" style="margin-top:22px;">
-    <h2 style="margin-bottom:4px;">Available soon for rent</h2>
+    <h2 style="margin-bottom:4px;">⏳ Docking Soon</h2>
     <p class="muted" style="font-size:.8em; margin-bottom:12px;">Open one to send a booking request for the date it becomes available.</p>
     <div class="top-grid">
       ${soon.length? soon.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">🕒</span>Nothing coming soon right now</div>`}
@@ -9634,11 +9635,11 @@ function renderCustItem(){
       </div>
       <div class="ip-lower">
         <section class="ip-card">
-          <h2>Item details</h2>
+          <h2>📦 Cargo Details</h2>
           <div class="idr-list">${itemDetailRowsHTML(item)}</div>
         </section>
         <section class="ip-card">
-          <h2>About this item</h2>
+          <h2>📝 Captain’s Notes</h2>
           ${item.description ? `<p class="ip-desc">${escapeAttr(item.description).replace(/\n/g,'<br>')}</p>` : `<p class="muted">The store hasn't added a description.</p>`}
           ${itemReviewsHTML(item)}
           ${biz ? `
@@ -9651,12 +9652,12 @@ function renderCustItem(){
       </div>
       ${related.length ? `
       <section class="ip-related">
-        <h2>Related products</h2>
+        <h2>🌊 On the Same Tide</h2>
         <div class="top-grid ip-grid">${related.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       ${moreFromStore.length ? `
       <section class="ip-related">
-        <h2>More from ${escapeAttr(biz?biz.name:'this store')}</h2>
+        <h2>⚓ Docked at ${escapeAttr(biz?biz.name:'this store')}</h2>
         <div class="top-grid ip-grid">${moreFromStore.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
     </div>
@@ -9773,7 +9774,7 @@ function moreRailsHTML(rest){
   const groups = {};
   rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
   const keys = Object.keys(groups);
-  const rails = keys.length === 1 ? [['More to explore', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
+  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
   return rails.map(([title, list, cat])=>`
       <div class="section">
         <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
@@ -9807,14 +9808,14 @@ function renderCustHome(){
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
       ${featured.length ? `
       <div class="section feat-panel">
-        <h2 class="feat-title">⭐ Sponsored</h2>
+        <h2 class="feat-title">☀️ Sunlit Picks <span class="spon-tag">Sponsored</span></h2>
           <div class="featured-scroll feat-grid" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
           </div>
           ${featured.length > 4 ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/4)},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
       </div>` : ''}
       <div class="section">
-        <h2 style="margin-bottom:12px;">Top selling</h2>
+        <h2 style="margin-bottom:12px;">🏝️ Atoll Bestsellers</h2>
         <div class="top-grid">
           ${filtered.length? filtered.slice(0, topGridMax()).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
         </div>
@@ -9932,7 +9933,7 @@ function renderDeskHome(){
   const picks = featNow.length ? featNow.slice(0, featShow) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
   const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
-  const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? 'More to love' : typeLabel;
+  const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? '🐚 Fresh off the Boat' : typeLabel;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     <div class="desk-home">
       ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
@@ -9941,7 +9942,7 @@ function renderDeskHome(){
 
       ${picks.length ? `
       <section class="desk-sec${featNow.length?' feat-panel':''}">
-        <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'⭐ Sponsored':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
+        <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'☀️ Sunlit Picks <span class="spon-tag">Sponsored</span>':'🎣 Today’s Catch'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
@@ -9956,7 +9957,7 @@ function renderDeskHome(){
         </div>
       </section>`}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `      <section class="desk-sec">
-        <h2>Explore categories</h2>
+        <h2>🧭 Every Island Aisle</h2>
         <div class="desk-tiles">
           ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
         </div>
@@ -10352,7 +10353,7 @@ function setCartActiveStore(bizId){ state.cartActiveStore = bizId; render(); }
 function renderCustCart(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
-      ${topbar('Your cart')}
+      ${topbar('Your Dhoni')}
       ${signInGateHTML('view your cart')}
     `);
     return;
@@ -10391,7 +10392,7 @@ function renderCustCart(){
         : `<button class="btn btn-primary" style="margin-top:10px; opacity:.5;" disabled>Select an item to checkout</button>`}
     </div>` : '';
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
-    ${topbar('Your cart')}
+    ${topbar('Your Dhoni')}
     <div style="padding:4px 16px ${lines.length?'190px':'0'};">
       ${lines.length? `
         ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
@@ -11734,7 +11735,7 @@ async function placeStoreOrder(bizId){
 function renderCustOrders(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
-      ${topbar('My orders')}
+      ${topbar('My Voyages')}
       <div style="padding:4px 16px 0;">
         <div class="empty">
           <span class="ic">🔒</span>Sign in with your email to see your orders
@@ -11783,7 +11784,7 @@ function renderCustOrders(){
   const ongoing = tabFiltered.filter(o=>!isOrderCompleted(o));
   const completed = tabFiltered.filter(o=>isOrderCompleted(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
-    ${topbar('My orders')}
+    ${topbar('My Voyages')}
     <div style="padding:4px 16px 0;">
       ${myBookings.length? `
       <div class="section" style="margin-bottom:22px;">
@@ -11799,8 +11800,8 @@ function renderCustOrders(){
       ${sorted.length? `<div class="tabs">${ORDERS_TABS.map(t=>`<button class="tab ${activeTab===t.id?'active':''}" onclick="setOrdersTab('${t.id}')">${t.label}</button>`).join('')}</div>` : ''}
       ${state.ordersStatus ? `<div style="margin:-4px 0 12px;"><button class="cat-chip" onclick="state.ordersStatus=null; render();" aria-label="Show all orders">${ORDER_STAGES[state.ordersStatus].icon} ${ORDER_STAGES[state.ordersStatus].label} <span aria-hidden="true">✕</span></button></div>` : ''}
       ${tabFiltered.length ? `
-        ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>Ongoing</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
-        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
+        ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>🌊 On the Water</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
+        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>🏝️ Safely Ashore</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
       ` : `<div class="empty"><span class="ic">🧾</span>${sorted.length?`No ${ORDERS_TABS.find(t=>t.id===activeTab).label.toLowerCase()} orders`:'No orders yet — go browse a store!'}</div>`}
     </div>
   `);

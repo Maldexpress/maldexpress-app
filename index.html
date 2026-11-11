@@ -938,6 +938,10 @@
   }
   @media (min-width:1024px) and (max-width:1279px){ .feat-panel .desk-row-feat{grid-template-columns:repeat(3, minmax(0,1fr));} .feat-panel .desk-row-feat > .top-card:nth-child(n+7){display:none;} }
   /* Categories on demand */
+  .cat-open-btn{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em; max-width:42%;}
+  .cat-open-btn .cob-txt{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cat-open-btn.on{background:rgba(255,255,255,.3); border-color:#fff;}
+  .cat-bar .switcher-wrap{z-index:30;}
   .cat-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-6px 0 22px;}
   .cat-bar-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.92em; box-shadow:var(--shadow);}
   .cat-bar-btn:hover{border-color:var(--lagoon-500);}
@@ -8736,18 +8740,27 @@ function homeSearchRowHTML(where='hero'){
       <input id="${inputId}" type="search" enterkeyhint="search" placeholder="Search items or stores" aria-label="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="updateHomeSearch(this.value, '${inputId}')" onkeydown="if(event.key==='Enter') this.blur()">
       ${state.homeSearch ? `<button type="button" class="hs-clear" aria-label="Clear search" onclick="updateHomeSearch('', '${inputId}')">✕</button>` : ''}
     </div>
-    <div class="switcher-wrap">
-      <button class="switcher-pill accent" aria-haspopup="true" aria-expanded="${open}" onclick="toggleHomeSwitcher('${where}')">
-        <span class="sw-ic" aria-hidden="true">${cur.icon}</span>
-        <span>${cur.label}</span>
+    <button class="switcher-pill accent cat-open-btn ${state.homeCategory!=='All'?'on':''}" aria-haspopup="dialog" onclick="openSheet('categories')" aria-label="${state.homeCategory!=='All' ? 'Category: '+escapeAttr(state.homeCategory)+'. Change category' : 'All categories'}">
+      <span class="sw-ic" aria-hidden="true">${state.homeCategory!=='All' ? categoryIcon(state.homeCategory) : '▦'}</span>
+      <span class="cob-txt">${state.homeCategory!=='All' ? escapeAttr(state.homeCategory) : 'Categories'}</span>
+      <span class="switcher-caret">▾</span>
+    </button>
+  </div>`;
+}
+function listingSwitcherHTML(where='bar'){
+  const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
+  const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);
+  const open = state.homeSwitcherOpen === where;
+  return `<div class="switcher-wrap">
+      <button class="cat-bar-btn" aria-haspopup="true" aria-expanded="${open}" onclick="toggleHomeSwitcher('${where}')">
+        <span aria-hidden="true">${cur.icon}</span> ${cur.label}
         <span class="switcher-caret" style="${open?'transform:rotate(180deg);':''}">▾</span>
       </button>
       ${open ? `
-      <div class="switcher-dropdown glass">
+      <div class="switcher-dropdown glass" style="left:0; right:auto;">
         ${others.map(k=>`<button class="switcher-pill" onclick="setHomeListingType('${k}')"><span>${LISTING_TYPE_META[k].icon}</span><span>${LISTING_TYPE_META[k].label}</span></button>`).join('')}
       </div>` : ''}
-    </div>
-  </div>`;
+    </div>`;
 }
 function toggleHomeSwitcher(where='hero'){ state.homeSwitcherOpen = state.homeSwitcherOpen===where ? false : where; render(); }
 // Small sticky header on the phone Home: logo, search and the Buy now switcher,
@@ -9195,9 +9208,7 @@ function renderCustHome(){
     <div style="padding:0 4px;">
       ${addressPromptHTML()}
       <div class="cat-bar">
-        <button class="cat-bar-btn" onclick="openSheet('categories')" aria-haspopup="dialog">
-          <span class="cbb-ic" aria-hidden="true">▦</span> All categories
-        </button>
+        ${listingSwitcherHTML('bar')}
         ${state.homeCategory!=='All' ? `<button class="cat-chip" onclick="setHomeCategory('All')" aria-label="Clear ${escapeAttr(state.homeCategory)} filter">${categoryIcon(state.homeCategory)} ${escapeAttr(state.homeCategory)} <span aria-hidden="true">✕</span></button>` : ''}
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `

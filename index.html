@@ -549,6 +549,10 @@
   .cat-pill.active .cat-label{color:var(--lagoon-700); font-weight:800;}
   .cat-pill:active{transform:scale(.94);}
 
+  .rail{display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 10px; margin:0 -2px; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+  .rail::-webkit-scrollbar{display:none;}
+  .rail .top-card{flex:0 0 44%; max-width:220px; scroll-snap-align:start;}
+  .rail-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
   .featured-scroll{display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 10px; scrollbar-width:none;}
   .featured-scroll::-webkit-scrollbar{display:none;}
   .featured-card{
@@ -9421,6 +9425,23 @@ function sheetItemDetail(){
   </div>
   ${itemActionsHTML(item)}`;
 }
+// Top selling shows 5 rows (2 or 3 per row on phones); everything after that
+// goes into side-scrolling rows below, one per category (or one "More to
+// explore" row when it's all one category).
+const TOP_GRID_ROWS = 5;
+function topGridMax(){ return TOP_GRID_ROWS * (window.innerWidth >= 440 ? 3 : 2); }   // matches .top-grid's columns
+function moreRailsHTML(rest){
+  if(!rest.length) return '';
+  const groups = {};
+  rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
+  const keys = Object.keys(groups);
+  const rails = keys.length === 1 ? [['More to explore', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
+  return rails.map(([title, list, cat])=>`
+      <div class="section">
+        <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
+        <div class="rail">${list.map(i=>topSellingCardHTML(i)).join('')}</div>
+      </div>`).join('');
+}
 function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
@@ -9457,9 +9478,10 @@ function renderCustHome(){
       <div class="section">
         <h2 style="margin-bottom:12px;">Top selling</h2>
         <div class="top-grid">
-          ${filtered.length? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
+          ${filtered.length? filtered.slice(0, topGridMax()).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
         </div>
-      </div>`}
+      </div>
+      ${moreRailsHTML(filtered.slice(topGridMax()))}`}
     </div>
   `);
   ensureCountdownTimer();

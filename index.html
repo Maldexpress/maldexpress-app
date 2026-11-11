@@ -1124,7 +1124,10 @@
   .rv.rv-in{opacity:1; transform:none;}
   .rv:not(.rv-in){transition-delay:0ms; transition-duration:.35s;}
   .rv.rv-now{transition:none;}
-  .rail .rv{transform:translate3d(26px,0,0) scale(.96);}
+  .rail .rv, .featured-scroll .rv, .desk-row-feat .rv{transform:translate3d(26px,0,0) scale(.96);}
+  .featured-scroll .rv.rv-in, .desk-row-feat .rv.rv-in{transform:none;}
+  /* side-scrolling rows only ever move sideways */
+  .rail, .featured-scroll, .feat-grid, .desk-row-feat, .gal-track, .gal-thumbs{overflow-y:hidden !important; overscroll-behavior-y:none; touch-action:pan-x pan-y;}
   .rail .rv.rv-in{transform:none;}
   .screen-in{animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
   @keyframes screenIn{from{opacity:0;} to{opacity:1;}}   /* opacity only: a transform here would unpin the fixed header and tab bar */

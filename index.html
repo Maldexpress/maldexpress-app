@@ -549,6 +549,10 @@
   .cat-pill.active .cat-label{color:var(--lagoon-700); font-weight:800;}
   .cat-pill:active{transform:scale(.94);}
 
+  .rail{display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 10px; margin:0 -2px; scrollbar-width:none; -webkit-overflow-scrolling:touch;}
+  .rail::-webkit-scrollbar{display:none;}
+  .rail .top-card{flex:0 0 44%; max-width:220px; scroll-snap-align:start;}
+  .rail-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
   .featured-scroll{display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; padding:4px 2px 10px; scrollbar-width:none;}
   .featured-scroll::-webkit-scrollbar{display:none;}
   .featured-card{
@@ -1014,6 +1018,18 @@
   .gal-arrow{font-size:calc(var(--fs)*1.6) !important; position:absolute; top:50%; transform:translateY(-50%); width:38px; height:38px; border-radius:50%; border:none; background:rgba(255,255,255,.92); color:var(--ink); line-height:1; box-shadow:0 2px 8px rgba(13,43,51,.2); display:flex; align-items:center; justify-content:center;}
   .gal-arrow.prev{left:10px;} .gal-arrow.next{right:10px;}
   .gal-count{position:absolute; right:10px; bottom:10px; padding:3px 9px; border-radius:99px; background:rgba(13,43,51,.7); color:#fff; font-size:calc(var(--fs)*.8) !important; line-height:1.4; font-weight:700;}
+  .ip-photo.gal{display:block;}
+  .gal-track{display:flex; width:100%; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; outline:none;}
+  .gal-track::-webkit-scrollbar{display:none;}
+  .gal-slide{flex:0 0 100%; height:100%; scroll-snap-align:center; scroll-snap-stop:always; display:flex; align-items:center; justify-content:center;}
+  .gal-slide img{width:100%; height:100%; object-fit:contain; background:#fff; user-select:none; -webkit-user-drag:none;}
+  .gal .gal-arrow{transition:opacity .35s ease, transform .35s ease;}
+  .gal.idle .gal-arrow{opacity:0; pointer-events:none;}
+  .gal.idle .gal-arrow.prev{transform:translate(-8px,-50%);}
+  .gal.idle .gal-arrow.next{transform:translate(8px,-50%);}
+  .gal-count{transition:opacity .35s ease;}
+  .gal-thumb{transition:border-color .2s ease, transform .2s ease;}
+  .gal-thumb.on{transform:scale(1.04);}
   .gal-thumbs{display:flex; gap:8px; margin-top:10px; overflow-x:auto; scrollbar-width:none;}
   .gal-thumb{flex:0 0 64px; height:64px; border-radius:12px; overflow:hidden; border:2px solid transparent; padding:0; background:var(--sand-2);}
   .gal-thumb img{width:100%; height:100%; object-fit:cover;}
@@ -1055,6 +1071,114 @@
   .open-ad-cta{position:absolute; left:50%; transform:translateX(-50%); bottom:calc(28px + env(safe-area-inset-bottom)); padding:12px 22px; border-radius:99px; background:var(--sunset); color:#fff; font-weight:800; text-decoration:none; box-shadow:0 6px 18px rgba(0,0,0,.3);}
   .ad-admin-prev{margin-top:10px;}
   .ad-admin-prev img, .ad-admin-prev video{display:block; width:100%; max-width:240px; aspect-ratio:9/16; object-fit:cover; border-radius:14px; border:1px solid var(--edge); background:#000;}
+  /* Reviews */
+  .ip-reviews{margin-top:18px; padding-top:16px; border-top:1px solid var(--edge);}
+  .ip-reviews h3{font-family:var(--display); font-size:1.1em;}
+  .stars{display:inline-flex; gap:1px; color:#D8DEE0; font-size:1em; line-height:1;}
+  .stars .on{color:#F2B01E;}
+  .stars .half{background:linear-gradient(90deg,#F2B01E 50%,#D8DEE0 50%); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .rev-chip{display:inline-flex; align-items:center; gap:6px; border:none; background:none; padding:2px 0; margin:2px 0 6px; font-size:.88em; color:var(--ink);}
+  .rev-sum{display:flex; gap:16px; align-items:center; margin:12px 0 6px; padding:12px; border-radius:16px; background:var(--sand-2);}
+  .rev-big{display:flex; flex-direction:column; align-items:center; gap:3px; min-width:84px;}
+  .rev-big strong{font-family:var(--display); font-size:2em; line-height:1;}
+  .rev-big .muted{font-size:.74em;}
+  .rev-bars{flex:1; display:flex; flex-direction:column; gap:3px;}
+  .rev-bar{display:grid; grid-template-columns:24px 1fr 22px; align-items:center; gap:6px; font-size:.74em;}
+  .rev-bar i{display:block; height:7px; border-radius:99px; background:#E3E9EA; overflow:hidden;}
+  .rev-bar b{display:block; height:100%; background:#F2B01E; border-radius:99px;}
+  .rev-item{padding:12px 0; border-top:1px solid var(--edge);}
+  .rev-item:first-of-type{border-top:none;}
+  .rev-av{width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--lagoon-50); color:var(--lagoon-700); font-weight:800; font-size:.8em; flex-shrink:0;}
+  .rev-text{font-size:.9em; line-height:1.5; margin-top:8px; word-break:break-word;}
+  .rev-pick{display:flex; justify-content:center; gap:6px;}
+  .rev-pick button{border:none; background:none; font-size:2.4em; line-height:1; color:#D8DEE0; padding:2px;}
+  .rev-pick button.on{color:#F2B01E;}
+  /* ---------- Motion & polish ---------- */
+  .rv{opacity:0; transform:translate3d(0,22px,0) scale(.97); transition:opacity .55s ease, transform .6s cubic-bezier(.2,.8,.2,1); transition-delay:var(--rv-d,0ms); will-change:opacity, transform;}
+  .rv.rv-in{opacity:1; transform:none;}
+  .rv:not(.rv-in){transition-delay:0ms; transition-duration:.35s;}
+  .rv.rv-now{transition:none;}
+  .rail .rv{transform:translate3d(26px,0,0) scale(.96);}
+  .rail .rv.rv-in{transform:none;}
+  .screen-in{animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
+  @keyframes screenIn{from{opacity:0;} to{opacity:1;}}   /* opacity only: a transform here would unpin the fixed header and tab bar */
+  img.img-fade{opacity:0; transition:opacity .45s ease;}
+  img.img-fade.ok{opacity:1;}
+  .img-loading{background-image:linear-gradient(100deg, rgba(255,255,255,0) 30%, rgba(255,255,255,.55) 50%, rgba(255,255,255,0) 70%) !important; background-size:220% 100% !important; animation:shimmer 1.2s linear infinite;}
+  @keyframes shimmer{from{background-position:120% 0;} to{background-position:-120% 0;}}
+  .top-card .img-wrap{overflow:hidden;}
+  .top-card .img-wrap img{transition:transform .5s cubic-bezier(.2,.8,.2,1), opacity .45s ease;}
+  .top-card:active .img-wrap{transform:scale(.97);}
+  @media (hover:hover){
+    .top-card:hover .img-wrap{transform:translateY(-4px); box-shadow:0 14px 30px rgba(13,43,51,.14);}
+    .top-card:hover .img-wrap img{transform:scale(1.05);}
+    .glass.card[onclick]:hover, .item-card:hover{transform:translateY(-2px); box-shadow:0 12px 28px rgba(13,43,51,.12);}
+  }
+  .glass.card[onclick], .item-card{transition:transform .25s ease, box-shadow .25s ease;}
+  .glass.card[onclick]:active, .item-card:active{transform:scale(.985);}
+  .btn{transition:transform .15s ease, box-shadow .2s ease, background-color .2s ease, filter .2s ease;}
+  .btn:active{transform:scale(.97);}
+  .btn-primary:hover{filter:brightness(1.05);}
+  .section > h2, .section-head h2{position:relative; padding-bottom:6px;}
+  .section > h2::after, .section-head h2::after{content:""; position:absolute; left:0; bottom:0; width:28px; height:3px; border-radius:3px; background:linear-gradient(90deg, var(--lagoon-500), var(--sunset));}
+  .feat-panel{overflow:hidden;}
+  .feat-panel::after{content:""; position:absolute; top:0; bottom:0; left:-60%; width:40%; pointer-events:none; background:linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.45), rgba(255,255,255,0)); transform:skewX(-18deg); animation:goldSheen 6.5s ease-in-out infinite; z-index:0;}
+  .feat-panel > *{position:relative; z-index:1;}
+  @keyframes goldSheen{0%,70%{left:-60%;} 100%{left:130%;}}
+  .home-hero .hero-scene{will-change:transform, opacity;}
+  .bottomnav .bar button{transition:color .2s ease, transform .2s ease;}
+  .bottomnav .bar button:active{transform:scale(.92);}
+  /* Header photo set by the super admin */
+  .home-hero.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.28) 0%, rgba(6,40,52,.12) 45%, rgba(10,60,90,.55) 100%), var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat;}
+  .home-hero.has-photo::before{display:none;}
+  .hero-photo-space{height:118px;}
+  .db-photo{width:100%; height:100%; object-fit:cover; border-radius:22px;}
+  .hero-prev{position:relative; height:150px; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; padding:12px; background:linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
+  .hero-prev.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.2), rgba(10,60,90,.55)), var(--hero-img) center / cover no-repeat;}
+  .hero-prev .hero-scene{height:80px; margin:0;}
+  .hero-prev-search{display:block; padding:8px 12px; border-radius:99px; background:#fff; color:var(--ink-dim); font-size:.8em;}
+  @media (prefers-reduced-motion:reduce){ .rv{opacity:1 !important; transform:none !important;} .feat-panel::after{display:none;} }
+  /* Profile */
+  .who-btn{display:block; width:100%; text-align:left; background:none; border:none; padding:0; color:inherit; cursor:pointer; position:relative;}
+  .who-profile{display:inline-block; margin-top:8px; padding:5px 12px; border-radius:99px; background:var(--lagoon-50); color:var(--lagoon-700); font-weight:800; font-size:.78em;}
+  .who-btn:active .who-profile{transform:scale(.96);}
+  .pf-hero{position:relative; display:flex; align-items:center; gap:14px; padding:22px 18px 34px; border-radius:24px; overflow:hidden; color:#fff;
+    background:radial-gradient(90% 80% at 100% 0%, rgba(255,255,255,.25), transparent 60%), linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
+  .pf-av{width:62px; height:62px; flex-shrink:0; border-radius:20px; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:800; font-size:1.7em; background:rgba(255,255,255,.22); border:1px solid rgba(255,255,255,.45);}
+  .pf-name{font-family:var(--display); font-size:1.35em; line-height:1.15; word-break:break-word;}
+  .pf-mail{font-size:.84em; opacity:.9; margin-top:3px; word-break:break-all;}
+  .pf-edit{position:absolute; top:12px; right:12px; width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,.5); background:rgba(255,255,255,.18); color:#fff; font-size:1em;}
+  .pf-signin{align-self:flex-end; flex-shrink:0;}
+  .pf-wave{position:absolute; left:0; right:0; bottom:-1px; width:100%; height:18px;}
+  .pf-wave path{fill:var(--sand-bg);}
+  .pf-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:-22px 10px 14px; position:relative; z-index:2;}
+  .pf-stats button{display:flex; flex-direction:column; align-items:center; gap:2px; padding:12px 6px; border-radius:18px; border:1px solid var(--edge); background:var(--surface); box-shadow:var(--shadow-lift); color:var(--ink);}
+  .pf-stats strong{font-family:var(--display); font-size:1.35em;}
+  .pf-stats span{font-size:.76em; color:var(--ink-dim); font-weight:700;}
+  .pf-card{background:var(--surface); border:1px solid var(--edge); border-radius:22px; padding:16px; margin-bottom:14px; box-shadow:0 2px 10px rgba(13,43,51,.04);}
+  .pf-card h3{font-family:var(--display); font-size:1.05em; margin-bottom:12px;}
+  .pf-card .row h3{margin-bottom:0;}
+  .pf-stages{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:12px;}
+  .pf-stage{display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 2px; border:none; border-radius:16px; background:var(--sand-2); color:var(--ink); font-size:.78em; font-weight:700;}
+  .pf-sic{position:relative; font-size:1.7em; line-height:1;}
+  .pf-sic b{position:absolute; top:-6px; right:-12px; min-width:18px; height:18px; padding:0 5px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.42em; line-height:18px; text-align:center; font-family:var(--body, inherit);}
+  .pf-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .pf-tile{position:relative; display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 4px; border-radius:16px; border:1px solid var(--edge); background:#fff; color:var(--ink); font-size:.8em; font-weight:700; text-align:center;}
+  .pf-ic{font-size:1.6em; line-height:1;}
+  .pf-tv{position:absolute; top:6px; right:8px; font-size:.78em; color:var(--lagoon-700); font-weight:800;}
+  .pf-earn{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .pf-earn-b{display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:14px; border-radius:18px; border:none; text-align:left; color:var(--ink);}
+  .pf-earn-b span{font-size:1.6em; margin-bottom:4px;}
+  .pf-earn-b small{color:var(--ink-dim); font-size:.76em;}
+  .pf-earn-b.sell{background:linear-gradient(150deg,#FFF4E3,#FFE7C7);}
+  .pf-earn-b.ride{background:linear-gradient(150deg,#E5F6EE,#CDEEDD);}
+  .pf-rev{margin-top:2px;}
+  .pf-rev-item{flex:0 0 120px; display:flex; flex-direction:column; gap:6px; border:none; background:none; text-align:left; padding:0; color:var(--ink); scroll-snap-align:start;}
+  .pf-rev-img{display:block; width:120px; height:120px; border-radius:16px; overflow:hidden; background:var(--sand-2);}
+  .pf-rev-img img, .pf-rev-img > *{width:100%; height:100%; object-fit:cover;}
+  .pf-rev-name{font-size:.8em; font-weight:700; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .pf-rev-cta{font-size:.76em; font-weight:800; color:#B9780A;}
+  @media (min-width:1024px){ .pf{max-width:760px; margin:0 auto;} .pf-grid{grid-template-columns:repeat(6,1fr);} }
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -3984,8 +4108,70 @@ function render(){
   // Same reasoning, same pattern - see planCompareOverlayHTML() for why this
   // is an overlay rather than a sheet.
   if(_planCompareOpen) app.insertAdjacentHTML('beforeend', planCompareOverlayHTML());
+  const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
+  if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
+  render._last = _scrKey;
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
+
+
+/* =================== MOTION: scroll reveal, image fade, parallax =================== */
+// Cards and sections slide + fade in as they scroll into view and fade out as
+// they leave (both directions, also in side-scrolling rows). Things already on
+// screen when the same screen re-renders (typing in search, a +/- in the
+// cart) don't replay. Nothing moves for people who ask for reduced motion.
+const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const REVEAL_SEL = '.pf-card, .pf-stats, .top-card, .ip-card, .glass.card, .item-card, .feat-panel, .section-head, .desk-tile, .ticket-card, .owe-tile, .admin-stat, .bulk-cta, .cat-bar, .rev-item, .rev-sum, .addr-card';
+let _rvIO = null, _rvScreen = '', _rvSeen = new Set();
+function rvKey(el){ return (el.className.split(' ')[0]||'') + '|' + (el.getAttribute('onclick') || (el.textContent||'').trim().slice(0,48)); }
+function applyReveal(){
+  if(REDUCED_MOTION || !('IntersectionObserver' in window)) return;
+  if(!_rvIO){
+    _rvIO = new IntersectionObserver(entries=>{
+      entries.forEach(en=>{
+        const el = en.target;
+        if(en.isIntersecting){ el.classList.add('rv-in'); _rvSeen.add(el._rvKey); }
+        else if(el.classList.contains('rv-in')) el.classList.remove('rv-in','rv-now');
+      });
+    }, { threshold:0.08, rootMargin:'0px 0px -4% 0px' });
+  }
+  const screenKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||'', state.adminTab||''].join(':');
+  const same = screenKey === _rvScreen; _rvScreen = screenKey;
+  if(!same) _rvSeen = new Set();
+  const vh = window.innerHeight;
+  document.querySelectorAll('#app ' + REVEAL_SEL.split(', ').join(', #app ')).forEach((el, i)=>{
+    if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar') || el._rvOn) return;
+    el._rvOn = true; el._rvKey = rvKey(el);
+    const r = el.getBoundingClientRect();
+    const onScreen = r.top < vh && r.bottom > 0 && r.left < window.innerWidth && r.right > 0;
+    el.classList.add('rv');
+    if(onScreen && same && _rvSeen.has(el._rvKey)) el.classList.add('rv-in','rv-now');   // re-render: no replay
+    else el.style.setProperty('--rv-d', (onScreen ? Math.min(i % 8, 7) * 45 : 0) + 'ms');
+    _rvIO.observe(el);
+  });
+  // Photos fade in once loaded, with a soft shimmer until then.
+  document.querySelectorAll('#app .img-wrap img, #app .ip-photo img, #app .gal-thumb img').forEach(img=>{
+    if(img._fd) return; img._fd = true;
+    if(img.complete && img.naturalWidth) return;
+    const wrap = img.closest('.img-wrap, .ip-photo'); img.classList.add('img-fade'); if(wrap) wrap.classList.add('img-loading');
+    const done = ()=>{ img.classList.add('ok'); if(wrap) wrap.classList.remove('img-loading'); };
+    img.addEventListener('load', done, { once:true }); img.addEventListener('error', done, { once:true });
+  });
+  heroParallax();
+}
+// The header picture drifts up slower than the page and fades as it goes.
+function heroParallax(){
+  if(REDUCED_MOTION) return;
+  const sc = document.querySelector('.home-hero .hero-scene'); const hero = document.querySelector('.home-hero');
+  if(!sc || !hero) return;
+  const y = Math.max(0, document.body.scrollTop || document.documentElement.scrollTop || window.scrollY || 0);
+  const k = Math.min(y, 300);
+  sc.style.transform = `translate3d(0, ${k*0.35}px, 0)`; sc.style.opacity = String(1 - Math.min(k/260, 1)*0.85);
+  hero.style.setProperty('--hero-shift', (k*0.25)+'px');
+}
+document.body.addEventListener('scroll', heroParallax, { passive:true });
+window.addEventListener('scroll', heroParallax, { passive:true });
 
 /* =================== SUPER ADMIN (?admin) =================== */
 function renderAdmin(){
@@ -4254,10 +4440,10 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5 };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5, heroImageUrl:'' };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5 }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5, heroImageUrl:r.hero_image_url||'' }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
 function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
@@ -4396,7 +4582,7 @@ async function adminSaveSettings(){
   if(adLink && !/^https?:\/\//i.test(adLink)){ toast('The ad link must start with https://','bad'); return; }
   const adOn = !!(document.getElementById('set_ad_on')||{}).checked;
   if(adOn && !_adDraft.url){ toast('Upload an ad image or video first','bad'); return; }
-  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null });
+  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null });
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -4499,6 +4685,15 @@ function adminSettingsTab(){
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
     <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
     <div class="field"><label for="set_bank_no">Account number</label><input id="set_bank_no" inputmode="numeric" value="${escapeAttr(st.bankAccountNumber||'')}" placeholder="e.g. 7730000000000"></div>
+    <h3 style="margin-top:18px;">Main header picture</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">The picture at the top of the app's Home. Leave it empty to use the island drawing. A wide photo works best (for example 1600×900).</p>
+    <div class="hero-admin-prev" id="heroAdminPrev">${heroAdminPreviewHTML()}</div>
+    <input type="file" id="heroFile" accept="image/*" style="display:none;" onchange="onHeroFile(event)">
+    <div class="row" style="gap:8px; margin:8px 0 4px; flex-wrap:wrap;">
+      <label for="heroFile" class="btn btn-ghost btn-sm">📷 ${_heroDraft.url?'Change picture':'Upload a picture'}</label>
+      ${_heroDraft.url ? `<button class="btn btn-ghost btn-sm" onclick="_heroDraft.url=''; render();">Use the island drawing</button>` : ''}
+    </div>
+    <p class="muted" style="font-size:.78em; margin-bottom:6px;">Press Save settings below to put it live.</p>
     <h3 style="margin-top:18px;">Opening ad</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">A full-screen picture or short video everyone sees when they open the app, for 10 seconds. They can skip it after 5 seconds.</p>
     ${chkRowHTML('set_ad_on', st.adEnabled, 'Show the opening ad')}
@@ -4511,6 +4706,20 @@ function adminSettingsTab(){
   </div>`;
 }
 let _adDraft = { url:'', type:'image', loadedFrom:null };
+let _heroDraft = { url:'', loadedFrom:null };
+function heroAdminPreviewHTML(){
+  const st = DB.settings;
+  if(_heroDraft.loadedFrom !== st){ _heroDraft = { url:st.heroImageUrl||'', loadedFrom:st }; }
+  return `<div class="hero-prev ${_heroDraft.url?'has-photo':''}" style="${_heroDraft.url?`--hero-img:url('${escapeAttr(_heroDraft.url)}')`:''}">${_heroDraft.url?'':HERO_SCENE_SVG}<span class="hero-prev-search">🔍 Search items or stores</span></div>`;
+}
+async function onHeroFile(e){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  if(!/^image\//.test(f.type)){ toast('Choose a picture (JPG, PNG or WebP)','bad'); return; }
+  toast('Uploading picture…');
+  const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+  if(!url) return;
+  _heroDraft.url = url; render(); toast('Uploaded. Press Save settings to use it');
+}
 function adAdminPreviewHTML(){
   const st = DB.settings;
   if(_adDraft.loadedFrom !== st){ _adDraft = { url:st.adMediaUrl||'', type:st.adMediaType||'image', loadedFrom:st }; }
@@ -4722,11 +4931,12 @@ function drawerHTML(role){
     ${sb ? `<button class="drawer-item" onclick="signOutCustomer()"><span class="ic">🚪</span> Sign out</button>` : ''}`;
   return `
   <div class="glass drawer ${state.drawerOpen?'show':''}" id="drawer">
-    <div class="who">
+    <button class="who who-btn" onclick="toggleDrawer(false); openProfile()" aria-label="Open your profile">
       <div class="av">${(bizName||'?').slice(0,1).toUpperCase()}</div>
       <div style="font-weight:800; word-break:break-all;">${bizName || nameMap[role]}</div>
       <div class="muted" style="font-size:.8em;">${nameMap[role]}</div>
-    </div>
+      <span class="who-profile">Profile ›</span>
+    </button>
     ${items}
     ${trailing}
   </div>`;
@@ -4830,7 +5040,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _revDraft = 0; _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -4853,6 +5063,7 @@ function sheetHTML(){
   else if(state.sheet==='categories') body = sheetCategories();
   else if(state.sheet==='confirmDelete') body = sheetConfirmDelete();
   else if(state.sheet==='support') body = sheetSupport();
+  else if(state.sheet==='writeReview') body = sheetWriteReview();
   else if(state.sheet==='supportNew') body = sheetSupportNew();
   else if(state.sheet==='supportTicket') body = sheetSupportTicket();
   else if(state.sheet==='bulkEdit') body = sheetBulkEdit();
@@ -5335,7 +5546,7 @@ async function maybeShowOpeningAd(){
   try{
     const { data } = await sb.from('platform_settings').select('ad_enabled,ad_media_url,ad_media_type,ad_link,ad_seconds,ad_skip_after').eq('id',1).maybeSingle();
     if(!data || !data.ad_enabled || !data.ad_media_url) return;
-    Object.assign(DB.settings, settingsFromRow({ ...data, swipe_enabled:DB.settings.swipeEnabled, featured_slots:DB.settings.featuredSlots, featured_price:DB.settings.featuredPrice, featured_days:DB.settings.featuredDays, bank_account_name:DB.settings.bankAccountName, bank_account_number:DB.settings.bankAccountNumber }));
+    Object.assign(DB.settings, { adEnabled:true, adMediaUrl:data.ad_media_url, adMediaType:data.ad_media_type==='video'?'video':'image', adLink:data.ad_link||'', adSeconds:data.ad_seconds||10, adSkipAfter:data.ad_skip_after!=null?data.ad_skip_after:5 });
     showOpeningAd(false);
   }catch(e){ /* no ad if it can't load */ }
 }
@@ -5367,6 +5578,106 @@ function showOpeningAd(preview){
   media.addEventListener('error', close, { once:true });
   setTimeout(start, 3000);   // slow network: start the clock anyway
   if(media.complete) start();
+}
+
+
+/* =================== REVIEWS =================== */
+// Customer reviews with 1-5 stars (item_reviews). Anyone can read; only a
+// customer with a delivered order containing the item can write one (the
+// item_review_guard trigger checks), one per item, editable.
+let _reviews = {};   // itemId -> { list:[], loaded:bool, loading:bool }
+function revRow(r){ return { id:r.id, itemId:r.item_id, userId:r.user_id, name:r.reviewer_name||'Customer', rating:Number(r.rating), comment:r.comment||'', createdAt:new Date(r.created_at).getTime(), updatedAt:new Date(r.updated_at||r.created_at).getTime() }; }
+async function loadItemReviews(itemId, force){
+  const c = _reviews[itemId] || (_reviews[itemId] = { list:[], loaded:false, loading:false });
+  if(c.loading || (c.loaded && !force)) return;
+  if(!sb){ c.loaded = true; return; }
+  c.loading = true;
+  try{
+    const { data, error } = await sb.from('item_reviews').select('*').eq('item_id', itemId).order('created_at', { ascending:false }).limit(100);
+    if(!error) c.list = (data||[]).map(revRow);
+    c.loaded = true;
+  } finally { c.loading = false; }
+  if(state.screen==='custItem' && state.viewItemId===itemId && !state.sheet) render();
+}
+function reviewStats(itemId){
+  const list = (_reviews[itemId]||{}).list || [];
+  const n = list.length, avg = n ? list.reduce((a,r)=>a+r.rating,0)/n : 0;
+  const dist = [5,4,3,2,1].map(k=>({ k, c:list.filter(r=>r.rating===k).length }));
+  return { n, avg, dist, list };
+}
+function starsHTML(v, size){
+  const full = Math.round(v*2)/2;
+  return `<span class="stars" style="${size?`font-size:${size};`:''}" aria-label="${v.toFixed(1)} out of 5 stars">${[1,2,3,4,5].map(i=>`<span class="${i<=full?'on':(i-0.5===full?'half':'')}">★</span>`).join('')}</span>`;
+}
+function canReviewItem(item){
+  if(!state.authed) return false;
+  return DB.orders.some(o=>o.customerId===state.customerId && o.status==='delivered' && (o.items||[]).some(l=>l.itemId===item.id));
+}
+function myReviewFor(itemId){ return ((_reviews[itemId]||{}).list||[]).find(r=>r.userId===state.customerId); }
+function reviewSummaryChipHTML(item){
+  const c = _reviews[item.id]; if(!c || !c.loaded){ loadItemReviews(item.id); return ''; }
+  const st = reviewStats(item.id); if(!st.n) return '';
+  return `<button class="rev-chip" onclick="document.getElementById('ipReviews').scrollIntoView({behavior:'smooth', block:'start'})">${starsHTML(st.avg)} <strong>${st.avg.toFixed(1)}</strong> <span class="muted">(${st.n} review${st.n===1?'':'s'})</span></button>`;
+}
+function itemReviewsHTML(item){
+  const c = _reviews[item.id];
+  const st = reviewStats(item.id);
+  const mine = myReviewFor(item.id);
+  const can = canReviewItem(item);
+  const list = state.revShowAll === item.id ? st.list : st.list.slice(0,3);
+  return `<div class="ip-reviews" id="ipReviews">
+    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>Reviews</h3>
+      ${mine ? `<button class="link-btn" onclick="openSheet('writeReview','${item.id}')">Edit your review</button>` : can ? `<button class="btn btn-primary btn-sm" onclick="openSheet('writeReview','${item.id}')">★ Write a review</button>` : ''}
+    </div>
+    ${!c || !c.loaded ? `<p class="muted" style="font-size:.86em;">Loading reviews…</p>` : st.n ? `
+    <div class="rev-sum">
+      <div class="rev-big"><strong>${st.avg.toFixed(1)}</strong>${starsHTML(st.avg)}<span class="muted">${st.n} review${st.n===1?'':'s'}</span></div>
+      <div class="rev-bars">${st.dist.map(d=>`<div class="rev-bar"><span>${d.k}★</span><i><b style="width:${st.n?Math.round(d.c/st.n*100):0}%"></b></i><span class="muted">${d.c}</span></div>`).join('')}</div>
+    </div>
+    ${list.map(r=>`<div class="rev-item">
+      <div class="row between" style="gap:8px;"><div class="row" style="gap:8px;"><span class="rev-av">${escapeAttr((r.name||'C').trim().charAt(0).toUpperCase())}</span><div><strong style="font-size:.9em;">${escapeAttr(r.name)}</strong><div class="muted" style="font-size:.74em;">✓ Verified buyer · ${new Date(r.createdAt).toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' })}</div></div></div>${starsHTML(r.rating)}</div>
+      ${r.comment ? `<p class="rev-text">${escapeAttr(r.comment).replace(/\n/g,'<br>')}</p>` : ''}
+    </div>`).join('')}
+    ${st.n > 3 && state.revShowAll !== item.id ? `<button class="btn btn-ghost btn-sm" style="width:100%;" onclick="state.revShowAll='${item.id}'; render();">Show all ${st.n} reviews</button>` : ''}`
+    : `<p class="muted" style="font-size:.86em;">No reviews yet.${can && !mine ? ' Be the first to review it.' : ''}</p>`}
+    ${!can && !mine && state.authed ? `<p class="muted" style="font-size:.76em; margin-top:8px;">Only customers who received this item can review it.</p>` : ''}
+  </div>`;
+}
+let _revDraft = 0;
+function sheetWriteReview(){
+  const item = DB.items.find(i=>i.id===state.sheetData); if(!item) return `<h2>Item not found</h2>`;
+  const mine = myReviewFor(item.id);
+  if(!_revDraft) _revDraft = mine ? mine.rating : 0;
+  return `<h2>${mine?'Edit your review':'Write a review'}</h2>
+  <p class="muted" style="margin-bottom:12px;">${escapeAttr(item.name)}</p>
+  <div class="rev-pick" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(i=>`<button type="button" role="radio" aria-checked="${_revDraft===i}" aria-label="${i} star${i>1?'s':''}" class="${i<=_revDraft?'on':''}" onclick="_revDraft=${i}; document.querySelectorAll('.rev-pick button').forEach((b,k)=>{ b.classList.toggle('on', k<${i}); b.setAttribute('aria-checked', String(k===${i-1})); }); document.getElementById('revLbl').textContent='${['','Poor','Fair','Good','Very good','Excellent'][i]}';">★</button>`).join('')}</div>
+  <p class="muted" id="revLbl" style="text-align:center; margin:4px 0 12px; font-weight:700;">${_revDraft?['','Poor','Fair','Good','Very good','Excellent'][_revDraft]:'Tap a star'}</p>
+  <div class="field"><label for="rev_name">Your name (shown with the review)</label><input id="rev_name" maxlength="40" value="${escapeAttr(mine ? mine.name : (state.customerName||''))}"></div>
+  <div class="field"><label for="rev_text">Your review (optional)</label><textarea id="rev_text" rows="4" maxlength="1000" placeholder="What did you like or not like?">${escapeAttr(mine ? mine.comment : '')}</textarea></div>
+  <button class="btn btn-primary" onclick="submitReview('${item.id}')">${mine?'Save review':'Post review'}</button>
+  ${mine ? `<button class="btn btn-ghost danger-txt" style="margin-top:8px;" onclick="deleteMyReview('${item.id}')">Delete review</button>` : ''}`;
+}
+async function submitReview(itemId){
+  if(!_revDraft){ toast('Tap the stars to rate it','bad'); return; }
+  const name = val('rev_name').trim() || 'Customer', comment = val('rev_text').trim();
+  const mine = myReviewFor(itemId);
+  const row = { item_id:itemId, rating:_revDraft, comment:comment||null, reviewer_name:name };
+  if(sb){
+    const res = mine ? await sb.from('item_reviews').update(row).eq('id', mine.id) : await sb.from('item_reviews').insert({ id:uid('rv'), ...row });
+    if(res.error){ toast(/review_needs_purchase/.test(res.error.message) ? 'Only customers who received this item can review it' : 'Could not post: '+res.error.message,'bad'); return; }
+    await loadItemReviews(itemId, true);
+  } else {
+    const c = _reviews[itemId] || (_reviews[itemId] = { list:[], loaded:true });
+    if(mine) Object.assign(mine, { rating:_revDraft, comment, name, updatedAt:Date.now() });
+    else c.list.unshift({ id:uid('rv'), itemId, userId:state.customerId, name, rating:_revDraft, comment, createdAt:Date.now(), updatedAt:Date.now() });
+  }
+  _revDraft = 0; closeSheet(); toast(mine ? 'Review updated' : 'Thanks for your review'); render();
+}
+async function deleteMyReview(itemId){
+  const mine = myReviewFor(itemId); if(!mine) return;
+  if(sb){ const { error } = await sb.from('item_reviews').delete().eq('id', mine.id); if(error){ toast('Could not delete: '+error.message,'bad'); return; } await loadItemReviews(itemId, true); }
+  else { const c = _reviews[itemId]; c.list = c.list.filter(r=>r!==mine); }
+  _revDraft = 0; closeSheet(); toast('Review deleted'); render();
 }
 
 /* =================== BUSINESS SIDE =================== */
@@ -5435,7 +5746,7 @@ function renderBizHome(biz,t){
           <div class="row between"><span class="muted">Status</span><span class="status-pill ok">Connected</span></div>
           <div class="divider"></div>
           <div class="row between"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>
-          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you directly through Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
+          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you by bank transfer or Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
         </div>` : `
         <div class="card ${bizHasBankAccount(biz)?'notice-info':'notice-warn'}">
           <h3>${bizHasBankAccount(biz) ? 'Taking orders by bank transfer' : 'Add your bank account to take orders'}</h3>
@@ -8271,6 +8582,109 @@ function renderDelHistory(d){
   `);
 }
 
+
+/* =================== PROFILE =================== */
+// Opened from the name at the top of the menu (any role). Account card,
+// orders by stage (tap = My orders filtered to that stage), items waiting
+// for a review, shortcuts, the store / rider side, and settings.
+const ORDER_STAGES = {
+  to_pay:    { icon:'💳', label:'To pay' },
+  preparing: { icon:'📦', label:'Preparing' },
+  on_way:    { icon:'🛵', label:'On the way' },
+  delivered: { icon:'✅', label:'Delivered' },
+};
+function orderStage(o){
+  if(['declined','cancelled'].includes(o.status)) return 'closed';
+  if(o.status==='delivered') return 'delivered';
+  if(o.status==='out_for_delivery') return 'on_way';
+  if(['awaiting_approval','pending_transfer','awaiting_swipe','slip_uploaded','awaiting_completion','awaiting_delivery_charge'].includes(o.paymentStatus)) return 'to_pay';
+  return 'preparing';
+}
+function openProfile(){
+  if(state.role!=='customer'){ state.role = 'customer'; }
+  go('custProfile');
+}
+function myOrders(){ return sb ? DB.orders.filter(o=>o.customerId===state.customerId) : DB.orders; }
+function itemsToReview(){
+  const seen = new Set(), out = [];
+  myOrders().filter(o=>o.status==='delivered').sort((a,b)=>b.createdAt-a.createdAt).forEach(o=>(o.items||[]).forEach(l=>{
+    const it = DB.items.find(i=>i.id===l.itemId);
+    if(it && !seen.has(it.id)){ seen.add(it.id); if(!(_reviews[it.id] && myReviewFor(it.id))) out.push(it); }
+  }));
+  return out;
+}
+function renderCustProfile(){
+  const signedIn = !sb || state.authed;
+  const email = state.customerEmail || '';
+  const name = state.customerName || (email ? email.split('@')[0] : 'Guest');
+  const orders = myOrders();
+  const counts = Object.fromEntries(Object.keys(ORDER_STAGES).map(k=>[k, orders.filter(o=>orderStage(o)===k).length]));
+  const favs = Object.keys(state.favourites||{}).filter(id=>state.favourites[id]).length;
+  const addrs = (DB.addresses||[]).filter(a=>!sb || a.customerId===state.customerId).length;
+  const toReview = signedIn ? itemsToReview() : [];
+  const myBiz = sb ? DB.businesses.filter(b=>b.ownerId===state.customerId) : [];
+  const myDel = sb ? DB.delivery.filter(d=>d.userId===state.customerId) : [];
+  const def = (DB.addresses||[]).find(a=>a.isDefault && (!sb || a.customerId===state.customerId));
+  const tile = (ic, label, val, act)=>`<button class="pf-tile" onclick="${act}"><span class="pf-ic" aria-hidden="true">${ic}</span><span class="pf-tl">${label}</span>${val!=null?`<span class="pf-tv">${val}</span>`:''}</button>`;
+  document.getElementById('app').innerHTML = wrapShell('customer','custProfile', `
+    ${topbar('Profile')}
+    <div class="pf" style="padding:4px 16px 0;">
+      <section class="pf-hero">
+        <div class="pf-av">${escapeAttr((name||'?').trim().charAt(0).toUpperCase())}</div>
+        <div style="flex:1; min-width:0;">
+          <h2 class="pf-name">${escapeAttr(signedIn ? name : 'Welcome to Maldexpress')}</h2>
+          <p class="pf-mail">${signedIn ? escapeAttr(email || 'Signed in') : 'Sign in to see your orders, favourites and reviews'}</p>
+          ${def ? `<p class="pf-mail">📍 ${escapeAttr(def.island || def.zone || '')}${def.address?' · '+escapeAttr(def.address):''}</p>` : ''}
+        </div>
+        ${signedIn ? `<button class="pf-edit" onclick="openSheet('custSettings')" aria-label="Edit profile">✎</button>` : ''}
+        ${signedIn ? '' : `<button class="btn btn-primary btn-sm pf-signin" onclick="openSheet('signIn')">Sign in</button>`}
+        <svg class="pf-wave" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
+      </section>
+
+      <div class="pf-stats">
+        <button onclick="state.ordersStatus=null; go('custOrders')"><strong>${orders.length}</strong><span>Orders</span></button>
+        <button onclick="go('custFavourites')"><strong>${favs}</strong><span>Favourites</span></button>
+        <button onclick="openMyAddresses()"><strong>${addrs}</strong><span>Addresses</span></button>
+      </div>
+
+      <section class="pf-card">
+        <div class="row between"><h3>My orders</h3><button class="link-btn" onclick="state.ordersStatus=null; go('custOrders')">See all ›</button></div>
+        <div class="pf-stages">
+          ${Object.entries(ORDER_STAGES).map(([k,v])=>`<button class="pf-stage" onclick="state.ordersStatus='${k}'; state.ordersTab='all'; go('custOrders')"><span class="pf-sic" aria-hidden="true">${v.icon}${counts[k]?`<b>${counts[k]}</b>`:''}</span><span>${v.label}</span></button>`).join('')}
+        </div>
+      </section>
+
+      ${toReview.length ? `
+      <section class="pf-card">
+        <div class="row between"><h3>Waiting for your review</h3><span class="muted" style="font-size:.8em;">${toReview.length}</span></div>
+        <div class="rail pf-rev">${toReview.slice(0,12).map(it=>`<button class="pf-rev-item" onclick="openItemDetail('${it.id}'); setTimeout(()=>{ const r=document.getElementById('ipReviews'); if(r) r.scrollIntoView({block:'start'}); }, 350);"><span class="pf-rev-img">${itemThumbHTML(it)}</span><span class="pf-rev-name">${escapeAttr(it.name)}</span><span class="pf-rev-cta">★ Rate it</span></button>`).join('')}</div>
+      </section>` : ''}
+
+      <section class="pf-card">
+        <h3>Shortcuts</h3>
+        <div class="pf-grid">
+          ${tile('❤️','Favourites', favs||null, "go('custFavourites')")}
+          ${tile('📍','My addresses', addrs||null, 'openMyAddresses()')}
+          ${tile('🏪','Browse stores', null, "go('custStores')")}
+          ${tile('🛒','Cart', Object.values(state.cart||{}).reduce((a,q)=>a+q,0)||null, "go('custCart')")}
+          ${tile('🎧','Live support', null, 'openSupport()')}
+          ${tile('⚙️','Settings', null, "openSheet('custSettings')")}
+        </div>
+      </section>
+
+      <section class="pf-card">
+        <h3>Earn with Maldexpress</h3>
+        <div class="pf-earn">
+          <button class="pf-earn-b sell" onclick="${myBiz.length ? 'goToOwnedBusiness()' : "enterRole('business')"}"><span aria-hidden="true">🏪</span><strong>${myBiz.length ? 'Your store' : 'Sell on Maldexpress'}</strong><small>${myBiz.length ? escapeAttr(myBiz[0].name) : 'Open a store and list items'}</small></button>
+          <button class="pf-earn-b ride" onclick="${myDel.length ? 'goToOwnedDelivery()' : "enterRole('delivery')"}"><span aria-hidden="true">🛵</span><strong>${myDel.length ? 'Your deliveries' : 'Deliver with us'}</strong><small>${myDel.length ? 'Jobs and payouts' : 'Earn per delivery'}</small></button>
+        </div>
+      </section>
+
+      ${signedIn && sb ? `<button class="btn btn-ghost" style="margin:6px 0 22px;" onclick="signOutCustomer()">🚪 Sign out</button>` : '<div style="height:22px;"></div>'}
+    </div>
+  `);
+}
+
 /* =================== CUSTOMER SIDE =================== */
 function renderCustomer(){
   if(state.screen==='custHome') return renderCustHome();
@@ -8280,6 +8694,7 @@ function renderCustomer(){
   if(state.screen==='custFavourites') return renderCustFavourites();
   if(state.screen==='custCart') return renderCustCart();
   if(state.screen==='custOrders') return renderCustOrders();
+  if(state.screen==='custProfile') return renderCustProfile();
 }
 // Requires sign-in, same as toggleFavourite() itself - just every item
 // currently favourited, shown with the same card used everywhere else so it
@@ -9121,14 +9536,50 @@ function relatedItemsFor(item, n){
   const score = i => (i.listingType===item.listingType?2:0) + (i.businessId!==item.businessId?1:0) + (isOutOfStock(i)?-3:0);
   return sameCat.sort((a,b)=>score(b)-score(a)).slice(0, n);
 }
-function galleryGo(itemId, i){ state.galleryIdx = state.galleryIdx || {}; state.galleryIdx[itemId] = i; render(); }
+// Item photos: a swipeable strip (scroll-snap). Arrows, thumbnails and the
+// "2 / 5" counter follow the swipe without re-rendering. The arrows show
+// while the photo is touched / hovered and fade out ~2 s after.
+function galleryGo(itemId, i){
+  const tr = document.getElementById('galTrack_'+itemId); if(!tr) return;
+  const n = tr.children.length; i = (i + n) % n;
+  tr.scrollTo({ left: i * tr.clientWidth, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+  galWake(itemId);
+}
+function galStep(itemId, d){ const tr = document.getElementById('galTrack_'+itemId); if(!tr) return; galleryGo(itemId, Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + d); }
+function galScrolled(itemId){
+  const tr = document.getElementById('galTrack_'+itemId); if(!tr) return;
+  const n = tr.children.length, idx = Math.min(n-1, Math.max(0, Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth))));
+  (state.galleryIdx = state.galleryIdx || {})[itemId] = idx;
+  const c = document.getElementById('galCount_'+itemId); if(c) c.textContent = `${idx+1} / ${n}`;
+  document.querySelectorAll(`#galThumbs_${itemId} .gal-thumb`).forEach((t,k)=>{ t.classList.toggle('on', k===idx); t.setAttribute('aria-current', k===idx ? 'true' : 'false'); });
+  galWake(itemId);
+}
+let _galTimers = {};
+function galWake(itemId){
+  const g = document.getElementById('gal_'+itemId); if(!g) return;
+  g.classList.remove('idle'); clearTimeout(_galTimers[itemId]);
+  _galTimers[itemId] = setTimeout(()=>{ const el = document.getElementById('gal_'+itemId); if(el && !el.matches(':hover')) el.classList.add('idle'); }, 2200);
+}
+// After a re-render (e.g. picking a size) keep the photo that was showing.
+function restoreGalleries(){
+  document.querySelectorAll('.gal-track').forEach(tr=>{
+    const id = tr.id.replace('galTrack_',''); const idx = (state.galleryIdx||{})[id] || 0;
+    if(idx && Math.round(tr.scrollLeft / Math.max(1,tr.clientWidth)) !== idx) tr.scrollLeft = idx * tr.clientWidth;
+    if(!tr._woke){ tr._woke = true; galWake(id); }
+  });
+}
 function itemGalleryHTML(item){
   const imgs = itemImages(item);
   const n = imgs.length; const idx = Math.min(((state.galleryIdx||{})[item.id]||0), Math.max(0,n-1));
-  return `<div class="ip-photo">${n ? `<img src="${imgs[idx]}" alt="${escapeAttr(item.name)} photo ${idx+1} of ${n}">` : itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}
-      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galleryGo('${item.id}', ${(idx-1+n)%n})">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galleryGo('${item.id}', ${(idx+1)%n})">›</button><span class="gal-count">${idx+1} / ${n}</span>` : ''}
+  if(!n) return `<div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}</div>`;
+  return `<div class="ip-photo gal" id="gal_${item.id}" onpointerdown="galWake('${item.id}')" onpointermove="galWake('${item.id}')" onmouseleave="this.classList.add('idle')">
+      <div class="gal-track" id="galTrack_${item.id}" onscroll="galScrolled('${item.id}')" aria-label="${escapeAttr(item.name)} photos" tabindex="0" onkeydown="if(event.key==='ArrowRight'){event.preventDefault(); galStep('${item.id}',1);} if(event.key==='ArrowLeft'){event.preventDefault(); galStep('${item.id}',-1);}">
+        ${imgs.map((u,i)=>`<div class="gal-slide"><img src="${u}" alt="${escapeAttr(item.name)} photo ${i+1} of ${n}" ${i?'loading="lazy"':''} draggable="false"></div>`).join('')}
+      </div>
+      ${favBtnHTML(item.id)}${oosStickerHTML(item)}
+      ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galStep('${item.id}',-1)">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galStep('${item.id}',1)">›</button><span class="gal-count" id="galCount_${item.id}">${idx+1} / ${n}</span>` : ''}
     </div>
-    ${n>1 ? `<div class="gal-thumbs">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
+    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
 }
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);
@@ -9157,6 +9608,7 @@ function renderCustItem(){
             <span class="ip-type">${typeLbl}</span>
           </div>
           <h1 class="ip-name">${escapeAttr(item.name)}</h1>
+          ${reviewSummaryChipHTML(item)}
           <div class="ip-price-row">
             <span class="price ip-price">${itemPriceLine(item)}</span>
             ${!isAuction && !isRental && item.discountPercent>0 ? `<span class="ip-was">${money(item.price)}</span><span class="discount-badge">${item.discountPercent}% OFF</span>` : ''}
@@ -9174,6 +9626,7 @@ function renderCustItem(){
         <section class="ip-card">
           <h2>About this item</h2>
           ${item.description ? `<p class="ip-desc">${escapeAttr(item.description).replace(/\n/g,'<br>')}</p>` : `<p class="muted">The store hasn't added a description.</p>`}
+          ${itemReviewsHTML(item)}
           ${biz ? `
           <div class="ip-seller">
             <span class="admin-av">${escapeAttr((biz.name||'?').trim().charAt(0).toUpperCase())}</span>
@@ -9296,6 +9749,23 @@ function sheetItemDetail(){
   </div>
   ${itemActionsHTML(item)}`;
 }
+// Top selling shows 5 rows (2 or 3 per row on phones); everything after that
+// goes into side-scrolling rows below, one per category (or one "More to
+// explore" row when it's all one category).
+const TOP_GRID_ROWS = 5;
+function topGridMax(){ return TOP_GRID_ROWS * (window.innerWidth >= 440 ? 3 : 2); }   // matches .top-grid's columns
+function moreRailsHTML(rest){
+  if(!rest.length) return '';
+  const groups = {};
+  rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
+  const keys = Object.keys(groups);
+  const rails = keys.length === 1 ? [['More to explore', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
+  return rails.map(([title, list, cat])=>`
+      <div class="section">
+        <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
+        <div class="rail">${list.map(i=>topSellingCardHTML(i)).join('')}</div>
+      </div>`).join('');
+}
 function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
@@ -9308,9 +9778,9 @@ function renderCustHome(){
   setTimeout(updateHomeMiniHeader, 0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${homeMiniHeaderHTML()}
-    <div class="home-hero">
+    <div class="home-hero ${DB.settings.heroImageUrl?'has-photo':''}" style="${DB.settings.heroImageUrl?`--hero-img:url('${escapeAttr(DB.settings.heroImageUrl)}')`:''}">
       ${homeHeaderHTML()}
-      ${HERO_SCENE_SVG}
+      ${DB.settings.heroImageUrl ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       ${homeSearchRowHTML('hero')}
       <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
@@ -9332,9 +9802,10 @@ function renderCustHome(){
       <div class="section">
         <h2 style="margin-bottom:12px;">Top selling</h2>
         <div class="top-grid">
-          ${filtered.length? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
+          ${filtered.length? filtered.slice(0, topGridMax()).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
         </div>
-      </div>`}
+      </div>
+      ${moreRailsHTML(filtered.slice(topGridMax()))}`}
     </div>
   `);
   ensureCountdownTimer();
@@ -9429,7 +9900,7 @@ function deskBannerHTML(){
       <p>${b.text}</p>
       <button class="db-cta" onclick="${b.act}">${b.cta}</button>
     </div>
-    <div class="db-art">${b.art==='scene' ? HERO_SCENE_SVG : `<span class="db-emoji">${b.art}</span>`}</div>
+    <div class="db-art">${b.art==='scene' ? (DB.settings.heroImageUrl ? `<img class="db-photo" src="${escapeAttr(DB.settings.heroImageUrl)}" alt="">` : HERO_SCENE_SVG) : `<span class="db-emoji">${b.art}</span>`}</div>
     <div class="db-ctrl">
       <button class="db-arrow" aria-label="Previous banner" onclick="deskBannerStep(-1)">‹</button>
       ${DESK_BANNERS.map((_,i)=>`<button class="db-dot ${i===_deskBanner?'on':''}" aria-label="Banner ${i+1}" onclick="deskBannerGo(${i})"></button>`).join('')}
@@ -9460,7 +9931,7 @@ function renderDeskHome(){
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
-        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you directly through Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
         <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
       </section>`}
       ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `
@@ -11293,7 +11764,8 @@ function renderCustOrders(){
   // recent unfinished order is always what a customer sees first, not
   // whatever's merely newest overall.
   const activeTab = state.ordersTab || 'all';
-  const tabFiltered = activeTab==='all' ? sorted : sorted.filter(o=>orderListingType(o)===activeTab);
+  const tabFiltered0 = activeTab==='all' ? sorted : sorted.filter(o=>orderListingType(o)===activeTab);
+  const tabFiltered = state.ordersStatus ? tabFiltered0.filter(o=>orderStage(o)===state.ordersStatus) : tabFiltered0;
   const ongoing = tabFiltered.filter(o=>!isOrderCompleted(o));
   const completed = tabFiltered.filter(o=>isOrderCompleted(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
@@ -11311,6 +11783,7 @@ function renderCustOrders(){
       </div>` : ''}
       ${hasOtherSections? `<div class="section-head"><h2>Orders</h2></div>` : ''}
       ${sorted.length? `<div class="tabs">${ORDERS_TABS.map(t=>`<button class="tab ${activeTab===t.id?'active':''}" onclick="setOrdersTab('${t.id}')">${t.label}</button>`).join('')}</div>` : ''}
+      ${state.ordersStatus ? `<div style="margin:-4px 0 12px;"><button class="cat-chip" onclick="state.ordersStatus=null; render();" aria-label="Show all orders">${ORDER_STAGES[state.ordersStatus].icon} ${ORDER_STAGES[state.ordersStatus].label} <span aria-hidden="true">✕</span></button></div>` : ''}
       ${tabFiltered.length ? `
         ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>Ongoing</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
         ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}

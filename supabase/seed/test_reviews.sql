@@ -1,0 +1,55 @@
+-- Test reviews on some test items (run after test_data.sql). Removed by remove_test_data.sql.
+begin;
+alter table public.item_reviews disable trigger item_review_guard;
+insert into public.item_reviews (id, item_id, user_id, reviewer_name, rating, comment, created_at) values
+('test_rv_ts001_0','test_it_ts001','test_customer_0','Ibrahim',5,'Good value for the price.', now() - interval '4 days'),
+('test_rv_ts001_1','test_it_ts001','test_customer_1','Aishath',5,'Delivery to the boat was on time.', now() - interval '7 days'),
+('test_rv_ts001_2','test_it_ts001','test_customer_2','Mohamed',5,'Delivery to the boat was on time.', now() - interval '4 days'),
+('test_rv_ts001_3','test_it_ts001','test_customer_3','Hawwa',4,'Exactly as in the photos.', now() - interval '3 days'),
+('test_rv_ts002_0','test_it_ts002','test_customer_0','Ibrahim',4,'Good value for the price.', now() - interval '5 days'),
+('test_rv_ts002_1','test_it_ts002','test_customer_1','Aishath',5,'Great quality, arrived fast.', now() - interval '36 days'),
+('test_rv_ts003_0','test_it_ts003','test_customer_0','Ibrahim',5,'Delivery to the boat was on time.', now() - interval '8 days'),
+('test_rv_ts003_1','test_it_ts003','test_customer_1','Aishath',5,'Nice packaging and quick reply from the store.', now() - interval '38 days'),
+('test_rv_ts003_2','test_it_ts003','test_customer_2','Mohamed',5,'Delivery to the boat was on time.', now() - interval '38 days'),
+('test_rv_ts003_3','test_it_ts003','test_customer_3','Hawwa',4,'Great quality, arrived fast.', now() - interval '15 days'),
+('test_rv_ts003_4','test_it_ts003','test_customer_4','Ahmed',5,'Delivery to the boat was on time.', now() - interval '9 days'),
+('test_rv_ts007_0','test_it_ts007','test_customer_0','Ibrahim',4,'Exactly as in the photos.', now() - interval '35 days'),
+('test_rv_ts007_1','test_it_ts007','test_customer_1','Aishath',5,'Delivery to the boat was on time.', now() - interval '20 days'),
+('test_rv_ts007_2','test_it_ts007','test_customer_2','Mohamed',4,'Nice packaging and quick reply from the store.', now() - interval '12 days'),
+('test_rv_ts007_3','test_it_ts007','test_customer_3','Hawwa',5,'Delivery to the boat was on time.', now() - interval '37 days'),
+('test_rv_el001_0','test_it_el001','test_customer_0','Ibrahim',5,'Great quality, arrived fast.', now() - interval '36 days'),
+('test_rv_el001_1','test_it_el001','test_customer_1','Aishath',3,'Good, but delivery took a day longer.', now() - interval '37 days'),
+('test_rv_el001_2','test_it_el001','test_customer_2','Mohamed',5,'Delivery to the boat was on time.', now() - interval '14 days'),
+('test_rv_el003_0','test_it_el003','test_customer_0','Ibrahim',3,'Okay for the price.', now() - interval '28 days'),
+('test_rv_el003_1','test_it_el003','test_customer_1','Aishath',5,'Good value for the price.', now() - interval '38 days'),
+('test_rv_el003_2','test_it_el003','test_customer_2','Mohamed',4,'Very happy, will buy again!', now() - interval '20 days'),
+('test_rv_el003_3','test_it_el003','test_customer_3','Hawwa',5,'Exactly as in the photos.', now() - interval '16 days'),
+('test_rv_el003_4','test_it_el003','test_customer_4','Ahmed',5,'Delivery to the boat was on time.', now() - interval '20 days'),
+('test_rv_el009_0','test_it_el009','test_customer_0','Ibrahim',5,'Nice packaging and quick reply from the store.', now() - interval '29 days'),
+('test_rv_el009_1','test_it_el009','test_customer_1','Aishath',5,'Delivery to the boat was on time.', now() - interval '5 days'),
+('test_rv_el009_2','test_it_el009','test_customer_2','Mohamed',5,'Delivery to the boat was on time.', now() - interval '27 days'),
+('test_rv_el009_3','test_it_el009','test_customer_3','Hawwa',5,'Very happy, will buy again!', now() - interval '10 days'),
+('test_rv_el009_4','test_it_el009','test_customer_4','Ahmed',4,'Good value for the price.', now() - interval '3 days'),
+('test_rv_bk001_0','test_it_bk001','test_customer_0','Ibrahim',4,'Delivery to the boat was on time.', now() - interval '21 days'),
+('test_rv_bk001_1','test_it_bk001','test_customer_1','Aishath',5,'Nice packaging and quick reply from the store.', now() - interval '23 days'),
+('test_rv_bk007_0','test_it_bk007','test_customer_0','Ibrahim',4,'Good value for the price.', now() - interval '5 days'),
+('test_rv_bk007_1','test_it_bk007','test_customer_1','Aishath',5,'Very happy, will buy again!', now() - interval '31 days'),
+('test_rv_bk007_2','test_it_bk007','test_customer_2','Mohamed',3,'Okay for the price.', now() - interval '5 days'),
+('test_rv_bk007_3','test_it_bk007','test_customer_3','Hawwa',5,'Nice packaging and quick reply from the store.', now() - interval '20 days'),
+('test_rv_bk007_4','test_it_bk007','test_customer_4','Ahmed',3,'Okay for the price.', now() - interval '29 days'),
+('test_rv_cf001_0','test_it_cf001','test_customer_0','Ibrahim',3,'Decent, size runs a little small.', now() - interval '23 days'),
+('test_rv_cf001_1','test_it_cf001','test_customer_1','Aishath',5,'Good value for the price.', now() - interval '23 days'),
+('test_rv_cf001_2','test_it_cf001','test_customer_2','Mohamed',5,'Delivery to the boat was on time.', now() - interval '8 days'),
+('test_rv_cf001_3','test_it_cf001','test_customer_3','Hawwa',4,'Great quality, arrived fast.', now() - interval '14 days'),
+('test_rv_hl001_0','test_it_hl001','test_customer_0','Ibrahim',5,'Nice packaging and quick reply from the store.', now() - interval '16 days'),
+('test_rv_hl001_1','test_it_hl001','test_customer_1','Aishath',4,'Good value for the price.', now() - interval '32 days'),
+('test_rv_hl001_2','test_it_hl001','test_customer_2','Mohamed',5,'Exactly as in the photos.', now() - interval '29 days'),
+('test_rv_hl001_3','test_it_hl001','test_customer_3','Hawwa',4,'Delivery to the boat was on time.', now() - interval '18 days'),
+('test_rv_hw001_0','test_it_hw001','test_customer_0','Ibrahim',4,'Delivery to the boat was on time.', now() - interval '18 days'),
+('test_rv_hw001_1','test_it_hw001','test_customer_1','Aishath',3,'Decent, size runs a little small.', now() - interval '23 days'),
+('test_rv_hw001_2','test_it_hw001','test_customer_2','Mohamed',3,'Decent, size runs a little small.', now() - interval '15 days')
+on conflict (id) do nothing;
+update public.item_reviews r set business_id = i.business_id from public.items i where i.id = r.item_id and r.id like 'test_%';
+alter table public.item_reviews enable trigger item_review_guard;
+select count(*) reviews from public.item_reviews where id like 'test_%';
+commit;

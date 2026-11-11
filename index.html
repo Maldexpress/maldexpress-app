@@ -205,7 +205,7 @@
     position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px;
     padding:calc(10px + env(safe-area-inset-top)) 16px 12px; margin:0 -16px 10px;
   }
-  .topbar.glass{background:rgba(247,245,240,.88); -webkit-backdrop-filter:saturate(180%) blur(14px); backdrop-filter:saturate(180%) blur(14px); border:none; border-bottom:1px solid var(--edge); border-radius:0; box-shadow:none;}
+  .topbar.glass{background:rgba(243,247,246,.9); -webkit-backdrop-filter:saturate(180%) blur(14px); backdrop-filter:saturate(180%) blur(14px); border:none; border-bottom:1px solid var(--edge); border-radius:0; box-shadow:none;}
   .topbar .iconbtn{
     width:42px; height:42px; border-radius:14px; border:1px solid var(--edge); background:var(--surface);
     display:flex; align-items:center; justify-content:center; font-size:1.1em; color:var(--ink); flex-shrink:0; box-shadow:0 1px 2px rgba(13,43,51,.05);
@@ -1357,6 +1357,56 @@
     .desk-row{grid-template-columns:repeat(4, minmax(0,1fr));}
     .desk-row > .top-card:nth-child(n+5){display:none;}
     .util-ship{display:none;}
+  }
+
+  /* ---------- Every screen size uses its room ----------
+     Tablets (640-1023px) get the full width instead of a phone column: more
+     product columns, a two-column item page, wider sheets. Store and rider
+     lists become card grids from 768px; very wide PCs (1600px+) get a wider
+     page instead of empty margins. */
+  .card-list{display:grid; gap:12px; margin-bottom:12px;}
+  .card-list > *{margin:0 !important; min-width:0;}
+  .dash-2 > .section{min-width:0;}
+  @media (min-width:640px) and (max-width:1023px){
+    #app{max-width:none;}
+    .bottomnav .bar{max-width:720px;}
+    .cart-checkout-bar{max-width:620px;}
+    .sheet{max-width:640px;}
+    .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(4, minmax(0,1fr)); gap:16px;}
+    .rail .top-card{flex:0 0 calc((100% - 3*12px) / 4); max-width:none;}
+    .feat-panel .featured-scroll.feat-grid{grid-auto-columns:calc((100% - 40px - 5*10px) / 6); gap:10px;}
+    .feat-panel .feat-grid .top-card:nth-child(4n+1){scroll-snap-align:none;}
+    .feat-panel .feat-grid .top-card:nth-child(6n+1){scroll-snap-align:start;}
+    .home-hero{padding-left:28px; padding-right:28px;}
+    .home-hero .hero-scene{height:150px;}
+  }
+  @media (min-width:860px) and (max-width:1023px){
+    .top-grid, .store-grid-expanded .top-grid{grid-template-columns:repeat(5, minmax(0,1fr));}
+    .rail .top-card{flex:0 0 calc((100% - 4*12px) / 5);}
+  }
+  @media (min-width:768px){
+    .card-list:not(.one){grid-template-columns:repeat(2, minmax(0,1fr));}
+    .dash-2{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 20px; align-items:start;}
+    .dash-2 .card-list{grid-template-columns:minmax(0,1fr);}
+  }
+  @media (min-width:768px) and (max-width:1023px){
+    .ip-main{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:28px; align-items:start;}
+    .ip-media{position:sticky; top:16px;}
+    .ip-lower{grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px;}
+  }
+  @media (min-width:1280px){
+    .card-list.items-list{grid-template-columns:repeat(3, minmax(0,1fr));}
+  }
+  @media (min-width:1600px){
+    #app, body.site-desk #app{max-width:1560px;}
+    .site-wrap{max-width:1480px;}
+    .bottomnav .bar, .bottomnav.compact .bar{max-width:1480px;}
+    .cart-checkout-bar{right:max(40px, calc(50% - 740px));}
+    .fab{right:max(40px, calc(50% - 740px));}
+    .desk-tiles{grid-template-columns:repeat(8, minmax(0,1fr));}
+    .feat-panel .desk-row-feat{grid-auto-columns:calc((100% - 6*18px) / 7);}
+    .admin-top-in{max-width:1480px;}
+    .admin-layout{max-width:1440px;}
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition-duration:.01ms !important; animation:none !important;}
@@ -5866,6 +5916,7 @@ function renderBizHome(biz,t){
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em; color:${pendingApproval?'var(--warn)':'inherit'};">${pendingApproval}</h1><div class="muted" style="font-size:.78em;">Awaiting approval</div></div>
       </div>
 
+      <div class="dash-2">
       <div class="section">
         ${biz.swipeConnected && !swipeLive() ? `<div class="card tight notice-info" style="margin-bottom:10px;"><p style="font-size:.86em;">Your Swipe account is saved. Customers will see Swipe once Maldexpress switches Swipe payments on; until then they pay you by bank transfer.</p></div>` : ''}
         <div class="section-head"><h2>Payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
@@ -5897,11 +5948,12 @@ function renderBizHome(biz,t){
           <p class="muted" style="font-size:.78em; margin-top:10px;">Shown to customers and delivery partners so they can pay you directly.</p>
         </div>
       </div>
+      </div>
 
       <div class="section">
         <div class="section-head"><h2>Needs your attention</h2><button class="link-btn" onclick="go('bizOrders')">See all</button></div>
         ${attentionOrders.length===0 ? `<div class="empty"><span class="ic">✅</span>Nothing waiting on you right now</div>` :
-          attentionOrders.slice(0,3).map(o=>orderCardBiz(o)).join('')}
+          `<div class="card-list">${attentionOrders.slice(0,window.innerWidth>=1024?6:window.innerWidth>=768?4:3).map(o=>orderCardBiz(o)).join('')}</div>`}
       </div>
     </div>
   `);
@@ -6039,7 +6091,7 @@ function renderBizItems(biz,t){
         ${myItems.length ? `<button class="btn btn-ghost btn-sm sel-toggle" onclick="toggleBizSelect()">${state.bizSelect?'Done':'☑ Select'}</button>` : ''}
       </div>
       ${state.bizSelect ? bizSelectBarHTML(myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat)) : ''}
-      ${myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join('') || `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`}
+      ${(()=>{ const h=myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join(''); return h ? `<div class="card-list items-list">${h}</div>` : `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`; })()}
     </div>
   `, canAdd && !state.bizSelect ? `<button class="fab" onclick="startAddItem()" aria-label="Add item">+</button>` : '');
   ensureCountdownTimer();
@@ -7029,13 +7081,13 @@ function renderBizOrders(biz){
       ${myBookings.length? `
       <div class="section" style="margin-bottom:22px;">
         <div class="section-head"><h2>Rental bookings</h2></div>
-        ${myBookings.map(bk=>bookingCardBiz(bk)).join('')}
+        <div class="card-list">${myBookings.map(bk=>bookingCardBiz(bk)).join('')}</div>
       </div>` : ''}
       <div class="section-head"><h2>Active</h2></div>
-      ${activeOrders.length? activeOrders.map(o=>orderCardBiz(o)).join('') : `<div class="empty"><span class="ic">🧾</span>No active orders</div>`}
+      ${activeOrders.length? `<div class="card-list">${activeOrders.map(o=>orderCardBiz(o)).join('')}</div>` : `<div class="empty"><span class="ic">🧾</span>No active orders</div>`}
       ${completedOrders.length? `
       <div class="section-head" style="margin-top:18px;"><h2>Orders</h2></div>
-      ${completedOrders.map(o=>orderCardBiz(o)).join('')}` : ''}
+      <div class="card-list">${completedOrders.map(o=>orderCardBiz(o)).join('')}</div>` : ''}
     </div>
   `);
 }
@@ -8372,9 +8424,12 @@ function renderDelHome(d){
         <div class="section-head"><h2>Delivery requests</h2></div>
         ${offers.map(o=>delOfferCard(o)).join('')}
       </div>` : ''}
+      <div class="dash-2 del-cols">
+      <div class="section">
       <div class="section-head"><h2>Active jobs</h2></div>
-      ${jobs.length? jobs.map(o=>delJobCard(o)).join('') : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
-      <div class="section" style="margin-top:22px;">
+      ${jobs.length? `<div class="card-list one">${jobs.map(o=>delJobCard(o)).join('')}</div>` : `<div class="empty"><span class="ic">🛵</span>No active deliveries. New orders will appear here.</div>`}
+      </div>
+      <div class="section">
         <div class="section-head"><h2>Unassigned orders nearby</h2></div>
         <!-- No customer name/contact/items/total here - nobody's committed to this
              job yet, so there's nothing to hand over the customer's details for.
@@ -8397,6 +8452,7 @@ function renderDelHome(d){
             ${o.rentalItemId?`<p class="muted" style="font-size:.78em; margin-top:2px;">${o.rentalPayoutTiming==='upfront'?'Paid upfront when you accept':'Paid once you mark it delivered'}</p>`:''}
             <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="claimJob('${o.id}')">Accept job</button>
           </div>`).join('') || `<div class="empty"><span class="ic">📭</span>No open jobs right now</div>`}
+      </div>
       </div>
     </div>
   `);
@@ -9975,7 +10031,10 @@ function sheetItemDetail(){
 // goes into side-scrolling rows below, one per category (or one "More to
 // explore" row when it's all one category).
 const TOP_GRID_ROWS = 5;
-function topGridMax(){ return TOP_GRID_ROWS * (window.innerWidth >= 440 ? 3 : 2); }   // matches .top-grid's columns
+// Columns of .top-grid / Sunlit Picks cards at this width (phones 2-3, tablets 4-5 / 6).
+function topGridCols(){ const w = window.innerWidth; return w >= 860 ? 5 : w >= 640 ? 4 : w >= 440 ? 3 : 2; }
+function featPerView(){ return window.innerWidth >= 640 && window.innerWidth < 1024 ? 6 : 4; }
+function topGridMax(){ return TOP_GRID_ROWS * topGridCols(); }   // matches .top-grid's columns
 function moreRailsHTML(rest){
   if(!rest.length) return '';
   const groups = {};
@@ -10020,7 +10079,7 @@ function renderCustHome(){
           <div class="featured-scroll feat-grid" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
           </div>
-          ${featured.length > 4 ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/4)},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
+          ${featured.length > featPerView() ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/featPerView())},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
       </div>` : ''}
       <div class="section">
         <h2 style="margin-bottom:12px;">${(state.homeListingType||'buy_now')==='buy_now' && filtered.some(i=>unitsSold(i.id)) ? '🏝️ Atoll Bestsellers' : '🐚 Fresh off the Boat'}</h2>

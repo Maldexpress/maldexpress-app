@@ -930,6 +930,8 @@
     .feat-panel{margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-radius:0; border-left:none; border-right:none; padding:20px 20px 14px;}
     .feat-panel .featured-scroll.feat-grid{margin:0 -20px; padding:4px 20px 8px; scroll-padding:0 20px; grid-auto-columns:calc((100% - 40px - 3*8px) / 4);}
   }
+  .sold-tag{display:inline-block; margin-top:3px; font-size:.72em; font-weight:800; color:#B8501C;}
+  .feat-panel .feat-grid .sold-tag{display:none;}
   .spon-tag{display:inline-block; vertical-align:middle; margin-left:6px; padding:2px 8px; border-radius:99px; background:rgba(122,82,0,.12); color:#7A5200; font-family:var(--body, inherit); font-size:.5em; font-weight:800; letter-spacing:.4px; text-transform:uppercase;}
   .feat-panel .featured-scroll .top-card{flex:0 0 68%;}
   /* Sponsored: one row, 4 small cards on screen, swipe for more */
@@ -3112,6 +3114,7 @@ DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.featuredRequests = (fr.data||[]).map(featReqFromRow).sort((a,b2)=>b2.createdAt-a.createdAt);
     if(ps.data) DB.settings = settingsFromRow(ps.data);
     await loadRiderBanks();
+    await loadItemSales();
     mergeCustomCategories();
     // Ids only - credentials never leave the server (see business_swipe_accounts).
     const { data: swipeIds, error: swipeErr } = await sb.rpc('swipe_connected_business_ids');
@@ -5609,6 +5612,20 @@ function showOpeningAd(preview){
   if(media.complete) start();
 }
 
+
+/* =================== BESTSELLERS =================== */
+// Units sold THROUGH THE APP per item (item_sales(): delivered orders paid by
+// Swipe, or by a bank transfer whose slip was uploaded and confirmed in the
+// app). Sales arranged outside the app don't count.
+DB.sales = DB.sales || {};
+async function loadItemSales(){
+  if(!sb) return;
+  try{ const { data, error } = await sb.rpc('item_sales'); if(!error) DB.sales = Object.fromEntries((data||[]).map(r=>[r.item_id, Number(r.units)||0])); }catch(e){}
+}
+function unitsSold(itemId){ return (DB.sales||{})[itemId] || 0; }
+function soldLabelHTML(item){ const n = unitsSold(item.id); return n ? `<span class="sold-tag">🔥 ${n} sold</span>` : ''; }
+// Most sold first; items with no app sales keep their usual order after them.
+function sortByAppSales(list){ return list.map((it,i)=>[it,i]).sort((a,b)=>(unitsSold(b[0].id)-unitsSold(a[0].id)) || (a[1]-b[1])).map(x=>x[0]); }
 
 /* =================== REVIEWS =================== */
 // Customer reviews with 1-5 stars (item_reviews). Anyone can read; only a
@@ -9467,6 +9484,7 @@ function topSellingCardHTML(item, showName=true){
         <div class="price">${itemPriceLine(item)}</div>
         ${!isAuction && !isRental && item.discountPercent>0?`<span class="discount-badge">${item.discountPercent}% OFF</span>`:''}
       </div>
+      ${!isAuction && !isRental ? soldLabelHTML(item) : ''}
       ${soon?`<p class="muted" style="font-size:.72em; margin-top:2px;">From ${fmtDateShort(item.availableFrom)}</p>`
         :bookedNow?`<p class="muted" style="font-size:.72em; margin-top:2px; color:var(--coral);">Booked until ${fmtDateShort(isoDateStr(bookedNow.end))}</p>`
         :itemDeliveryNoteHTML(item)}
@@ -9799,7 +9817,8 @@ function moreRailsHTML(rest){
 function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
-  const filtered = homeFilteredItems();
+  const filtered0 = homeFilteredItems();
+  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(filtered0) : filtered0;
   const featured = featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i));
   // Fixed master list (see MARKETPLACE_CATEGORIES) rather than only categories that
   // already have an item in them - so a shopper can browse into a category before
@@ -9830,7 +9849,7 @@ function renderCustHome(){
           ${featured.length > 4 ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/4)},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
       </div>` : ''}
       <div class="section">
-        <h2 style="margin-bottom:12px;">🏝️ Atoll Bestsellers</h2>
+        <h2 style="margin-bottom:12px;">${(state.homeListingType||'buy_now')==='buy_now' && filtered.some(i=>unitsSold(i.id)) ? '🏝️ Atoll Bestsellers' : '🐚 Fresh off the Boat'}</h2>
         <div class="top-grid">
           ${filtered.length? filtered.slice(0, topGridMax()).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
         </div>

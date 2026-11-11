@@ -3170,7 +3170,7 @@ async function saveDB(part, only){
     // upsert if the batch includes even one row this session doesn't own.
     const rows = (only || DB[part]).map(o=>toDbRow(part,o));
     const { error } = await sb.from(TABLES[part]).upsert(rows);
-    if(error){ console.error(error); toast('Save failed: '+error.message, 'bad'); return false; }
+    if(error){ console.error(error); toast(/item_limit_reached/.test(error.message) ? `Your store has reached the ${STORE_ITEM_LIMIT}-item limit` : /store_bank_required/.test(error.message) ? 'Add your store bank account in Settings first' : 'Save failed: '+error.message, 'bad'); return false; }
     return true;
   }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); return false; }
 }
@@ -3959,14 +3959,10 @@ function seedIfEmpty(){
   DB.orders = [];
 }
 
-function tierInfo(biz){
-  const now = Date.now();
-  const trialDaysLeft = 30 - daysBetween(biz.joinDate, now);
-  const trialActive = biz.tier==='free' && trialDaysLeft > 0;
-  const trialExpired = biz.tier==='free' && trialDaysLeft <= 0;
-  const limit = biz.tier==='pro' ? 500 : 10;
-  return { trialDaysLeft: Math.max(trialDaysLeft,0), trialActive, trialExpired, limit };
-}
+// Listing is free for every store, up to STORE_ITEM_LIMIT items (no trial, no Pro).
+// The database enforces the same limit (items_store_limit trigger).
+const STORE_ITEM_LIMIT = 150;
+function tierInfo(biz){ return { trialDaysLeft: 0, trialActive: false, trialExpired: false, limit: STORE_ITEM_LIMIT }; }
 
 /* =================== STATE =================== */
 let state = {
@@ -4314,7 +4310,6 @@ function renderAdmin(){
             ${stat('items', DB.items.filter(i=>i.approvalStatus==='pending').length, 'Items to approve', DB.items.some(i=>i.approvalStatus==='pending'))}
             ${stat('featured', DB.featuredRequests.filter(r=>r.status==='pending').length, 'Featured requests', DB.featuredRequests.some(r=>r.status==='pending'))}
             ${stat('businesses', DB.businesses.length, 'Stores')}
-            ${stat('businesses', proCount, 'On Pro')}
             ${stat('businesses', (DB.delivery||[]).length, 'Riders')}
             ${stat('fees', (DB.orders||[]).length, 'Orders')}
             ${stat('bankRequests', bankPending.length, 'Transfers to check', bankPending.length)}
@@ -4369,15 +4364,10 @@ function adminBusinessesTab(list){
       <div class="row" style="align-items:flex-start;">
         <span class="admin-av">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
         <div style="flex:1; min-width:0;">
-          <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge ${b.tier}">${b.tier==='pro'?'Pro':'Free'}</span></div>
+          <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge free">${DB.items.filter(i=>i.businessId===b.id).length} / ${STORE_ITEM_LIMIT} items</span></div>
           <p class="muted" style="font-size:.86em; margin-top:2px;">${b.ownerName}${b.phone?` · ${b.phone}`:''}</p>
-          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${b.paidAt?` · Paid ${new Date(b.paidAt).toLocaleDateString()}`:''}</p>
+          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}</p>
         </div>
-      </div>
-      <div class="row" style="gap:8px; margin-top:12px; justify-content:flex-end;">
-        ${b.tier==='pro'
-          ? `<button class="btn btn-outline btn-sm" onclick="adminSetTier('${b.id}','free')">Revoke Pro</button>`
-          : `<button class="btn btn-primary btn-sm" onclick="adminSetTier('${b.id}','pro')">Grant Pro</button>`}
       </div>
     </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
   `;
@@ -5191,9 +5181,6 @@ function sheetBizSignup(){
   <div class="field"><label>Category (mark all that fit)</label>
     ${catChecklistHTML('f_cat', '')}
   </div>
-  <div class="card tight" style="background:rgba(255,207,92,.1); border:1px solid rgba(255,207,92,.3);">
-    <p style="font-size:.85em;">🎁 First month free — list up to <strong>10 items</strong>. <button type="button" style="color:var(--lagoon); text-decoration:underline; font-weight:700; background:none; border:none; padding:0; font-size:1em; font-family:inherit; cursor:pointer;" onclick="openPlanCompare()">Upgrade to Pro</button> anytime for MVR 500 to list up to <strong>500 items</strong>.</p>
-  </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitBizSignup()">Create store</button>`;
 }
 // A plain side-by-side Free vs Pro comparison, opened from the "Upgrade to
@@ -5244,7 +5231,7 @@ async function submitBizSignup(){
   closeSheet();
   state.role='business';
   go('bizHome', {activeBizId:biz.id});
-  toast('Store created! Your free month has started 🎉');
+  toast('Store created! 🎉');
 }
 function val(id){ const el=document.getElementById(id); return el? el.value.trim(): ''; }
 // If "Other" was marked on the category checklist and a name was typed in,
@@ -5863,27 +5850,8 @@ function renderBizHome(biz,t){
   const needsFulfillmentChoice = myOrders.filter(o=>!o.rentalItemId && !o.deliveryPersonId && o.status!=='delivered' && !o.readyForPickup && !o.selfDelivery && o.paymentStatus!=='awaiting_completion' && o.status!=='declined' && !swipeOrderNeedsPayment(o));
   const attentionOrders = myOrders.filter(o=>o.paymentStatus==='slip_uploaded' || (o.paymentStatus==='awaiting_approval' && o.status!=='declined') || needsFulfillmentChoice.includes(o));
   const myItems = DB.items.filter(i=>i.businessId===biz.id);
-  const badge = biz.tier==='pro'
-    ? `<span class="badge pro">PRO</span>`
-    : `<span class="badge free">FREE · ${t.trialDaysLeft}d left</span>`;
-
-  const trialBanner = t.trialExpired ? `
-    <div class="card" style="background:rgba(255,107,107,.14); border:1px solid rgba(255,107,107,.35);">
-      <div class="row" style="gap:14px;">
-        <div style="font-size:1.6em;">⏰</div>
-        <div style="flex:1;">
-          <h3>Your free month has ended</h3>
-          <p class="muted" style="margin-top:4px; font-size:.88em;">Pay MVR 500 to keep listing and unlock the Pro tier — up to 500 items.</p>
-        </div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="openSheet('upgradeTier')">Pay MVR 500 now</button>
-    </div>` : (biz.tier==='free' ? `
-    <div class="card" style="background:rgba(34,184,200,.12); border:1px solid rgba(34,184,200,.3);">
-      <div class="row between">
-        <div><h3>Free trial</h3><p class="muted" style="font-size:.85em;">${t.trialDaysLeft} days left · up to 10 items</p></div>
-        <button class="btn btn-sm btn-outline" onclick="openSheet('upgradeTier')">Go Pro</button>
-      </div>
-    </div>`:'');
+  const badge = '';
+  const trialBanner = '';
 
   document.getElementById('app').innerHTML = wrapShell('business','bizHome', `
     ${topbar(biz.name, biz.category, {badge})}
@@ -6061,10 +6029,10 @@ function renderBizItems(biz,t){
   const cats = ['All', ...new Set(myItems.map(i=>i.category||'General'))];
   const canAdd = myItems.length < t.limit;
   document.getElementById('app').innerHTML = wrapShell('business','bizItems', `
-    ${topbar('My items', `${myItems.length} / ${t.limit} listed`)}
+    ${topbar('My items', `${myItems.length} listed`)}
     <div style="padding:4px 16px 0;">
       ${canAdd ? `<div class="bulk-cta"><div><strong>Adding lots of items?</strong><p class="muted">Fill in our template in Excel or Google Sheets and upload it to add them all at once.</p></div><button class="btn btn-outline btn-sm" onclick="if(requireStoreBank()){ _bulk=null; _bulkPhotos={}; openSheet('bulkItems'); }">Upload a list</button></div>` : ''}
-      ${!canAdd ? `<div class="card" style="background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3);"><p style="font-size:.88em;">You've reached your ${t.limit}-item limit${biz.tier==='free'?' on the free tier':''}. ${biz.tier==='free'?'<button class=\"link-btn\" onclick=\"openSheet(\'upgradeTier\')\">Upgrade to Pro →</button>':''}</p></div>`:''}
+      ${!canAdd ? `<div class="card notice-warn"><p style="font-size:.88em;">You've reached the ${t.limit}-item limit. Delete or replace an item to add another.</p></div>` : ''}
       <div class="items-head">
         <div class="tabs" style="margin-bottom:0;">${cats.map(c=>`<button class="tab ${state.filterCat===c?'active':''}" onclick="state.filterCat='${c}';render()">${c}</button>`).join('')}</div>
         ${myItems.length ? `<button class="btn btn-ghost btn-sm sel-toggle" onclick="toggleBizSelect()">${state.bizSelect?'Done':'☑ Select'}</button>` : ''}
@@ -6827,7 +6795,7 @@ function sheetBulkItems(){
     <label for="bulkPhotoFiles" class="filebtn" style="margin-top:8px;">🖼️ ${bulkPhotoCount() ? `${bulkPhotoCount()} photo${bulkPhotoCount()===1?'':'s'} ready · add more photos` : 'Or choose photos (optional)'}</label>
     <p class="muted" style="font-size:.8em; margin-top:6px;">Upload one .zip with all the photos, or pick the photos named in the sheet's <strong>photo</strong> column (you can select many at once). If that column is empty, a photo named after the item's code or name is used (e.g. LL0010.jpg). Check each item's photo below; use Change photo to fix one. Items without a photo can get one later in Edit item.</p>
   </div>
-  <p class="muted" style="font-size:.84em;">You can add ${room} more item${room===1?'':'s'} on the ${biz.tier==='pro'?'Pro':'Free'} plan.</p>
+
   ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}
   ${_bulk && !_bulk.fatal ? `
   <div class="bulk-summary">
@@ -7860,11 +7828,6 @@ function sheetBizSettings(){
   ${settingsSectionLabel('Item settings')}
   <button class="btn btn-outline" style="width:100%;" onclick="closeSheet(); openSheet('bizBulkImport')">📄 Bulk add items from a spreadsheet</button>
   <button class="btn btn-outline" style="width:100%; margin-top:8px;" onclick="closeSheet(); openSheet('bizUploadPhotos')">🖼️ Add photos to items${missingPhotoCount?` (${missingPhotoCount} missing)`:''}</button>
-  ${settingsSectionLabel('Plan')}
-  <div class="row between" style="margin-bottom:16px;">
-    <span class="muted">Plan</span>
-    ${biz.tier==='pro' ? `<span class="badge pro">PRO</span>` : `<button class="btn btn-sm btn-outline" onclick="closeSheet(); openSheet('upgradeTier')">Upgrade to Pro</button>`}
-  </div>
   ${settingsSectionLabel('Preferences')}
   ${fontSizeControl()}
   ${settingsSectionLabel('Account')}
@@ -7991,7 +7954,7 @@ function handleBulkImportFile(e){
       const get = key => colIndex[key]!==undefined ? (row[colIndex[key]]||'').trim() : '';
       const name = get('name'); const price = Number(get('price'));
       if(!name || !price || price<=0){ skipped.push(`Row ${r+1}: needs a name and a price`); continue; }
-      if(items.length >= remaining){ skipped.push(`Row ${r+1}: over your ${t.limit}-item plan limit`); continue; }
+      if(items.length >= remaining){ skipped.push(`Row ${r+1}: over the ${t.limit}-item limit`); continue; }
       const listingType = /rent/i.test(get('listingtype')) ? 'rental' : 'buy_now';
       const freeStr = get('freedelivery').toLowerCase();
       const freeDelivery = freeStr==='' ? true : ['yes','y','true','1'].includes(freeStr);
@@ -10095,7 +10058,7 @@ function renderDeskHome(){
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
-        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open your store free for 30 days and list up to 10 items. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
         <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
       </section>`}
       ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `
@@ -10120,7 +10083,7 @@ function siteFooterHTML(){
   <footer class="site-foot"><div class="site-wrap">
     <div class="sf-cols">
       <div><h4>Shop</h4><button onclick="deskListing('buy_now')">Buy now</button><button onclick="deskListing('auction')">Auctions</button><button onclick="deskListing('rental')">Rentals</button><button onclick="go('custStores')">All stores</button><button onclick="go('custFavourites')">Saved items</button></div>
-      <div><h4>Sell</h4><button onclick="enterRole('business')">Open a store</button><button onclick="enterRole('business')">Free for 30 days, then Pro for MVR 500</button></div>
+      <div><h4>Sell</h4><button onclick="enterRole('business')">Open a store</button><button onclick="enterRole('business')">List for free</button></div>
       <div><h4>Deliver</h4><button onclick="enterRole('delivery')">Become a rider</button><button onclick="enterRole('delivery')">Jobs on your island</button></div>
       <div><h4>Your account</h4>${state.authed?`<button onclick="go('custOrders')">My orders</button>`:`<button onclick="openSheet('signIn')">Sign in or register</button>`}<button onclick="go('custCart')">Cart</button><button onclick="openSheet('custSettings')">Settings</button></div>
     </div>

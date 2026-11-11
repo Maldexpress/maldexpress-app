@@ -12103,7 +12103,8 @@ function custOrderCard(o){
       <button class="btn btn-primary btn-sm" style="width:100%;" onclick="event.stopPropagation(); openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>
     </div>`;
   }
-  const showAcct = o.paymentMethod==='transfer' && o.paymentStatus!=='paid';
+  // The store's account shows only once the store has accepted the order (pay now) and while the slip is being checked.
+  const showAcct = o.paymentMethod==='transfer' && ['pending_transfer','slip_uploaded'].includes(o.paymentStatus) && o.status!=='declined';
   return `
   <div class="glass card" onclick="openCustOrderDetail('${o.id}')">
     <div class="row" style="gap:12px; align-items:flex-start; margin-bottom:8px;">
@@ -12117,7 +12118,7 @@ function custOrderCard(o){
     ${custSwipeHTML(o, true)}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
-      ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
+      ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary btn-sm" style="width:100%; margin-top:10px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : (o.paymentStatus==='slip_uploaded' ? `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip sent. Waiting for the store to confirm the payment</p>` : '')}
     ` : ''}
     ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
       <p class="muted" style="font-size:.82em;">Have ${money(o.total)} ready — cash to your delivery partner, or transfer to ${biz?biz.name:'the store'}'s account.</p>
@@ -12135,7 +12136,8 @@ function sheetCustOrderDetail(){
   if(!o) return `<p class="muted">Order not found.</p>`;
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const itemsList = (o.items||[]).map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
-  const showAcct = o.paymentMethod==='transfer' && o.paymentStatus!=='paid';
+  // The store's account shows only once the store has accepted the order (pay now) and while the slip is being checked.
+  const showAcct = o.paymentMethod==='transfer' && ['pending_transfer','slip_uploaded'].includes(o.paymentStatus) && o.status!=='declined';
   return `
   <div class="row between" style="align-items:flex-start; padding-right:40px;">
     <h2 style="margin:0;">Order #${o.id.slice(-5).toUpperCase()}</h2>
@@ -12169,7 +12171,7 @@ function sheetCustOrderDetail(){
   ${custSwipeHTML(o, false)}
   ${showAcct ? `
     <div class="acct-box" style="margin-top:12px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz?biz.accountName:'', biz?biz.accountNumber:'')}</div></div>
-    ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip uploaded — waiting on store to confirm</p>`}
+    ${o.paymentStatus==='pending_transfer' ? `<button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openSheet('uploadSlip','${o.id}')">Upload transfer slip</button>` : (o.paymentStatus==='slip_uploaded' ? `<p class="muted" style="font-size:.8em; margin-top:8px;">Slip sent. Waiting for the store to confirm the payment</p>` : '')}
   ` : ''}
   ${o.paymentMethod==='cash_to_delivery' && o.paymentStatus==='pending_cash' ? `
     <p class="muted" style="font-size:.82em; margin-top:10px;">Have ${money(o.total)} ready for when it arrives — pay your delivery partner cash, or transfer it straight to the store's account instead:</p>

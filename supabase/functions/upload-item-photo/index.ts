@@ -1,4 +1,4 @@
-// Saves a store's product photo to the public `product-images` bucket.
+// Saves a store's product photo (or the admin's opening-ad video) to the public `product-images` bucket.
 // Called from the app with the photo as the raw request body:
 //   sb.functions.invoke('upload-item-photo', { body: file, headers: { 'x-file-ext': 'jpg' } })
 //
@@ -17,7 +17,8 @@ const FIREBASE_JWKS = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"),
 );
 const MAX_BYTES = 8 * 1024 * 1024;
-const TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic" };
+const MAX_VIDEO_BYTES = 25 * 1024 * 1024;   // short ad videos (Admin -> Settings -> Opening ad)
+const TYPES: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp", gif: "image/gif", heic: "image/heic", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime" };
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-file-ext",
@@ -46,10 +47,11 @@ Deno.serve(async (req) => {
 
   const ext = (req.headers.get("x-file-ext") ?? "jpg").toLowerCase().replace(/[^a-z]/g, "");
   const contentType = TYPES[ext];
-  if (!contentType) return json({ error: "Use a JPG, PNG, WebP, GIF or HEIC photo" }, 415);
+  if (!contentType) return json({ error: "Use a JPG, PNG, WebP, GIF or HEIC photo (or an MP4 / WebM / MOV video)" }, 415);
+  const isVideo = contentType.startsWith("video/");
   const bytes = new Uint8Array(await req.arrayBuffer());
   if (!bytes.length) return json({ error: "The photo is empty" }, 400);
-  if (bytes.length > MAX_BYTES) return json({ error: "The photo is bigger than 8 MB" }, 413);
+  if (bytes.length > (isVideo ? MAX_VIDEO_BYTES : MAX_BYTES)) return json({ error: isVideo ? "The video is bigger than 25 MB" : "The photo is bigger than 8 MB" }, 413);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const path = `${uid}/img_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}.${ext}`;

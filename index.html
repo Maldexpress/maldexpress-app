@@ -938,10 +938,16 @@
   }
   @media (min-width:1024px) and (max-width:1279px){ .feat-panel .desk-row-feat{grid-template-columns:repeat(3, minmax(0,1fr));} .feat-panel .desk-row-feat > .top-card:nth-child(n+7){display:none;} }
   /* Categories on demand */
+  .search-row{position:relative;}
+  .cat-drop{position:absolute; left:0; right:0; top:calc(100% + 8px); z-index:50; display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:8px; max-height:min(60vh, 420px); overflow-y:auto; border-radius:18px; background:var(--surface); box-shadow:var(--shadow-lift); border:1px solid var(--edge); color:var(--ink);}
+  .cat-drop-opt{display:flex; align-items:center; gap:8px; padding:10px; border:none; border-radius:12px; background:none; color:var(--ink); font-weight:600; font-size:.88em; text-align:left; line-height:1.2;}
+  .cat-drop-opt span{font-size:1.2em; flex-shrink:0;}
+  .cat-drop-opt:hover{background:var(--sand-2);}
+  .cat-drop-opt.on{background:var(--lagoon-50); color:var(--lagoon-700); box-shadow:inset 0 0 0 1.5px var(--lagoon-500);}
   .cat-open-btn{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em; max-width:42%;}
   .cat-open-btn .cob-txt{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .cat-open-btn.on{background:rgba(255,255,255,.3); border-color:#fff;}
-  .cat-bar .switcher-wrap{z-index:30;}
+  .cat-bar .switcher-wrap{z-index:4;}   /* below the hero (z 5) so the categories drop-down covers it */
   .cat-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-6px 0 22px;}
   .cat-bar-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.92em; box-shadow:var(--shadow);}
   .cat-bar-btn:hover{border-color:var(--lagoon-500);}
@@ -1035,6 +1041,20 @@
   .sup-reply textarea{flex:1; min-width:0; resize:vertical;}
   .slip-gone{background:var(--sand-2); margin-top:10px;}
   .bank-need{background:linear-gradient(150deg,#FFF4EC,#FFE6D8); border:1px solid #F7C9B3; margin-bottom:14px;}
+  /* Opening ad */
+  .open-ad{position:fixed; inset:0; z-index:9999; background:#0D2B33; display:flex; align-items:center; justify-content:center; animation:adIn .25s ease;}
+  .open-ad.out{opacity:0; transition:opacity .25s ease;}
+  @keyframes adIn{from{opacity:0;} to{opacity:1;}}
+  .open-ad-media{width:100%; height:100%; object-fit:cover;}
+  .open-ad-bar{position:absolute; top:calc(14px + env(safe-area-inset-top)); left:14px; right:14px; display:flex; justify-content:space-between; align-items:center;}
+  .open-ad-tag{padding:4px 10px; border-radius:99px; background:rgba(0,0,0,.45); color:#fff; font-size:.75em; font-weight:800; letter-spacing:.5px;}
+  .open-ad-skip{padding:9px 16px; border-radius:99px; border:1px solid rgba(255,255,255,.6); background:rgba(0,0,0,.5); color:#fff; font-weight:700; font-size:.86em;}
+  .open-ad-skip:disabled{opacity:.75;}
+  .open-ad-progress{position:absolute; left:0; right:0; bottom:0; height:4px; background:rgba(255,255,255,.25);}
+  .open-ad-progress span{display:block; height:100%; width:0; background:#fff; transition:width .2s linear;}
+  .open-ad-cta{position:absolute; left:50%; transform:translateX(-50%); bottom:calc(28px + env(safe-area-inset-bottom)); padding:12px 22px; border-radius:99px; background:var(--sunset); color:#fff; font-weight:800; text-decoration:none; box-shadow:0 6px 18px rgba(0,0,0,.3);}
+  .ad-admin-prev{margin-top:10px;}
+  .ad-admin-prev img, .ad-admin-prev video{display:block; width:100%; max-width:240px; aspect-ratio:9/16; object-fit:cover; border-radius:14px; border:1px solid var(--edge); background:#000;}
   /* Store payouts */
   .owe-sum{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;}
   .owe-tile{display:flex; flex-direction:column; gap:2px; padding:14px; border-radius:18px; background:var(--surface); border:1px solid var(--edge);}
@@ -4234,10 +4254,10 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'' };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5 };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'' }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5 }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
 function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
@@ -4372,6 +4392,11 @@ async function adminSaveSettings(){
   if(!(price>=0)){ toast('Enter a featured price','bad'); return; }
   if(!(days>=1 && days<=60)){ toast('Featured days must be 1 to 60','bad'); return; }
   const row = { swipe_enabled: !!(document.getElementById('set_swipe')||{}).checked, featured_slots:slots, featured_price:price, featured_days:days, bank_account_name: val('set_bank_name').trim()||null, bank_account_number: val('set_bank_no').replace(/\s+/g,'')||null, updated_at:new Date().toISOString() };
+  const adLink = val('set_ad_link').trim();
+  if(adLink && !/^https?:\/\//i.test(adLink)){ toast('The ad link must start with https://','bad'); return; }
+  const adOn = !!(document.getElementById('set_ad_on')||{}).checked;
+  if(adOn && !_adDraft.url){ toast('Upload an ad image or video first','bad'); return; }
+  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null });
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -4474,8 +4499,35 @@ function adminSettingsTab(){
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
     <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
     <div class="field"><label for="set_bank_no">Account number</label><input id="set_bank_no" inputmode="numeric" value="${escapeAttr(st.bankAccountNumber||'')}" placeholder="e.g. 7730000000000"></div>
+    <h3 style="margin-top:18px;">Opening ad</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">A full-screen picture or short video everyone sees when they open the app, for 10 seconds. They can skip it after 5 seconds.</p>
+    ${chkRowHTML('set_ad_on', st.adEnabled, 'Show the opening ad')}
+    <div class="ad-admin-prev" id="adAdminPrev">${adAdminPreviewHTML()}</div>
+    <input type="file" id="adFile" accept="image/*,video/mp4,video/webm,video/quicktime" style="display:none;" onchange="onAdFile(event)">
+    <label for="adFile" class="filebtn" style="margin-top:8px;">📎 ${_adDraft.url?'Change picture or video':'Upload a picture or video (MP4, up to 25 MB)'}</label>
+    <div class="field" style="margin-top:10px;"><label for="set_ad_link">Link when tapped (optional)</label><input id="set_ad_link" type="url" value="${escapeAttr(st.adLink||'')}" placeholder="https://…"></div>
+    <button class="btn btn-ghost btn-sm" style="margin-bottom:12px;" ${_adDraft.url?'':'disabled'} onclick="showOpeningAd(true)">▶ Preview the ad</button>
     <button class="btn btn-primary" onclick="adminSaveSettings()">Save settings</button>
   </div>`;
+}
+let _adDraft = { url:'', type:'image', loadedFrom:null };
+function adAdminPreviewHTML(){
+  const st = DB.settings;
+  if(_adDraft.loadedFrom !== st){ _adDraft = { url:st.adMediaUrl||'', type:st.adMediaType||'image', loadedFrom:st }; }
+  if(!_adDraft.url) return `<p class="muted" style="font-size:.84em;">No ad uploaded yet.</p>`;
+  return _adDraft.type==='video' ? `<video src="${escapeAttr(_adDraft.url)}" muted playsinline controls></video>` : `<img src="${escapeAttr(_adDraft.url)}" alt="Opening ad">`;
+}
+async function onAdFile(e){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  const isVideo = /^video\//.test(f.type) || /\.(mp4|webm|mov)$/i.test(f.name);
+  if(isVideo && f.size > 25*1024*1024){ toast('The video is over 25 MB. Use a shorter or smaller video','bad'); return; }
+  if(!isVideo && f.size > 20*1024*1024){ toast('The picture is over 20 MB','bad'); return; }
+  toast(isVideo ? 'Uploading video…' : 'Uploading picture…');
+  const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+  if(!url) return;
+  _adDraft.url = url; _adDraft.type = isVideo ? 'video' : 'image';
+  const box = document.getElementById('adAdminPrev'); if(box) box.innerHTML = adAdminPreviewHTML();
+  toast('Uploaded. Press Save settings to use it');
 }
 function adminSearchInput(v){
   state.adminSearch = v;
@@ -5270,6 +5322,52 @@ function bankNeededCardHTML(who){
 function requireStoreBank(){ const b = currentBiz(); if(bizHasBank(b)) return true; toast('Add your bank account first','bad'); openSheet('bizSettings'); return false; }
 function requireRiderBank(){ const d = currentDel(); if(riderHasBank(d) || !sb) return true; toast('Add your bank account first','bad'); openSheet('delSettings'); return false; }
 function bankErrText(msg){ return /rider_bank_required/.test(msg||'') ? 'Add your bank account in Settings before taking jobs' : /store_bank_required/.test(msg||'') ? 'Add your store bank account in Settings first' : msg; }
+
+
+/* =================== OPENING AD =================== */
+// Full-screen picture or video shown to everyone each time the app opens
+// (Admin -> Settings -> Opening ad): adSeconds long (10), skippable after
+// adSkipAfter (5). It lives outside #app so render() never touches it, and
+// it's never shown in the admin portal.
+let _adShown = false;
+async function maybeShowOpeningAd(){
+  if(_adShown || state.adminMode || !sb) return;
+  try{
+    const { data } = await sb.from('platform_settings').select('ad_enabled,ad_media_url,ad_media_type,ad_link,ad_seconds,ad_skip_after').eq('id',1).maybeSingle();
+    if(!data || !data.ad_enabled || !data.ad_media_url) return;
+    Object.assign(DB.settings, settingsFromRow({ ...data, swipe_enabled:DB.settings.swipeEnabled, featured_slots:DB.settings.featuredSlots, featured_price:DB.settings.featuredPrice, featured_days:DB.settings.featuredDays, bank_account_name:DB.settings.bankAccountName, bank_account_number:DB.settings.bankAccountNumber }));
+    showOpeningAd(false);
+  }catch(e){ /* no ad if it can't load */ }
+}
+function showOpeningAd(preview){
+  const st = DB.settings; const url = preview ? _adDraft.url : st.adMediaUrl; const type = preview ? _adDraft.type : st.adMediaType;
+  if(!url) return;
+  _adShown = true;
+  const total = st.adSeconds||10, skipAt = st.adSkipAfter!=null ? st.adSkipAfter : 5;
+  const link = preview ? (val('set_ad_link')||'').trim() : st.adLink;
+  const el = document.createElement('div'); el.className = 'open-ad'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','Advertisement');
+  el.innerHTML = `${type==='video' ? `<video class="open-ad-media" src="${escapeAttr(url)}" autoplay muted playsinline loop></video>` : `<img class="open-ad-media" src="${escapeAttr(url)}" alt="Advertisement">`}
+    <div class="open-ad-bar"><span class="open-ad-tag">Ad</span><button class="open-ad-skip" disabled>Skip in ${skipAt}</button></div>
+    <div class="open-ad-progress"><span></span></div>
+    ${link ? `<a class="open-ad-cta" href="${escapeAttr(link)}" target="_blank" rel="noopener">Learn more ›</a>` : ''}`;
+  document.body.appendChild(el);
+  const skip = el.querySelector('.open-ad-skip'), bar = el.querySelector('.open-ad-progress span'), media = el.querySelector('.open-ad-media');
+  let started = false, t0 = 0, timer = null;
+  const close = ()=>{ clearInterval(timer); el.classList.add('out'); setTimeout(()=>el.remove(), 250); };
+  const tick = ()=>{
+    const s = (Date.now()-t0)/1000;
+    bar.style.width = Math.min(100, s/total*100)+'%';
+    const left = Math.ceil(skipAt - s);
+    if(left > 0){ skip.textContent = `Skip in ${left}`; skip.disabled = true; } else { skip.textContent = 'Skip ✕'; skip.disabled = false; }
+    if(s >= total) close();
+  };
+  const start = ()=>{ if(started) return; started = true; t0 = Date.now(); tick(); timer = setInterval(tick, 200); };
+  skip.onclick = ()=>{ if(!skip.disabled) close(); };
+  media.addEventListener(type==='video' ? 'playing' : 'load', start, { once:true });
+  media.addEventListener('error', close, { once:true });
+  setTimeout(start, 3000);   // slow network: start the clock anyway
+  if(media.complete) start();
+}
 
 /* =================== BUSINESS SIDE =================== */
 function currentBiz(){ return DB.businesses.find(b=>b.id===state.activeBizId); }
@@ -8740,13 +8838,24 @@ function homeSearchRowHTML(where='hero'){
       <input id="${inputId}" type="search" enterkeyhint="search" placeholder="Search items or stores" aria-label="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="updateHomeSearch(this.value, '${inputId}')" onkeydown="if(event.key==='Enter') this.blur()">
       ${state.homeSearch ? `<button type="button" class="hs-clear" aria-label="Clear search" onclick="updateHomeSearch('', '${inputId}')">✕</button>` : ''}
     </div>
-    <button class="switcher-pill accent cat-open-btn ${state.homeCategory!=='All'?'on':''}" aria-haspopup="dialog" onclick="openSheet('categories')" aria-label="${state.homeCategory!=='All' ? 'Category: '+escapeAttr(state.homeCategory)+'. Change category' : 'All categories'}">
+    <button class="switcher-pill accent cat-open-btn ${state.homeCategory!=='All'?'on':''}" aria-haspopup="listbox" aria-expanded="${state.catDropOpen===where}" onclick="event.stopPropagation(); toggleCatDrop('${where}')" aria-label="${state.homeCategory!=='All' ? 'Category: '+escapeAttr(state.homeCategory)+'. Change category' : 'All categories'}">
       <span class="sw-ic" aria-hidden="true">${state.homeCategory!=='All' ? categoryIcon(state.homeCategory) : '▦'}</span>
       <span class="cob-txt">${state.homeCategory!=='All' ? escapeAttr(state.homeCategory) : 'Categories'}</span>
-      <span class="switcher-caret">▾</span>
+      <span class="switcher-caret" style="${state.catDropOpen===where?'transform:rotate(180deg);':''}">▾</span>
     </button>
+    ${state.catDropOpen===where ? catDropHTML() : ''}
   </div>`;
 }
+// Categories open as a drop-down under the search row (hero or small header).
+function toggleCatDrop(where){ state.catDropOpen = state.catDropOpen===where ? false : where; state.homeSwitcherOpen = false; render(); }
+function pickCatDrop(c){ state.catDropOpen = false; setHomeCategory(c); }
+function catDropHTML(){
+  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  return `<div class="cat-drop" role="listbox" aria-label="Categories" onclick="event.stopPropagation()">
+    ${cats.map(c=>`<button role="option" aria-selected="${state.homeCategory===c}" class="cat-drop-opt ${state.homeCategory===c?'on':''}" onclick="pickCatDrop('${escapeAttr(c)}')"><span aria-hidden="true">${c==='All'?'✨':categoryIcon(c)}</span>${c==='All'?'All categories':escapeAttr(c)}</button>`).join('')}
+  </div>`;
+}
+document.addEventListener('click', ()=>{ if(state.catDropOpen){ state.catDropOpen = false; render(); } });
 function listingSwitcherHTML(where='bar'){
   const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
   const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);
@@ -8771,7 +8880,7 @@ function toggleHomeSwitcher(where='hero'){ state.homeSwitcherOpen = state.homeSw
 const MINI_GROW = 60;
 let _miniP = -1;   // -1 hidden, 0..1 locked and growing; kept across render()s
 function homeMiniHeaderHTML(){
-  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  const keep = state.catDropOpen==='mini' || document.activeElement?.id==='homeSearchMini';
   const p = keep ? Math.max(_miniP, 1) : _miniP;
   return `<div class="home-mini ${p>=0?'show':''}" id="homeMini" style="--p:${Math.max(0,p)}">
     <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>${BRAND_MARK_SVG}</button>
@@ -8783,7 +8892,7 @@ function updateHomeMiniHeader(){
   const row = document.querySelector('.search-row.hero'); if(!row) return;
   const lockAt = parseFloat(getComputedStyle(el).paddingTop) || 8;   // where the small header's search sits
   const past = lockAt - row.getBoundingClientRect().top;               // px the hero search has gone above that
-  const keep = state.homeSwitcherOpen==='mini' || document.activeElement?.id==='homeSearchMini';
+  const keep = state.catDropOpen==='mini' || document.activeElement?.id==='homeSearchMini';
   _miniP = keep ? 1 : (past < 0 ? -1 : Math.min(1, past / MINI_GROW));
   el.classList.toggle('show', _miniP >= 0);
   el.style.setProperty('--p', String(Math.max(0, _miniP)));
@@ -11604,6 +11713,7 @@ window.addEventListener('unhandledrejection', e=>{
   // drawn until every table had downloaded and the sign-in check finished, so
   // a slow connection showed an empty screen.
   render();
+  maybeShowOpeningAd();
   try{
     await loadDB();
     seedIfEmpty();

@@ -545,6 +545,12 @@
     box-shadow:0 4px 16px rgba(8,60,80,calc(.22 * var(--p)));
     visibility:hidden; pointer-events:none;}
   .home-mini.show{visibility:visible; pointer-events:auto;}
+  /* Same look as the big header: the admin's header photo (if set) and the wavy shoreline under it */
+  .home-mini{padding-bottom:26px; box-shadow:none !important;}
+  .home-mini.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.42) 0%, rgba(6,40,52,.30) 100%), var(--hero-img) center 30% / cover no-repeat;}
+  .home-mini .mini-shore{position:absolute; left:0; right:0; bottom:-1px; width:100%; height:24px; pointer-events:none;}
+  .home-mini .mini-shore path{fill:var(--sand-bg);}
+  .home-mini > *:not(.mini-shore){position:relative; z-index:1;}
   .home-mini .mini-mark{flex-shrink:0; width:calc(40px * var(--p)); height:40px; opacity:var(--p); padding:0; overflow:hidden; border-radius:12px;}
   .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
   .home-mini .search-row{flex:1; min-width:0;}
@@ -9906,9 +9912,11 @@ let _miniP = -1;   // -1 hidden, 0..1 locked and growing; kept across render()s
 function homeMiniHeaderHTML(){
   const keep = state.catDropOpen==='mini' || document.activeElement?.id==='homeSearchMini';
   const p = keep ? Math.max(_miniP, 1) : _miniP;
-  return `<div class="home-mini ${p>=0?'show':''}" id="homeMini" style="--p:${Math.max(0,p)}">
+  const photo = DB.settings && DB.settings.heroImageUrl;
+  return `<div class="home-mini ${p>=0?'show':''} ${photo?'has-photo':''}" id="homeMini" style="--p:${Math.max(0,p)};${photo?`--hero-img:url('${escapeAttr(photo)}')`:''}">
     <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>${BRAND_MARK_SVG}</button>
     ${homeSearchRowHTML('mini')}
+    <svg class="mini-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
   </div>`;
 }
 function updateHomeMiniHeader(){

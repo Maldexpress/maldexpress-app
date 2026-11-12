@@ -490,6 +490,10 @@
   .home-hero .hero-line{font-family:var(--display); font-size:1.9em; font-weight:800; line-height:1.05; letter-spacing:-.025em; margin:8px 0 18px; max-width:15ch; color:#fff;}
   .home-header{justify-content:space-between; padding-bottom:6px; margin-bottom:0; position:relative; top:auto; background:none !important; border:none !important;}
   .home-header .iconbtn{background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.35); color:#fff; box-shadow:none;}
+  .mode-pill{display:inline-flex; align-items:center; gap:6px; height:42px; padding:0 14px; border-radius:999px; background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.35); color:#fff; font-weight:800; font-size:.86em; white-space:nowrap; -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);}
+  .mode-pill:active{transform:scale(.96);}
+  @media (max-width:389px){ .mode-pill span{display:none;} .mode-pill{width:42px; padding:0; justify-content:center;} }
+  .utext.strong{font-weight:800; color:var(--lagoon-700);}
   .home-header .brand{display:flex; align-items:center; gap:10px; min-width:0; flex:1;}
   .brand-mark{padding:0; cursor:pointer; color:inherit; width:42px; height:42px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.35);}
   .brand-mark svg{width:34px; height:34px;}
@@ -5084,6 +5088,29 @@ function goToOwnedDelivery(){
   else go('delPicker');
   return true;
 }
+// ---- Work modes: a store owner / rider can switch from Home, and opens the app in their work mode ----
+function myStores(){ return state.authed && state.customerId ? DB.businesses.filter(b=>b.ownerId===state.customerId) : []; }
+function myRiderProfiles(){ return state.authed && state.customerId ? DB.delivery.filter(d=>d.userId===state.customerId) : []; }
+// Which work mode was used last on this phone (only a convenience for people who
+// have both a store and a rider profile; nothing depends on it being there).
+function rememberWorkMode(m){ try{ localStorage.setItem('mx_work_mode', m); }catch(_){} }
+function lastWorkMode(){ try{ return localStorage.getItem('mx_work_mode'); }catch(_){ return null; } }
+function switchToStoreMode(){ rememberWorkMode('business'); state.drawerOpen = false; goToOwnedBusiness(); }
+function switchToRiderMode(){ rememberWorkMode('delivery'); state.drawerOpen = false; goToOwnedDelivery(); }
+// On opening the app: a store owner lands on their store, a rider on their jobs
+// (both: whichever they used last, else the store). Customers stay on Home.
+function openWorkModeOnStart(){
+  if(state.adminMode || !state.authed) return false;
+  const hasStore = myStores().length > 0, hasRider = myRiderProfiles().length > 0;
+  if(!hasStore && !hasRider) return false;
+  const pick = hasStore && hasRider ? (lastWorkMode()==='delivery' ? 'delivery' : 'business') : (hasStore ? 'business' : 'delivery');
+  return pick==='business' ? goToOwnedBusiness() : goToOwnedDelivery();
+}
+function workModeButtonsHTML(){
+  const st = myStores().length, rd = myRiderProfiles().length;
+  if(!st && !rd) return '';
+  return `${st ? `<button class="mode-pill" onclick="switchToStoreMode()" aria-label="Switch to my store">${'🏪'}<span>My store</span></button>` : ''}${rd ? `<button class="mode-pill" onclick="switchToRiderMode()" aria-label="Switch to my deliveries">${'🛵'}<span>Deliveries</span></button>` : ''}`;
+}
 
 /* =================== BUSINESS / DELIVERY PICKER (scoped to the signed-in account) === */
 function renderPicker(list, kind){
@@ -9602,6 +9629,7 @@ function homeHeaderHTML(){
       <button class="brand-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
     </div>
     <div class="row" style="gap:8px;">
+      ${workModeButtonsHTML()}
       <div style="position:relative;">
         <button class="iconbtn" aria-label="Notifications" style="position:relative;" onclick="event.stopPropagation(); toggleNotifDropdown()">${ICON_BELL}${hasUnread?`<span class="notif-dot"></span>`:''}</button>
         ${state.notifOpen ? notifDropdownHTML(notifs) : ''}
@@ -10478,8 +10506,8 @@ function siteHeaderHTML(active){
           : `<span>Hi! <button class="ulink" onclick="openSheet('signIn')">Sign in</button> or <button class="ulink" onclick="openSheet('signIn')">register</button></span>`}
         <button class="utext" onclick="deskListing('auction')">Auctions</button>
         <button class="utext" onclick="deskListing('rental')">Rentals</button>
-        <button class="utext" onclick="enterRole('business')">Sell on Maldexpress</button>
-        <button class="utext" onclick="enterRole('delivery')">Deliver with us</button>
+        ${myStores().length ? `<button class="utext strong" onclick="switchToStoreMode()">🏪 My store</button>` : `<button class="utext" onclick="enterRole('business')">Sell on Maldexpress</button>`}
+        ${myRiderProfiles().length ? `<button class="utext strong" onclick="switchToRiderMode()">🛵 Deliveries</button>` : `<button class="utext" onclick="enterRole('delivery')">Deliver with us</button>`}
       </div>
       <div class="site-util-right">
         <span class="util-ship">⛴️ Shipping from Malé to every inhabited island</span>
@@ -12946,6 +12974,7 @@ window.addEventListener('unhandledrejection', e=>{
       ensureLiveRefresh();
     }catch(e){ console.error('Live updates failed to start:', e); }
   }
+  try{ if(!/[?&](item|store)=/.test(location.search)) openWorkModeOnStart(); }catch(e){ console.error('Work mode start failed:', e); }
   try{ applyDeepLink(); }catch(e){ console.error('Share link failed:', e); }
   try{ render(); }
   catch(e){ console.error('Render failed:', e); document.getElementById('app').innerHTML = startupErrorHTML(e); }

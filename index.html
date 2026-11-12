@@ -962,6 +962,10 @@
   .cost-rows .tot{margin-top:4px; padding-top:6px; border-top:1px solid var(--edge);}
   .cost-rows .tot span{color:var(--ink-900); font-weight:800;}
   .cancel-ord{width:100%; margin-top:8px;}
+  .unpaid-block{background:#FFF1EC; border:1px solid #F7C9B3; border-radius:18px; padding:16px;}
+  .unpaid-block strong{display:block; color:var(--sunset-dk); font-family:var(--display); font-size:1.08em;}
+  .unpaid-block p{font-size:.88em; margin-top:4px; color:var(--ink-600);}
+  .unpaid-note{font-size:.85em; font-weight:700; color:var(--sunset-dk); margin:4px 0 6px;}
   .adm-group .adm-item{flex-wrap:wrap;}
   .adm-group .adm-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
   .adm-group .adm-acts{flex-direction:row; flex-basis:100%; justify-content:flex-end;}
@@ -3518,7 +3522,7 @@ function custSwipeHTML(o, inCard){
     const b = DB.businesses.find(x=>x.id===o.businessId); const st = b ? b.name : 'The store';
     if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${o.cancelledAt?'You cancelled this order.':`${st} couldn't take this order.`} You haven't paid anything.</p>`;
     if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${st} to confirm your order${routeNeedsStoreCharge(o.route)?' and set the delivery charge':''}. Then you'll transfer the total to their account and upload the slip.</p>`;
-    if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} confirmed your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
+    if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} ${o.status==='delivered'?'delivered':'confirmed'} your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
     return '';
   }
   if(o.paymentMethod!=='swipe') return '';
@@ -5337,6 +5341,8 @@ function sheetHTML(){
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
   else if(state.sheet==='cancelOrder') body = sheetCancelOrder();
+  else if(state.sheet==='deliverUnpaid') body = sheetDeliverUnpaid();
+  else if(state.sheet==='unpaidBlock') body = `<h2>Pay first</h2>${unpaidBlockHTML(DB.orders.find(x=>x.id===state.sheetData) || unpaidDeliveredOrder())}`;
   else if(state.sheet==='adminDeleteItems') body = sheetAdminDeleteItems();
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='rentalReturn') body = sheetRentalReturn();
@@ -7446,7 +7452,7 @@ function orderDetailBizBody(o){
   if(!o) return `<h2>Order not found</h2>`;
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
   const payoutAmt = Math.round(o.deliveryPartnerPayout!=null ? o.deliveryPartnerPayout : o.deliveryFee);
-  const buyerPaidFee = o.deliveryType!=='free';
+  const buyerPaidFee = o.deliveryType!=='free' || (o.deliveryFee||0) > 0;   // a boat / island charge the store set counts even on a free-delivery item
   const cashCut = cashCutAmount(o);
   let actionArea = '';
   if(o.paymentStatus==='awaiting_completion'){
@@ -7556,7 +7562,10 @@ function orderDetailBizBody(o){
       actionArea += rentalReturnActionHTML(o);
     }
   } else if(buyNowNeedsPayment(o) || o.status==='declined'){
-    // Nothing to hand over: a Buy now order goes out only once it's paid.
+    // Not paid yet: the store can still deliver it itself (it takes the risk);
+    // the customer then can't check out again until they pay.
+    if(o.status==='delivered') actionArea += `<div class="status-pill wait" style="display:inline-block; margin-top:10px;">Delivered · not paid yet</div><p class="muted" style="font-size:.82em; margin-top:6px;">${escapeAttr(o.customerName||'The customer')} can't place new orders until they pay ${money(o.total)}.</p>`;
+    else if(canDeliverUnpaid(o)) actionArea += `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="openSheet('deliverUnpaid','${o.id}')">Mark as delivered (not paid yet)</button>`;
   } else if(o.deliveryPersonId){
     if(o.status==='delivered'){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
@@ -10814,6 +10823,7 @@ function renderCustCart(){
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
     ${topbar('Your Dhoni')}
     <div style="padding:4px 0 ${lines.length?'190px':'0'};">
+      ${lines.length ? unpaidBlockHTML(unpaidDeliveredOrder()) : ''}
       ${lines.length? `
         ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
         ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:2px 4px 6px;">
@@ -11224,6 +11234,8 @@ function refreshCheckoutTotals(){
 }
 function goCheckout(){
   if(sb && !state.authed){ state.pendingItemAction = {type:'checkout'}; openSheet('signIn', {intent:'checkout'}); return; }
+  const owed = unpaidDeliveredOrder();
+  if(owed){ openSheet('unpaidBlock', owed.id); return; }
   openSheet('checkout');
   applyAutoDeliveryTarget();   // e.g. default address on another island
 }
@@ -12137,7 +12149,11 @@ async function placeStoreOrder(bizId){
     const dbRow = toDbRow('orders', order);
     await encryptOrderRow(dbRow, order);
     const { error } = await sb.from('orders').insert(dbRow);
-    if(error){ toast('Could not place order: '+error.message, 'bad'); return; }
+    if(error){
+      const m = /checkout_blocked:?\s*([\w-]+)?/.exec(error.message||'');
+      if(m){ const owed = (m[1] && DB.orders.find(x=>x.id===m[1])) || unpaidDeliveredOrder(); if(owed){ openSheet('unpaidBlock', owed.id); return; } toast("You haven't paid for a delivered order. Pay it before placing a new one",'bad'); return; }
+      toast('Could not place order: '+error.message, 'bad'); return;
+    }
     await rememberDeliveryAddress(deliveryTarget);
   }
   DB.orders.push(order);
@@ -12357,13 +12373,45 @@ function orderThumbHTML(o){
   </div>`;
 }
 function setOrdersTab(tab){ state.ordersTab = tab; render(); }
+// ---- Deliver before payment / pay before the next checkout ----
+function canDeliverUnpaid(o){ return isBuyNowOrder(o) && !o.deliveryPersonId && o.status!=='delivered' && o.status!=='declined' && ['pending_transfer','awaiting_swipe'].includes(o.paymentStatus); }
+function sheetDeliverUnpaid(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<p class="muted">Order not found.</p>`;
+  return `<h2>Delivered before payment?</h2>
+  <p class="muted" style="margin:6px 0 16px;">${escapeAttr(o.customerName||'The customer')} still owes ${money(o.total)} for #${o.id.slice(-5).toUpperCase()}. They can pay from their order, and they can't place a new order until they do.</p>
+  <div class="row" style="gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Not yet</button><button class="btn btn-primary" style="flex:1;" onclick="markUnpaidDelivered('${o.id}')">Mark as delivered</button></div>`;
+}
+async function markUnpaidDelivered(id){
+  closeSheet();
+  const o = DB.orders.find(x=>x.id===id);
+  if(!sb){ if(o){ o.status='delivered'; o.selfDelivery=true; } toast('Marked as delivered · payment still due'); render(); return; }
+  const updated = await callOrderRpc('mark_unpaid_order_delivered', { p_order_id: id }, id, "Couldn't update this order. It may have been paid or changed");
+  if(!updated) return;
+  toast('Marked as delivered · payment still due'); render();
+}
+// A delivered order this customer hasn't paid for blocks new checkouts
+// (customer_checkout_blocked() on the server does the same).
+function unpaidDeliveredOrder(){
+  return (DB.orders||[]).filter(o=>(!sb || o.customerId===state.customerId) && o.status==='delivered' && o.paymentReview!=='approved'
+    && (['pending_transfer','pending_cash','awaiting_swipe'].includes(o.paymentStatus) || ['problem','resubmitted'].includes(o.paymentReview)))
+    .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))[0] || null;
+}
+function unpaidBlockHTML(o){
+  if(!o) return '';
+  return `<div class="card unpaid-block" role="alert">
+    <strong>You haven't paid for order #${o.id.slice(-5).toUpperCase()}</strong>
+    <p>${escapeAttr(o.businessName||'The store')} delivered it. Pay ${money(o.total)} before placing a new order.</p>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openCustOrderDetail('${o.id}')">Pay for #${o.id.slice(-5).toUpperCase()}</button>
+  </div>`;
+}
 // Items + delivery = total, so the customer always sees whether delivery was added.
 function custCostRowsHTML(o){
   if(o.rentalItemId || o.paymentStatus==='awaiting_completion') return '';
   const items = Math.max(0, (o.itemsTotal||0) - (o.discountAmount||0));
   const fee = (o.deliveryFee||0) + (o.extraDeliveryFee||0);
   const waitCharge = routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined';
-  const deliv = waitCharge ? 'Added when the store confirms' : (o.deliveryType==='free' || fee<=0) ? 'Free' : money(fee);
+  const deliv = waitCharge ? 'Added when the store confirms' : fee<=0 ? 'Free' : money(fee);
   return `<div class="cost-rows">
     <div><span>Items</span><span>${money(items)}</span></div>
     <div><span>Delivery${o.route==='boat_to_island'||o.route==='boat_to_male' ? ' (by boat)' : o.route==='local' ? ' (on the island)' : o.zone ? ` (${escapeAttr(o.zone)})` : ''}</span><span class="${deliv==='Free'?'free':''}">${deliv}</span></div>
@@ -12423,6 +12471,7 @@ function custOrderCard(o){
       </div>
     </div>
     ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:8px;">🚚 Out for delivery</div>` : ''}
+    ${o.status==='delivered' && unpaidDeliveredOrder() && ['pending_transfer','awaiting_swipe','pending_cash'].includes(o.paymentStatus) ? `<p class="unpaid-note">Delivered. You haven't paid for this order yet. Pay ${money(o.total)} to place new orders.</p>` : ''}
     ${custSwipeHTML(o, true)}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
@@ -12471,7 +12520,7 @@ function sheetCustOrderDetail(){
   <div class="card tight">
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}
     ${o.discountAmount>0?`<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>`:''}
-    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined' ? 'Added when the store confirms' : (o.deliveryType==='free' || !(o.deliveryFee>0)) ? 'Free' : money(o.deliveryFee)}</span></div>`}
+    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined' ? 'Added when the store confirms' : !(o.deliveryFee>0) ? 'Free' : money(o.deliveryFee)}</span></div>`}
     ${o.extraDeliveryFee?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra delivery fee</span><span>${money(o.extraDeliveryFee)}</span></div>`:''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : ''}
     <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return' ? 'Paid now':'Total'}</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>

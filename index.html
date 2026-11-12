@@ -933,6 +933,13 @@
   .adm-desc{font-size:.8em; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .adm-acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
   .adm-group{grid-column:1/-1; min-width:0;}
+  .cost-rows{margin-top:10px; padding:10px 12px; border-radius:14px; background:var(--sand-bg); font-size:.86em;}
+  .cost-rows > div{display:flex; justify-content:space-between; gap:10px; padding:2px 0; color:var(--ink-600);}
+  .cost-rows > div span:last-child{color:var(--ink-900); font-weight:600; text-align:right;}
+  .cost-rows .free{color:var(--palm, #0E6B48) !important;}
+  .cost-rows .tot{margin-top:4px; padding-top:6px; border-top:1px solid var(--edge);}
+  .cost-rows .tot span{color:var(--ink-900); font-weight:800;}
+  .cancel-ord{width:100%; margin-top:8px;}
   .adm-group .adm-item{flex-wrap:wrap;}
   .adm-group .adm-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
   .adm-group .adm-acts{flex-direction:row; flex-basis:100%; justify-content:flex-end;}
@@ -3154,7 +3161,7 @@ function fromDbRow(part, r){
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
     swipeFee:r.swipe_fee!=null?Number(r.swipe_fee):null, platformFee:r.platform_fee!=null?Number(r.platform_fee):null,
     platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null,
-    originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null };
+    originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null , cancelledAt: r.cancelled_at ? new Date(r.cancelled_at).getTime() : null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -3476,7 +3483,7 @@ function swipeFeeRowsHTML(o){
 }
 function swipeBizActionHTML(o){
   const who = o.customerName || 'The customer';
-  if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+  if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">${o.cancelledAt?`${escapeAttr(who)} cancelled this order`:'You declined this order'}</div>`;
   if(o.paymentStatus==='awaiting_approval') return orderApprovalHTML(o);
   const isBuyNow = !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id);
   if(o.paymentStatus==='awaiting_swipe') return `
@@ -3487,7 +3494,7 @@ function swipeBizActionHTML(o){
 function custSwipeHTML(o, inCard){
   if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
     const b = DB.businesses.find(x=>x.id===o.businessId); const st = b ? b.name : 'The store';
-    if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} couldn't take this order. You haven't paid anything.</p>`;
+    if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${o.cancelledAt?'You cancelled this order.':`${st} couldn't take this order.`} You haven't paid anything.</p>`;
     if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${st} to confirm your order${routeNeedsStoreCharge(o.route)?' and set the delivery charge':''}. Then you'll transfer the total to their account and upload the slip.</p>`;
     if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} confirmed your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
     return '';
@@ -3496,7 +3503,7 @@ function custSwipeHTML(o, inCard){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const store = biz ? biz.name : 'The store';
   const stop = inCard ? 'event.stopPropagation(); ' : '';
-  if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${store} couldn't take this order. You haven't been charged.</p>`;
+  if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${o.cancelledAt?'You cancelled this order.':`${store} couldn't take this order.`} You haven't been charged.</p>`;
   if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${store} to confirm your order. You'll pay with Swipe after that.</p>`;
   if(o.paymentStatus==='awaiting_swipe') return `
     <p class="muted" style="font-size:.85em; margin-top:8px;">${o.rentalItemId || DB.auctions.some(a=>a.orderId===o.id) ? 'Pay now so the store can hand it over.' : `${store} confirmed your order. Pay now to send it on its way.`}</p>
@@ -5211,6 +5218,7 @@ function sheetHTML(){
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
+  else if(state.sheet==='cancelOrder') body = sheetCancelOrder();
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='rentalReturn') body = sheetRentalReturn();
   else if(state.sheet==='checkout') body = sheetCheckout();
@@ -6081,11 +6089,11 @@ function orderCardBiz(o){
 }
 function paymentStatusPill(o){
   if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
-    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.status==='declined') return `<span class="status-pill bad">${o.cancelledAt?'Cancelled':'Declined'}</span>`;
     if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
   }
   if(o.paymentMethod==='swipe'){
-    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.status==='declined') return `<span class="status-pill bad">${o.cancelledAt?'Cancelled':'Declined'}</span>`;
     if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
     if(o.paymentStatus==='awaiting_swipe') return `<span class="status-pill mid">Ready to pay</span>`;
   }
@@ -7328,7 +7336,7 @@ function orderDetailBizBody(o){
     actionArea = swipeBizActionHTML(o);
   } else if(o.paymentMethod==='transfer'){
     if(o.status==='declined'){
-      actionArea = `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+      actionArea = `<div class="status-pill bad" style="display:inline-block;">${o.cancelledAt?`${escapeAttr(o.customerName||'The customer')} cancelled this order`:'You declined this order'}</div>`;
     } else if(o.paymentStatus==='awaiting_approval'){
       actionArea = orderApprovalHTML(o);
     } else if(o.paymentStatus==='pending_transfer'){
@@ -12229,6 +12237,45 @@ function orderThumbHTML(o){
   </div>`;
 }
 function setOrdersTab(tab){ state.ordersTab = tab; render(); }
+// Items + delivery = total, so the customer always sees whether delivery was added.
+function custCostRowsHTML(o){
+  if(o.rentalItemId || o.paymentStatus==='awaiting_completion') return '';
+  const items = Math.max(0, (o.itemsTotal||0) - (o.discountAmount||0));
+  const fee = (o.deliveryFee||0) + (o.extraDeliveryFee||0);
+  const waitCharge = routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined';
+  const deliv = waitCharge ? 'Added when the store confirms' : (o.deliveryType==='free' || fee<=0) ? 'Free' : money(fee);
+  return `<div class="cost-rows">
+    <div><span>Items</span><span>${money(items)}</span></div>
+    <div><span>Delivery${o.route==='boat_to_island'||o.route==='boat_to_male' ? ' (by boat)' : o.route==='local' ? ' (on the island)' : o.zone ? ` (${escapeAttr(o.zone)})` : ''}</span><span class="${deliv==='Free'?'free':''}">${deliv}</span></div>
+    <div class="tot"><span>${waitCharge?'Total so far':'Total'}</span><span>${money(o.total||items)}</span></div>
+  </div>`;
+}
+// Before paying, a customer can cancel a Buy now order (cancel_order_by_customer).
+function custCanCancel(o){
+  return isBuyNowOrder(o) && o.status!=='declined' && o.status!=='delivered' && (
+    (o.paymentMethod==='swipe' && ['awaiting_approval','awaiting_swipe'].includes(o.paymentStatus)) ||
+    (o.paymentMethod==='transfer' && ['awaiting_approval','pending_transfer'].includes(o.paymentStatus)));
+}
+function sheetCancelOrder(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<p class="muted">Order not found.</p>`;
+  return `<h2>Cancel order #${o.id.slice(-5).toUpperCase()}?</h2>
+  <p class="muted" style="margin:6px 0 16px;">${escapeAttr(o.businessName||'The store')} will see that you cancelled it. You haven't paid anything, so there's nothing to refund.</p>
+  <div class="row" style="gap:8px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep order</button>
+    <button class="btn btn-primary danger-bg" style="flex:1;" onclick="cancelOrderByCustomer('${o.id}')">Cancel order</button>
+  </div>`;
+}
+async function cancelOrderByCustomer(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(!o || !custCanCancel(o)){ toast("This order can't be cancelled now",'bad'); closeSheet(); return; }
+  if(!sb || SWIPE_PREVIEW){ o.status='declined'; o.cancelledAt=Date.now(); closeSheet(); toast('Order cancelled'); render(); return; }
+  const updated = await callOrderRpc('cancel_order_by_customer', { p_order_id: id }, id, "Couldn't cancel this order. It may already be paid");
+  closeSheet();
+  if(!updated) return;
+  const fresh = DB.orders.find(x=>x.id===id); if(fresh && !fresh.cancelledAt) fresh.cancelledAt = Date.now();
+  toast('Order cancelled'); render();
+}
 function custOrderCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   if(o.paymentStatus==='awaiting_completion'){
@@ -12266,7 +12313,8 @@ function custOrderCard(o){
       <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip instead</button>
     ` : ''}
     ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
-    ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
+    ${custCostRowsHTML(o)}
+    ${custCanCancel(o) ? `<button class="btn btn-ghost btn-sm cancel-ord" onclick="event.stopPropagation(); openSheet('cancelOrder','${o.id}')">Cancel order</button>` : ''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<p class="muted" style="font-size:.82em; margin-top:6px;">${o.rentalReturnFeeStatus==='collected' ? `Rental fee of ${money(o.rentalFeeAmount||0)} collected on return.` : `Rental fee of ${money(o.rentalFeeAmount||0)} due when you return the item.`}</p>` : ''}
     ${o.rentalItemId && o.rentalReturnedAt ? `<div class="status-pill ok" style="display:inline-block; margin-top:6px;">Returned ✓</div>` : ''}
   </div>`;
@@ -12303,7 +12351,7 @@ function sheetCustOrderDetail(){
   <div class="card tight">
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}
     ${o.discountAmount>0?`<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>`:''}
-    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${o.deliveryType==='free'?'Free':money(o.deliveryFee)}</span></div>`}
+    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined' ? 'Added when the store confirms' : (o.deliveryType==='free' || !(o.deliveryFee>0)) ? 'Free' : money(o.deliveryFee)}</span></div>`}
     ${o.extraDeliveryFee?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra delivery fee</span><span>${money(o.extraDeliveryFee)}</span></div>`:''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : ''}
     <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return' ? 'Paid now':'Total'}</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>
@@ -12321,7 +12369,7 @@ function sheetCustOrderDetail(){
   ` : ''}
   ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em; margin-top:10px;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
   ${o.paymentStatus==='awaiting_completion' ? `<button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="closeSheet(); openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>` : ''}
-  ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:10px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
+  ${custCanCancel(o) ? `<button class="btn btn-outline" style="width:100%; margin-top:12px;" onclick="openSheet('cancelOrder','${o.id}')">Cancel order</button><p class="muted" style="font-size:.8em; margin-top:6px; text-align:center;">You can cancel until you pay.</p>` : ''}
   `;
 }
 function sheetUploadSlip(){

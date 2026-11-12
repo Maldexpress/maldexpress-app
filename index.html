@@ -545,12 +545,9 @@
     box-shadow:0 4px 16px rgba(8,60,80,calc(.22 * var(--p)));
     visibility:hidden; pointer-events:none;}
   .home-mini.show{visibility:visible; pointer-events:auto;}
-  /* Same look as the big header: the admin's header photo (if set) and the wavy shoreline under it */
-  .home-mini{padding-bottom:26px; box-shadow:none !important;}
-  .home-mini.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.42) 0%, rgba(6,40,52,.30) 100%), var(--hero-img) center 30% / cover no-repeat;}
-  .home-mini .mini-shore{position:absolute; left:0; right:0; bottom:-1px; width:100%; height:24px; pointer-events:none;}
-  .home-mini .mini-shore path{fill:var(--sand-bg);}
-  .home-mini > *:not(.mini-shore){position:relative; z-index:1;}
+  /* With an admin header photo, the small header shows the same photo, lined up
+     with the big header (updateHomeMiniHeader sets --mini-bg-size / --mini-bg-pos) */
+  .home-mini.has-photo{background:linear-gradient(180deg, rgba(6,40,52,.28) 0%, rgba(6,40,52,.2) 100%), var(--hero-img) var(--mini-bg-pos, center 30%) / var(--mini-bg-size, cover) no-repeat;}
   .home-mini .mini-mark{flex-shrink:0; width:calc(40px * var(--p)); height:40px; opacity:var(--p); padding:0; overflow:hidden; border-radius:12px;}
   .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
   .home-mini .search-row{flex:1; min-width:0;}
@@ -9916,7 +9913,6 @@ function homeMiniHeaderHTML(){
   return `<div class="home-mini ${p>=0?'show':''} ${photo?'has-photo':''}" id="homeMini" style="--p:${Math.max(0,p)};${photo?`--hero-img:url('${escapeAttr(photo)}')`:''}">
     <button class="brand-mark mini-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>${BRAND_MARK_SVG}</button>
     ${homeSearchRowHTML('mini')}
-    <svg class="mini-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
   </div>`;
 }
 function updateHomeMiniHeader(){
@@ -9929,6 +9925,24 @@ function updateHomeMiniHeader(){
   el.classList.toggle('show', _miniP >= 0);
   el.style.setProperty('--p', String(Math.max(0, _miniP)));
   const mark = el.querySelector('.mini-mark'); if(mark) mark.tabIndex = _miniP < 0.5 ? -1 : 0;
+  alignMiniPhoto(el, row, lockAt);
+}
+// The big header's photo is drawn with background-size:cover, centred. Show
+// the small header the same picture at the same size and offset, as if the
+// big header carried on: the part that sits behind the search when it locks.
+const _heroImgSize = {};
+function alignMiniPhoto(el, row, lockAt){
+  const url = DB.settings && DB.settings.heroImageUrl; if(!url || !el.classList.contains('has-photo')) return;
+  const hero = document.querySelector('.home-hero.has-photo'); if(!hero) return;
+  const nat = _heroImgSize[url];
+  if(!nat){ _heroImgSize[url] = 'loading'; const im = new Image(); im.onload = ()=>{ _heroImgSize[url] = { w:im.naturalWidth, h:im.naturalHeight }; updateHomeMiniHeader(); }; im.src = url; return; }
+  if(nat==='loading' || !nat.w) return;
+  const hr = hero.getBoundingClientRect(), W = hr.width, H = hr.height;
+  const k = Math.max(W / nat.w, H / nat.h), sw = nat.w * k, sh = nat.h * k;
+  const heroTopWhenLocked = lockAt - (row.getBoundingClientRect().top - hr.top);   // hero's top edge, relative to the screen, at the lock point
+  el.style.setProperty('--mini-bg-size', `${sw}px ${sh}px`);
+  const shift = parseFloat(getComputedStyle(hero).getPropertyValue('--hero-shift')) || 0;   // the big header's photo drifts with scroll (heroParallax)
+  el.style.setProperty('--mini-bg-pos', `${hr.left + (W - sw)/2}px ${heroTopWhenLocked + (H - sh)/2 + shift}px`);
 }
 document.body.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
 window.addEventListener('scroll', updateHomeMiniHeader, { passive:true });

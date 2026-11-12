@@ -555,12 +555,17 @@
   .home-mini .mini-mark{flex-shrink:0; width:calc(40px * var(--p)); height:40px; opacity:var(--p); padding:0; overflow:hidden; border-radius:12px;}
   /* The app's name: big over the Home header, and it moves into the small header beside the search as you scroll */
   .hero-wordmark{position:relative; z-index:2; margin:2px 0 14px; font-family:'Gochi Hand', var(--display), cursive; font-weight:400; font-size:clamp(42px, 13.5vw, 64px); line-height:1; letter-spacing:.01em; -webkit-text-stroke:2px #fff; paint-order:stroke fill; color:#fff;
-    text-shadow:0 2px 0 rgba(8,60,80,.35), 0 8px 24px rgba(6,40,52,.45); text-align:left; opacity:calc(1 - var(--word-fade, 0));}
+    text-shadow:0 2px 0 rgba(8,60,80,.35), 0 8px 24px rgba(6,40,52,.45); text-align:left;}
+  .word-fly{display:none; position:fixed; left:0; top:0; z-index:61; pointer-events:none; transform-origin:0 0; will-change:transform;
+    font-family:'Gochi Hand', var(--display), cursive; line-height:1; letter-spacing:.01em; color:#fff; white-space:nowrap;
+    -webkit-text-stroke:2px #fff; paint-order:stroke fill; text-shadow:0 2px 0 rgba(8,60,80,.35), 0 8px 24px rgba(6,40,52,.45);}
+  @media (min-width:1024px){ .word-fly{display:none !important;} }
   .home-mini .mini-word{width:auto; max-width:calc(132px * var(--p)); height:40px; display:flex; align-items:center; border:none; background:none; color:#fff; border-radius:0;
     font-family:'Gochi Hand', var(--display), cursive; font-size:25px; -webkit-text-stroke:.8px #fff; line-height:1; white-space:nowrap; text-shadow:0 2px 8px rgba(6,40,52,.45); padding:0 2px 0 0;}
   /* the small header has less room: its Categories pill shows just the icon (the label is in aria-label) */
   .home-mini .cat-open-btn{padding:0 10px; max-width:none;}
-  .home-mini .cat-open-btn .cob-txt{display:none;}
+  .home-mini .cat-open-btn .cob-txt, .search-row.making-room .cat-open-btn .cob-txt{display:none;}
+  .search-row.making-room .cat-open-btn{padding:0 10px; max-width:none;}
   @media (max-width:359px){ .home-mini .mini-word{font-size:21px; max-width:calc(108px * var(--p));} }
   .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
   .home-mini .search-row{flex:1; min-width:0;}
@@ -9946,9 +9951,10 @@ function homeMiniHeaderHTML(){
   const p = keep ? Math.max(_miniP, 1) : _miniP;
   const photo = DB.settings && DB.settings.heroImageUrl;
   return `<div class="home-mini ${p>=0?'show':''} ${photo?'has-photo':''}" id="homeMini" style="--p:${Math.max(0,p)};${photo?`--hero-img:url('${escapeAttr(photo)}')`:''}">
-    <button class="mini-mark mini-word" aria-label="Maarukeytu home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''}>Maarukeytu</button>
+    <button class="mini-mark mini-word" aria-label="Maarukeytu home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''} style="opacity:${p>=1?1:0}">Maarukeytu</button>
     ${homeSearchRowHTML('mini')}
-  </div>`;
+  </div>
+  <div class="word-fly" id="wordFly" aria-hidden="true">Maarukeytu</div>`;
 }
 function updateHomeMiniHeader(){
   const el = document.getElementById('homeMini'); if(!el) return;
@@ -9956,16 +9962,44 @@ function updateHomeMiniHeader(){
   const lockAt = parseFloat(getComputedStyle(el).paddingTop) || 8;   // where the small header's search sits
   const past = lockAt - row.getBoundingClientRect().top;               // px the hero search has gone above that
   const keep = state.catDropOpen==='mini' || document.activeElement?.id==='homeSearchMini';
-  _miniP = keep ? 1 : (past < 0 ? -1 : Math.min(1, past / MINI_GROW));
+  // The name has already landed beside the search by the time it locks, so the
+  // small header takes over fully formed (no growing slot any more).
+  _miniP = keep ? 1 : (past < 0 ? -1 : 1);
   el.classList.toggle('show', _miniP >= 0);
   el.style.setProperty('--p', String(Math.max(0, _miniP)));
   const mark = el.querySelector('.mini-mark'); if(mark) mark.tabIndex = _miniP < 0.5 ? -1 : 0;
   alignMiniPhoto(el, row, lockAt);
-  // The big name shrinks and fades over the last stretch before the small header
-  // takes over, where the small name slides in beside the search.
-  const wm = document.querySelector('.hero-wordmark');
-  if(wm){ const t = Math.max(0, Math.min(1, (past + 90) / 90)); wm.style.setProperty('--word-fade', String(t));
-    wm.style.transform = REDUCED_MOTION ? '' : `translate3d(${-t*6}px, ${t*10}px, 0) scale(${1 - t*0.35})`; wm.style.transformOrigin = 'left bottom'; }
+  flyWordmark(el, row, past);
+}
+// The name lands where it lives: over the last WORD_FLY px before the search
+// locks, the big search slides right to make room, and a fixed copy of the name
+// (#wordFly) moves and shrinks from the big name into that room, so when the
+// search locks the small header looks exactly the same. Scrolling back reverses it.
+const WORD_FLY = 120;
+function flyWordmark(mini, row, past){
+  const big = document.querySelector('.hero-wordmark'), fly = document.getElementById('wordFly'), small = mini.querySelector('.mini-word');
+  if(!big || !fly || !small) return;
+  const f = REDUCED_MOTION ? (past >= 0 ? 1 : 0) : Math.max(0, Math.min(1, (past + WORD_FLY) / WORD_FLY));
+  const ease = t=>t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
+  // two steps: (A) shrink and slide left while staying above the search, which
+  // slides right to make room; (B) drop down into the room beside the search.
+  const eA = ease(Math.min(1, f / .6)), eB = ease(Math.max(0, (f - .6) / .4));
+  const slot = (small.scrollWidth || 126) + 8;                        // the small name's width plus the gap
+  row.style.paddingLeft = f > 0 && f < 1 ? (slot * eA) + 'px' : (f >= 1 ? slot + 'px' : '');
+  row.classList.toggle('making-room', f > 0);
+  big.style.visibility = f > 0 ? 'hidden' : '';
+  small.style.opacity = f >= 1 ? '1' : '0';
+  const flying = f > 0 && f < 1;
+  fly.style.display = flying ? 'block' : 'none';
+  if(!flying) return;
+  const b = big.getBoundingClientRect(), r = row.getBoundingClientRect();
+  const bigSize = parseFloat(getComputedStyle(big).fontSize) || 50, smallSize = parseFloat(getComputedStyle(small).fontSize) || 25;
+  const sc = 1 + (smallSize / bigSize - 1) * eA;
+  const tx = r.left, ty = r.top + (r.height - smallSize) / 2;         // beside the search, where the small header shows it
+  const above = r.top - bigSize * sc - 4;                              // just above the search
+  const y = eB > 0 ? above + (ty - above) * eB : b.top + (above - b.top) * eA;
+  fly.style.fontSize = bigSize + 'px';
+  fly.style.transform = `translate3d(${b.left + (tx - b.left) * eA}px, ${y}px, 0) scale(${sc})`;
 }
 // The big header's photo is drawn with background-size:cover, centred. Show
 // the small header the same picture at the same size and offset, as if the

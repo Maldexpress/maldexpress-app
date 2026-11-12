@@ -239,7 +239,7 @@
     display:flex; align-items:center; justify-content:center; font-size:1.5em;
     background:var(--lagoon-50); overflow:hidden;
   }
-  .item-thumb img{width:100%; height:100%; object-fit:contain; background:#fff;}
+  .item-thumb img{width:100%; height:100%; object-fit:cover; object-position:50% 35%; background:#fff;}
   .item-info{flex:1; min-width:0;}
   .item-info h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   /* Multi-item order thumbnail: top item in front, runner-up peeking behind. */
@@ -597,7 +597,7 @@
     background:var(--lagoon-50); border-radius:22px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(13,43,51,.04);
   }
   .top-card .img-wrap > div:first-child{font-size:2.6em;}
-  .top-card .img-wrap img{width:100%; height:100%; object-fit:contain; background:#fff;}
+  .top-card .img-wrap img{width:100%; height:100%; object-fit:cover; object-position:50% 35%; background:#fff;   /* photos fill the square card (tall photos lose a little top and bottom) */}
   .item-detail-hero{
     position:relative; width:260px; max-width:100%; height:260px; margin:0 auto 16px; border-radius:28px; overflow:hidden;
     display:flex; align-items:center; justify-content:center; font-size:4em;
@@ -768,7 +768,29 @@
   .admin-grid > .glass.card{margin-bottom:0 !important;}
   .admin-grid > .field, .admin-grid > .empty{grid-column:1/-1; margin-bottom:0 !important;}
   .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:auto;}
-  .admin-store{margin-bottom:12px;}
+  .admin-store{margin-bottom:12px; cursor:pointer;}
+  .admin-store .adm-chev{align-self:center; margin-left:8px;}
+  .adm-back{display:inline-block; margin:0 0 10px; grid-column:1/-1;}
+  .adm-store-card, .adm-tools, .adm-cat{grid-column:1/-1; min-width:0;}
+  .adm-counts{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:12px;}
+  .adm-counts div{display:flex; flex-direction:column; align-items:center; padding:8px 2px; border-radius:12px; background:var(--sand-bg);}
+  .adm-counts strong{font-family:var(--display); font-size:1.15em;}
+  .adm-counts span{font-size:.7em; color:var(--ink-600); text-align:center;}
+  .adm-filters{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px;}
+  .adm-filters .chip{flex-shrink:0; padding:7px 12px; border-radius:99px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.84em;}
+  .adm-filters .chip.active{background:var(--lagoon-50); border-color:var(--lagoon-500); color:var(--lagoon-700);}
+  .adm-cat{margin-top:18px;}
+  .adm-cat-head{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .adm-cat-head h3{font-family:var(--display);}
+  .adm-cat-list{display:grid; gap:10px;}
+  @media (min-width:768px){ .adm-cat-list{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  .adm-row{padding:12px; border-radius:16px; background:var(--surface); border:1px solid var(--edge); min-width:0;}
+  .adm-row-main{display:flex; gap:12px; align-items:flex-start; width:100%; padding:0; border:none; background:none; text-align:left; color:var(--ink); font-size:1em;}
+  .adm-row-main .adm-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .adm-row-pill{margin-top:8px;}
+  .adm-note{font-size:.8em; margin-top:6px;}
+  .adm-row-acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .adm-row-acts .btn{flex:1 1 auto;}
   .admin-av{width:44px; height:44px; border-radius:14px; background:var(--lagoon-50); color:var(--lagoon-700); font-family:var(--display); font-weight:800; font-size:1em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   @media (min-width:1024px){
     .admin-top-in{max-width:1280px; padding:14px 40px;}
@@ -933,6 +955,17 @@
   .adm-desc{font-size:.8em; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .adm-acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
   .adm-group{grid-column:1/-1; min-width:0;}
+  .cost-rows{margin-top:10px; padding:10px 12px; border-radius:14px; background:var(--sand-bg); font-size:.86em;}
+  .cost-rows > div{display:flex; justify-content:space-between; gap:10px; padding:2px 0; color:var(--ink-600);}
+  .cost-rows > div span:last-child{color:var(--ink-900); font-weight:600; text-align:right;}
+  .cost-rows .free{color:var(--palm, #0E6B48) !important;}
+  .cost-rows .tot{margin-top:4px; padding-top:6px; border-top:1px solid var(--edge);}
+  .cost-rows .tot span{color:var(--ink-900); font-weight:800;}
+  .cancel-ord{width:100%; margin-top:8px;}
+  .unpaid-block{background:#FFF1EC; border:1px solid #F7C9B3; border-radius:18px; padding:16px;}
+  .unpaid-block strong{display:block; color:var(--sunset-dk); font-family:var(--display); font-size:1.08em;}
+  .unpaid-block p{font-size:.88em; margin-top:4px; color:var(--ink-600);}
+  .unpaid-note{font-size:.85em; font-weight:700; color:var(--sunset-dk); margin:4px 0 6px;}
   .adm-group .adm-item{flex-wrap:wrap;}
   .adm-group .adm-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
   .adm-group .adm-acts{flex-direction:row; flex-basis:100%; justify-content:flex-end;}
@@ -3136,7 +3169,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -3148,13 +3181,13 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
     swipeFee:r.swipe_fee!=null?Number(r.swipe_fee):null, platformFee:r.platform_fee!=null?Number(r.platform_fee):null,
     platformFeeDue:r.platform_fee_due!=null?Number(r.platform_fee_due):null, feeSettledAt:r.fee_settled_at?new Date(r.fee_settled_at).getTime():null,
-    originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null };
+    originIsland:r.origin_island||null, destIsland:r.dest_island||null, route:r.route||null , cancelledAt: r.cancelled_at ? new Date(r.cancelled_at).getTime() : null };
   if(part==='proRequests') return { id:r.id, businessId:r.business_id, paymentMethod:r.payment_method, status:r.status, amount:Number(r.amount), slipDataUrl:r.slip_url, swipeReference:r.swipe_reference, swipePaymentLink:r.swipe_payment_link, createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, resolvedBy:r.resolved_by };
   if(part==='auctions') return { id:r.id, itemId:r.item_id, businessId:r.business_id, startingPrice:Number(r.starting_price), bidIncrement:Number(r.bid_increment), startTime:new Date(r.start_time).getTime(), endTime:new Date(r.end_time).getTime(), currentHighestBid:r.current_highest_bid!=null?Number(r.current_highest_bid):null, currentHighestBidder:r.current_highest_bidder, bidCount:Number(r.bid_count||0), status:r.status, orderId:r.order_id };
   if(part==='bookings') return { id:r.id, itemId:r.item_id, itemName:r.item_name, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone||'', requestedDate:r.requested_date, days:Number(r.days||1), note:r.note||'', status:r.status||'pending', bookingCharge:r.booking_charge!=null?Number(r.booking_charge):null, chargeStatus:r.charge_status||null, slipDataUrl:r.slip_url||null, slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null, createdAt:new Date(r.created_at).getTime(), decidedAt:r.decided_at?new Date(r.decided_at).getTime():null };
@@ -3233,7 +3266,7 @@ async function saveDB(part, only){
     // upsert if the batch includes even one row this session doesn't own.
     const rows = (only || DB[part]).map(o=>toDbRow(part,o));
     const { error } = await sb.from(TABLES[part]).upsert(rows);
-    if(error){ console.error(error); toast(/item_limit_reached/.test(error.message) ? `Your store has reached the ${STORE_ITEM_LIMIT}-item limit` : /store_bank_required/.test(error.message) ? 'Add your store bank account in Settings first' : 'Save failed: '+error.message, 'bad'); return false; }
+    if(error){ console.error(error); toast(/item_limit_reached/.test(error.message) ? `Your store has reached the ${STORE_ITEM_LIMIT}-item limit` : /photo_in_use/.test(error.message) ? `A photo is already used for “${(error.message.split('photo_in_use:')[1]||'another item').trim()}”. Each item needs its own photo` : /store_bank_required/.test(error.message) ? 'Add your store bank account in Settings first' : 'Save failed: '+error.message, 'bad'); return false; }
     return true;
   }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); return false; }
 }
@@ -3476,7 +3509,7 @@ function swipeFeeRowsHTML(o){
 }
 function swipeBizActionHTML(o){
   const who = o.customerName || 'The customer';
-  if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+  if(o.status==='declined') return `<div class="status-pill bad" style="display:inline-block;">${o.cancelledAt?`${escapeAttr(who)} cancelled this order`:'You declined this order'}</div>`;
   if(o.paymentStatus==='awaiting_approval') return orderApprovalHTML(o);
   const isBuyNow = !o.rentalItemId && !DB.auctions.some(a=>a.orderId===o.id);
   if(o.paymentStatus==='awaiting_swipe') return `
@@ -3487,16 +3520,16 @@ function swipeBizActionHTML(o){
 function custSwipeHTML(o, inCard){
   if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
     const b = DB.businesses.find(x=>x.id===o.businessId); const st = b ? b.name : 'The store';
-    if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} couldn't take this order. You haven't paid anything.</p>`;
+    if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${o.cancelledAt?'You cancelled this order.':`${st} couldn't take this order.`} You haven't paid anything.</p>`;
     if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${st} to confirm your order${routeNeedsStoreCharge(o.route)?' and set the delivery charge':''}. Then you'll transfer the total to their account and upload the slip.</p>`;
-    if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} confirmed your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
+    if(o.paymentStatus==='pending_transfer') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${st} ${o.status==='delivered'?'delivered':'confirmed'} your order. Transfer ${money(o.total)} to their account, then upload the slip.</p>`;
     return '';
   }
   if(o.paymentMethod!=='swipe') return '';
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   const store = biz ? biz.name : 'The store';
   const stop = inCard ? 'event.stopPropagation(); ' : '';
-  if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${store} couldn't take this order. You haven't been charged.</p>`;
+  if(o.status==='declined') return `<p class="muted" style="font-size:.85em; margin-top:8px;">${o.cancelledAt?'You cancelled this order.':`${store} couldn't take this order.`} You haven't been charged.</p>`;
   if(o.paymentStatus==='awaiting_approval') return `<p class="muted" style="font-size:.85em; margin-top:8px;">Waiting for ${store} to confirm your order. You'll pay with Swipe after that.</p>`;
   if(o.paymentStatus==='awaiting_swipe') return `
     <p class="muted" style="font-size:.85em; margin-top:8px;">${o.rentalItemId || DB.auctions.some(a=>a.orderId===o.id) ? 'Pay now so the store can hand it over.' : `${store} confirmed your order. Pay now to send it on its way.`}</p>
@@ -4024,7 +4057,7 @@ function seedIfEmpty(){
 
 // Listing is free for every store, up to STORE_ITEM_LIMIT items (no trial, no Pro).
 // The database enforces the same limit (items_store_limit trigger).
-const STORE_ITEM_LIMIT = 150;
+const STORE_ITEM_LIMIT = 250;
 function tierInfo(biz){ return { trialDaysLeft: 0, trialActive: false, trialExpired: false, limit: STORE_ITEM_LIMIT }; }
 
 /* =================== STATE =================== */
@@ -4220,8 +4253,16 @@ function goBack(){
 }
 
 /* =================== RENDER ROOT =================== */
+// Home shuffles its items and categories every time it's opened (a new view):
+// arriving on Home, or changing its listing type / category / search. Plain
+// re-renders (live refresh, tapping a heart) keep the same order so nothing
+// jumps while you look.
+let _homeSeed = (Math.random()*4294967296)>>>0, _lastViewKey = '';
+function viewShuffle(list, salt){ const seed = (_homeSeed ^ (salt||0))>>>0; return list.slice().sort((a,b)=>seededRank(String(a.id||a),seed)-seededRank(String(b.id||b),seed)); }
 function render(){
   const app = document.getElementById('app');
+  { const vk = state.adminMode ? 'admin' : [state.role, state.screen, state.screen==='custHome' ? [state.homeListingType, state.homeCategory, state.homeSearch].join('|') : ''].join(':');
+    if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeSeed = (Math.random()*4294967296)>>>0; _lastViewKey = vk; } }
   if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
   if(state.adminMode) renderAdmin();
   else if(state.role==='business') renderBusiness();
@@ -4367,7 +4408,7 @@ function renderAdmin(){
     </div></header>
     <div class="admin-layout">
       <nav class="admin-side" aria-label="Admin sections">
-        ${NAV.map(([k,ic,label,count])=>`<button class="admin-nav ${state.adminTab===k?'on':''}" ${state.adminTab===k?'aria-current="page"':''} onclick="state.adminTab='${k}'; render();"><span class="an-ic">${ic}</span><span class="an-lbl">${label}</span>${count?`<span class="tab-count">${count}</span>`:''}</button>`).join('')}
+        ${NAV.map(([k,ic,label,count])=>`<button class="admin-nav ${state.adminTab===k?'on':''}" ${state.adminTab===k?'aria-current="page"':''} onclick="state.adminTab='${k}'; state.adminStoreId=null; render();"><span class="an-ic">${ic}</span><span class="an-lbl">${label}</span>${count?`<span class="tab-count">${count}</span>`:''}</button>`).join('')}
       </nav>
       <section class="admin-main">
         <div class="admin-hero">
@@ -4390,7 +4431,7 @@ function renderAdmin(){
             ${state.adminTab==='items' ? adminItemsTab() : ''}
             ${state.adminTab==='featured' ? adminFeaturedTab() : ''}
             ${state.adminTab==='settings' ? adminSettingsTab() : ''}
-            ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
+            ${state.adminTab==='businesses' ? (state.adminStoreId && DB.businesses.some(b=>b.id===state.adminStoreId) ? adminStoreView() : adminBusinessesTab(businesses)) : ''}
             ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
             ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
             ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
@@ -4421,20 +4462,108 @@ function adminSupportTab(){
     </button>`).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">🎧</span>No ${f==='closed'?'closed ':f==='open'?'open ':''}tickets.</div>`}`;
 }
 function adminGoHome(){ state.adminTab='businesses'; state.adminSearch=''; state.sheet=null; render(); document.body.scrollTop=0; document.documentElement.scrollTop=0; }
+
+// ---- Admin -> Stores -> one store: its listings by category, with actions ----
+const ADMIN_ITEM_FILTERS = [['all','All'],['pending','Waiting'],['live','Live'],['paused','Paused'],['rejected','Taken down']];
+function adminItemState(i){ return i.approvalStatus==='pending' ? 'pending' : i.approvalStatus==='rejected' ? 'rejected' : i.paused ? 'paused' : 'live'; }
+function openAdminStore(id){ state.adminStoreId = id; state.adminItemFilter = 'all'; state.adminItemSearch = ''; render(); window.scrollTo(0,0); }
+function adminStoreView(){
+  const b = DB.businesses.find(x=>x.id===state.adminStoreId);
+  const all = DB.items.filter(i=>i.businessId===b.id);
+  const f = state.adminItemFilter || 'all', q = (state.adminItemSearch||'').trim().toLowerCase();
+  const count = k => all.filter(i=>adminItemState(i)===k).length;
+  const list = all.filter(i=>(f==='all' || adminItemState(i)===f) && (!q || (i.name||'').toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q)));
+  const groups = {};
+  list.forEach(i=>{ const c = i.category==='Other' && i.categoryOtherName ? i.categoryOtherName : (i.category||'General'); (groups[c] = groups[c] || []).push(i); });
+  const pill = i => { const st = adminItemState(i);
+    return st==='pending' ? '<span class="status-pill wait">Waiting</span>' : st==='rejected' ? '<span class="status-pill bad">Taken down</span>' : st==='paused' ? '<span class="status-pill mid">Paused</span>' : isFeaturedNow(i) ? '<span class="status-pill ok">Live · ★ Featured</span>' : '<span class="status-pill ok">Live</span>'; };
+  const acts = i => { const st = adminItemState(i), id = i.id, btn = (cls,lbl,fn)=>`<button class="btn ${cls} btn-sm" onclick="${fn}">${lbl}</button>`;
+    return [
+      st==='pending' || st==='rejected' ? btn('btn-primary','Approve',`adminApproveItems(['${id}'])`) : '',
+      st==='pending' ? btn('btn-outline','Reject',`adminRejectItems(['${id}'])`) : '',
+      st==='live' || st==='paused' ? btn('btn-outline','Take down',`adminRejectItems(['${id}'])`) : '',
+      st==='live' ? btn('btn-ghost','Pause',`adminPauseItems(['${id}'], true)`) : st==='paused' ? btn('btn-ghost','Resume',`adminPauseItems(['${id}'], false)`) : '',
+      st==='live' ? (isFeaturedNow(i) ? btn('btn-ghost','Unfeature',`adminFeatureItem('${id}', 0)`) : btn('btn-ghost','★ Feature',`adminFeatureItem('${id}', ${DB.settings.featuredDays||3})`)) : '',
+      btn('btn-ghost danger-txt','Delete',`openSheet('adminDeleteItems', ['${id}'])`),
+    ].join(''); };
+  return `
+  <button class="link-btn adm-back" onclick="state.adminStoreId=null; render();">‹ All stores</button>
+  <div class="glass card adm-store-card">
+    <div class="row" style="gap:12px; align-items:center;">
+      <span class="adm-store-av" aria-hidden="true">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
+      <div style="flex:1; min-width:0;"><h3 class="adm-name">${escapeAttr(b.name)}</h3><p class="muted" style="font-size:.84em;">${escapeAttr(b.ownerName||'')}${b.phone?` · ${escapeAttr(b.phone)}`:''} · ${escapeAttr(bizIsland(b))}</p></div>
+    </div>
+    ${b.phone ? contactHTML(b.phone, b.name) : ''}
+    <div class="adm-counts">
+      <div><strong>${all.length}</strong><span>of ${STORE_ITEM_LIMIT}</span></div>
+      <div><strong>${count('live')}</strong><span>Live</span></div>
+      <div><strong>${count('pending')}</strong><span>Waiting</span></div>
+      <div><strong>${count('paused')}</strong><span>Paused</span></div>
+      <div><strong>${count('rejected')}</strong><span>Taken down</span></div>
+    </div>
+  </div>
+  <div class="adm-tools">
+    <div class="adm-filters">${ADMIN_ITEM_FILTERS.map(([k,l])=>{ const n = k==='all'?all.length:count(k); return `<button class="chip ${f===k?'active':''}" onclick="state.adminItemFilter='${k}'; render();">${l}${n?` · ${n}`:''}</button>`; }).join('')}</div>
+    <div class="field" style="margin:10px 0 0;"><input id="adminItemSearch" type="search" aria-label="Search this store's items" placeholder="Search this store's items…" value="${escapeAttr(state.adminItemSearch||'')}" oninput="state.adminItemSearch=this.value; clearTimeout(window._aisT); window._aisT=setTimeout(()=>{ render(); const e=document.getElementById('adminItemSearch'); if(e){ e.focus(); e.setSelectionRange(e.value.length,e.value.length); } },250);"></div>
+    <div class="field" style="margin:10px 0 0;"><input id="rejNoteAll" placeholder="Reason for take down (shown to the store)"></div>
+  </div>
+  ${list.length ? Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([cat, items])=>{
+    const ids = JSON.stringify(items.map(i=>i.id)).replace(/"/g,'&quot;');
+    const waiting = items.filter(i=>i.approvalStatus==='pending');
+    const wids = JSON.stringify(waiting.map(i=>i.id)).replace(/"/g,'&quot;');
+    return `
+    <section class="adm-cat">
+      <div class="adm-cat-head"><h3>${categoryIcon(cat)} ${escapeAttr(cat)} <span class="muted">· ${items.length}</span></h3>
+        <div class="row" style="gap:6px; flex-wrap:wrap;">
+          ${waiting.length ? `<button class="btn btn-primary btn-sm" onclick="adminApproveItems(${wids})">Approve ${waiting.length} waiting</button>` : ''}
+          ${items.some(i=>adminItemState(i)==='live') ? `<button class="btn btn-ghost btn-sm" onclick="adminPauseItems(${JSON.stringify(items.filter(i=>adminItemState(i)==='live').map(i=>i.id)).replace(/"/g,'&quot;')}, true)">Pause all</button>` : ''}
+        </div>
+      </div>
+      <div class="adm-cat-list">
+        ${items.map(i=>`
+        <div class="adm-row">
+          <div class="adm-row-main">${adminItemThumb(i)}${adminItemLine(i)}</div>
+          <div class="adm-row-pill">${pill(i)}</div>
+          ${i.approvalStatus==='rejected' && i.approvalNote ? `<p class="muted adm-note">Reason: ${escapeAttr(i.approvalNote)}</p>` : ''}
+          <div class="adm-row-acts">${acts(i)}</div>
+        </div>`).join('')}
+      </div>
+    </section>`; }).join('') : `<div class="empty"><span class="ic">📦</span>${all.length ? 'No items match' : 'This store has no items yet'}</div>`}`;
+}
+async function adminPauseItems(ids, paused){
+  if(!ids.length) return;
+  const rows = await adminRpc('admin_set_items_paused', { p_ids: ids, p_paused: paused }); if(!rows) return;
+  adminApplyItems(rows); toast(`${rows.length} item${rows.length===1?'':'s'} ${paused?'paused':'resumed'}`); render();
+}
+function sheetAdminDeleteItems(){
+  const ids = state.sheetData || []; const items = DB.items.filter(i=>ids.includes(i.id));
+  return `<h2>Delete ${items.length===1 ? escapeAttr(items[0].name) : items.length+' items'}?</h2>
+  <p class="muted" style="margin:6px 0 16px;">It's removed from the store for good. To hide it for a while, pause it or take it down instead. Auctions with bids and rentals with bookings can't be deleted.</p>
+  <div class="row" style="gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep</button><button class="btn btn-primary danger-bg" style="flex:1;" onclick="adminDeleteItemsNow()">Delete</button></div>`;
+}
+async function adminDeleteItemsNow(){
+  const ids = state.sheetData || []; closeSheet();
+  const rows = await adminRpc('admin_delete_items', { p_ids: ids }); if(!rows) return;
+  const gone = rows.map(r=>typeof r==='string' ? r : (r.admin_delete_items||r.id));
+  DB.items = DB.items.filter(i=>!gone.includes(i.id));
+  const kept = ids.length - gone.length;
+  toast(gone.length ? `${gone.length} deleted${kept?` · ${kept} in use, not deleted`:''}` : 'In use (bids or bookings), not deleted', gone.length?'':'bad'); render();
+}
 function adminBusinessesTab(list){
   return `
   <div class="field" style="margin-bottom:14px;">
     <input id="adminSearchInput" type="search" aria-label="Search stores" placeholder="Search by store, owner, or phone…" value="${state.adminSearch}" oninput="adminSearchInput(this.value)">
   </div>
   ${list.length? list.map(b=>`
-    <div class="glass card admin-store">
+    <div class="glass card admin-store" role="button" tabindex="0" onclick="openAdminStore('${b.id}')" onkeydown="if(event.key==='Enter')openAdminStore('${b.id}')">
       <div class="row" style="align-items:flex-start;">
         <span class="admin-av">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
         <div style="flex:1; min-width:0;">
           <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge free">${DB.items.filter(i=>i.businessId===b.id).length} / ${STORE_ITEM_LIMIT} items</span></div>
           <p class="muted" style="font-size:.86em; margin-top:2px;">${b.ownerName}${b.phone?` · ${b.phone}`:''}</p>
-          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}</p>
+          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${(()=>{ const w=DB.items.filter(i=>i.businessId===b.id && i.approvalStatus==='pending').length; return w?` · <strong style="color:var(--amber);">${w} waiting</strong>`:''; })()}</p>
         </div>
+        <span class="adm-chev" aria-hidden="true">›</span>
       </div>
     </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
   `;
@@ -4575,7 +4704,7 @@ function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.feat
 function featuredSlotsUsed(){ return DB.items.filter(isFeaturedNow).length; }
 // Same order for everyone within an hour, a new random order each hour.
 function hourSeed(){ return Math.floor(Date.now()/3600000); }
-function seededRank(id, seed){ let h = 2166136261 ^ seed; for(let k=0;k<id.length;k++){ h ^= id.charCodeAt(k); h = Math.imul(h, 16777619); } return (h>>>0); }
+function seededRank(id, seed){ let h = 2166136261 ^ seed; for(let k=0;k<id.length;k++){ h ^= id.charCodeAt(k); h = Math.imul(h, 16777619); } h ^= h>>>16; h = Math.imul(h, 0x85ebca6b); h ^= h>>>13; h = Math.imul(h, 0xc2b2ae35); h ^= h>>>16; return (h>>>0); }   // FNV-1a + final mix so similar ids spread out
 function featuredItemsNow(type){
   const seed = hourSeed();
   return DB.items.filter(i=>isFeaturedNow(i) && (!type || (i.listingType||'buy_now')===type))
@@ -5211,6 +5340,10 @@ function sheetHTML(){
   else if(state.sheet==='upgradeTier') body = sheetUpgrade();
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
+  else if(state.sheet==='cancelOrder') body = sheetCancelOrder();
+  else if(state.sheet==='deliverUnpaid') body = sheetDeliverUnpaid();
+  else if(state.sheet==='unpaidBlock') body = `<h2>Pay first</h2>${unpaidBlockHTML(DB.orders.find(x=>x.id===state.sheetData) || unpaidDeliveredOrder())}`;
+  else if(state.sheet==='adminDeleteItems') body = sheetAdminDeleteItems();
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='rentalReturn') body = sheetRentalReturn();
   else if(state.sheet==='checkout') body = sheetCheckout();
@@ -6081,11 +6214,11 @@ function orderCardBiz(o){
 }
 function paymentStatusPill(o){
   if(o.paymentMethod==='transfer' && isBuyNowOrder(o)){
-    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.status==='declined') return `<span class="status-pill bad">${o.cancelledAt?'Cancelled':'Declined'}</span>`;
     if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
   }
   if(o.paymentMethod==='swipe'){
-    if(o.status==='declined') return `<span class="status-pill bad">Declined</span>`;
+    if(o.status==='declined') return `<span class="status-pill bad">${o.cancelledAt?'Cancelled':'Declined'}</span>`;
     if(o.paymentStatus==='awaiting_approval') return `<span class="status-pill wait">Waiting for store</span>`;
     if(o.paymentStatus==='awaiting_swipe') return `<span class="status-pill mid">Ready to pay</span>`;
   }
@@ -6278,10 +6411,75 @@ const IMAGE_MAX_BYTES = 5*1024*1024;
 let _itemPhotoFile = null;
 // Up to 5 photos per listing; the first is the cover (items.image_url).
 const PHOTO_MAX = 5;
+
+// ---- One name and one photo per item, per store ----
+function nameKey(t){ return bulkSlug(t); }
+function storeItemByName(bizId, name, exceptId){ const k = nameKey(name); return k ? DB.items.find(i=>i.businessId===bizId && i.id!==exceptId && nameKey(i.name)===k) : null; }
+// A photo's fingerprint: a 64-bit difference hash of the picture plus its
+// colours in 4 corners, so the same photo still matches after it was
+// resized or re-saved, while colour variants of one product don't.
+const _printCache = new Map();
+function photoPrint(src){
+  if(!src) return Promise.resolve(null);
+  if(_printCache.has(src)) return _printCache.get(src);
+  const p = new Promise(res=>{
+    const img = new Image(); let obj = null;
+    if(typeof src==='string' && /^https?:/i.test(src)) img.crossOrigin = 'anonymous';
+    const done = v=>{ if(obj) URL.revokeObjectURL(obj); res(v); };
+    img.onload = ()=>{ try{
+      const c = document.createElement('canvas'), x = c.getContext('2d', { willReadFrequently:true });
+      c.width = 9; c.height = 8; x.drawImage(img, 0, 0, 9, 8);
+      const d = x.getImageData(0, 0, 9, 8).data, lum = k=>d[k]*.299 + d[k+1]*.587 + d[k+2]*.114;
+      let hex = '';
+      for(let y=0;y<8;y++){ let nib = 0; for(let i=0;i<8;i++){ const a = (y*9+i)*4; nib = (nib<<1) | (lum(a) > lum(a+4) ? 1 : 0); if(i===3 || i===7){ hex += nib.toString(16); nib = 0; } } }
+      c.width = 2; c.height = 2; x.drawImage(img, 0, 0, 2, 2);
+      const e = x.getImageData(0, 0, 2, 2).data; let col = '';
+      for(let k=0;k<16;k+=4) col += [e[k],e[k+1],e[k+2]].map(v=>(v>>5).toString(8)).join('');
+      done(hex + '-' + col);
+    }catch(_){ done(null); } };
+    img.onerror = ()=>done(null);
+    if(src instanceof Blob){ obj = URL.createObjectURL(src); img.src = obj; } else img.src = src;
+  });
+  _printCache.set(src, p); return p;
+}
+function printsMatch(a, b){
+  if(!a || !b) return false; if(a===b) return true;
+  const [ha, ca] = a.split('-'), [hb, cb] = b.split('-');
+  if(!ha || !hb || !ca || !cb || ha.length!==hb.length || ca.length!==cb.length) return false;
+  let bits = 0; for(let k=0;k<ha.length;k++){ let v = parseInt(ha[k],16) ^ parseInt(hb[k],16); while(v){ bits += v & 1; v >>= 1; } }
+  if(bits > 4) return false;
+  for(let k=0;k<ca.length;k++) if(Math.abs(parseInt(ca[k],8) - parseInt(cb[k],8)) > 1) return false;
+  return true;
+}
+// Fingerprints for a store's existing items (older items get theirs worked
+// out from their photos once, and saved).
+const _printsReady = {};
+function ensureBizPrints(bizId){
+  if(_printsReady[bizId]) return _printsReady[bizId];
+  _printsReady[bizId] = (async()=>{
+    const todo = DB.items.filter(i=>i.businessId===bizId && itemImages(i).length && !(i.photoPrints && i.photoPrints.length===itemImages(i).length));
+    const changed = [];
+    for(const it of todo){
+      const prints = await Promise.all(itemImages(it).map(u=>photoPrint(u)));
+      if(!prints.some(Boolean)) continue;
+      it.photoPrints = prints;
+      // Don't save one that clashes with another item already (old duplicates): the server would refuse it.
+      const clash = DB.items.some(o=>o.businessId===bizId && o.id!==it.id && (o.photoPrints||[]).some(a=>prints.includes(a)));
+      if(!clash) changed.push(it);
+    }
+    if(sb && changed.length){ try{ await sb.from('items').upsert(changed.map(it=>({ ...toDbRow('items', it) }))); }catch(_){} }
+  })();
+  return _printsReady[bizId];
+}
+function itemUsingPhoto(print, bizId, exceptIds){
+  if(!print) return null;
+  return DB.items.find(i=>i.businessId===bizId && !(exceptIds||[]).includes(i.id) && (i.photoPrints||[]).some(p=>printsMatch(p, print))) || null;
+}
+function photoInUseMsg(it){ return `This photo is already used for “${it.name}”. Each item needs its own photo`; }
 let _photoSlots = [];   // [{url}] saved, or [{file, preview}] new
 function itemImages(it){ return it && it.images && it.images.length ? it.images : (it && it.imageUrl ? [it.imageUrl] : []); }
-function startAddItem(){ if(!requireStoreBank()) return; _itemPhotoFile = null; _photoSlots = []; openSheet('addItem'); }
-function startEditItem(id){ const it = DB.items.find(i=>i.id===id); _itemPhotoFile = null; _photoSlots = itemImages(it).map(url=>({url})); openSheet('editItem', id); }
+function startAddItem(){ if(!requireStoreBank()) return; _itemPhotoFile = null; _photoSlots = []; _dupReplaceId = null; const b = currentBiz(); if(b) ensureBizPrints(b.id); openSheet('addItem'); }
+function startEditItem(id){ const it = DB.items.find(i=>i.id===id); _itemPhotoFile = null; _photoSlots = itemImages(it).map((url,k)=>({url, print:(it.photoPrints||[])[k]||null})); if(it) ensureBizPrints(it.businessId); openSheet('editItem', id); }
 function photoSlotsHTML(){
   return `<div class="photo-slots" id="photoSlots">
     ${_photoSlots.map((ph,i)=>`<div class="ps-tile ${i===0?'cover':''}">
@@ -6303,8 +6501,27 @@ function onPhotosPicked(e){
     if(f.size > 20*1024*1024){ toast(`${f.name} is over 20MB`,'bad'); return; }   // shrunk before upload (shrinkPhoto)
     const slot = { file:f, preview:'' }; _photoSlots.push(slot);
     const r = new FileReader(); r.onload = ()=>{ slot.preview = r.result; redrawPhotoSlots(); }; r.readAsDataURL(f);
+    checkSlotPhoto(slot);
   });
   redrawPhotoSlots();
+}
+// A new photo already used by another item (or added twice here) is taken out again.
+async function checkSlotPhoto(slot){
+  const b = currentBiz(); if(!b) return;
+  slot.print = await photoPrint(slot.file);
+  await ensureBizPrints(b.id);
+  if(!_photoSlots.includes(slot) || !slot.print) return;
+  const editing = state.sheet==='editItem' ? state.sheetData : null;
+  const other = itemUsingPhoto(slot.print, b.id, editing ? [editing] : []);
+  const twice = _photoSlots.some(s=>s!==slot && s.print && printsMatch(s.print, slot.print));
+  if(other || twice){ _photoSlots.splice(_photoSlots.indexOf(slot), 1); redrawPhotoSlots(); toast(other ? photoInUseMsg(other) : 'You already added this photo', 'bad'); }
+}
+// Before saving: every photo fingerprinted and checked. Returns the prints, or null if one is in use.
+async function slotPrintsOrBlock(bizId, exceptIds){
+  await ensureBizPrints(bizId);
+  for(const s of _photoSlots){ if(!s.print) s.print = await photoPrint(s.file || s.url); }
+  for(const s of _photoSlots){ const other = itemUsingPhoto(s.print, bizId, exceptIds); if(other){ toast(photoInUseMsg(other),'bad'); return null; } }
+  return _photoSlots.map(s=>s.print||null);
 }
 function removePhotoSlot(i){ _photoSlots.splice(i,1); redrawPhotoSlots(); }
 function coverPhotoSlot(i){ const [ph] = _photoSlots.splice(i,1); _photoSlots.unshift(ph); redrawPhotoSlots(); }
@@ -6537,6 +6754,7 @@ function sheetAddItem(){
     ${photoSlotsHTML()}
     <p class="muted" style="font-size:.78em; margin-top:6px;">The first photo is the cover. Tap ★ to make another one the cover.</p>
   </div>
+  <div id="dupWarn"></div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitAddItem()">Add to store</button>`;
 }
 function setAddItemListingType(type){
@@ -6573,10 +6791,18 @@ function setRentAvailabilityType(prefix, type){
   document.getElementById(prefix+'availTabSoon').classList.toggle('active', type==='soon');
   document.getElementById(prefix+'availableFromFields').classList.toggle('hidden', type!=='soon');
 }
+let _dupReplaceId = null;
+function dupWarnHTML(dup){
+  return `<div class="card notice-warn dup-warn"><p style="font-size:.9em;"><strong>You already have “${escapeAttr(dup.name)}”.</strong> ${dup.listingType==='auction' ? 'It\u2019s an auction, so it can\u2019t be replaced. Give this item a different name.' : 'Replace it with this one (its photos, price and details), or give this item a different name.'}</p>
+    ${dup.listingType==='auction' ? '' : `<div class="row" style="gap:8px; margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="_dupReplaceId='${dup.id}'; submitAddItem()">Replace it</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('dupWarn').innerHTML=''; const n=document.getElementById('i_name'); if(n){ n.focus(); n.select(); }">Rename</button></div>`}</div>`;
+}
 async function submitAddItem(){
   const biz = currentBiz(); const t = tierInfo(biz);
   const myCount = DB.items.filter(i=>i.businessId===biz.id).length;
-  if(myCount>=t.limit){ toast(`Item limit reached (${t.limit})`,'bad'); return; }
+  const dupNow = storeItemByName(biz.id, val('i_name'));
+  if(_dupReplaceId && (!dupNow || dupNow.id!==_dupReplaceId)) _dupReplaceId = null;   // name changed since
+  if(dupNow && !_dupReplaceId){ const w = document.getElementById('dupWarn'); if(w){ w.innerHTML = dupWarnHTML(dupNow); w.scrollIntoView({block:'center', behavior:'smooth'}); } else toast(`You already have “${dupNow.name}”`,'bad'); return; }
+  if(!_dupReplaceId && myCount>=t.limit){ toast(`Item limit reached (${t.limit})`,'bad'); return; }
   const name=val('i_name'), cat=val('i_cat')||'General';
   const catOtherName = cat==='Other' ? (val('i_cat_other')||'') : '';
   if(!name){ toast('Enter an item name','bad'); return; }
@@ -6615,10 +6841,22 @@ async function submitAddItem(){
   const freeDelivery = document.getElementById('i_free_delivery').checked;
   const extraDeliveryFee = Math.max(0, Number(val('i_extra_fee')||0));
   const description = val('i_desc');
+  const replacing = _dupReplaceId ? DB.items.find(i=>i.id===_dupReplaceId) : null;
+  if(replacing && (replacing.listingType==='auction' || listingType==='auction')){ toast('Auctions can\u2019t be replaced. Give this item a different name','bad'); return; }
+  const prints = await slotPrintsOrBlock(biz.id, replacing ? [replacing.id] : []);
+  if(!prints) return;
   toast('Saving item…');
   const images = await uploadPhotoSlots();
   const imageUrl = images[0] || null;
-  const item = {id:uid('it'), images, businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
+  if(replacing){
+    const before = { ...replacing };
+    Object.assign(replacing, { name, price, stock, category:cat, categoryOtherName:catOtherName, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, options: readOptionsEditor('i') });
+    if(images.length){ replacing.images = images; replacing.imageUrl = imageUrl; replacing.photoPrints = prints.slice(0, images.length); }
+    if(await saveDB('items', [replacing]) === false){ Object.assign(replacing, before); render(); return; }
+    _dupReplaceId = null; _itemPhotoFile = null;
+    closeSheet(); toast(`Replaced “${replacing.name}”`); render(); return;
+  }
+  const item = {id:uid('it'), images, photoPrints: prints.slice(0, images.length), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -6772,7 +7010,7 @@ async function onBulkPhotos(ev){
   }
   files.forEach(f=>{ const k=f.name.toLowerCase(); _bulkPhotos[k]=f; _bulkPhotos[k.replace(/\.[^.]+$/,'')]=f; });
   if(!files.length) toast('Pick image files (JPG, PNG or WebP) or a .zip of them','bad');
-  render();
+  render(); bulkCheckPhotos();
 }
 function bulkPhotoCount(){ return new Set(Object.values(_bulkPhotos)).size; }
 function bulkSlug(t){ return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
@@ -6818,15 +7056,62 @@ function bulkPhotoAudit(rows){
   const usedKeys = new Set([...use.keys()].map(f=>f.name.toLowerCase()+'|'+f.size));
   return { unused: files.filter(f=>!usedKeys.has(f.name.toLowerCase()+'|'+f.size)), shared: [...use.entries()].filter(([,rs])=>rs.length>1) };
 }
+// Names: a row with a name the store already uses replaces that item (or is
+// skipped if the store says so); the same name twice in one file is a problem.
+function bulkMarkDuplicates(rows, bizId){
+  const seen = new Map();
+  rows.forEach(r=>{
+    delete r.replaceId; delete r.replaceName;
+    const k = nameKey(r.item.name); if(!k) return;
+    if(seen.has(k)){ r.errors.push(`Same name as row ${seen.get(k)} in this file`); return; }
+    seen.set(k, r.line);
+    const dup = storeItemByName(bizId, r.item.name);
+    if(!dup) return;
+    if(dup.listingType==='auction' || r.item.listingType==='auction') r.errors.push(`You already have “${dup.name}” (auctions can\u2019t be replaced). Use a different name`);
+    else { r.replaceId = dup.id; r.replaceName = dup.name; }
+  });
+}
+function bulkRowErrs(r){ return [...r.errors, ...(r.photoErrs||[])]; }
+function bulkRowOK(r){ return !bulkRowErrs(r).length && !r.skip; }
+// Photos: a photo already on another item, or used by an earlier row, stops the row.
+let _bulkCheckGen = 0;
+async function bulkCheckPhotos(){
+  if(!_bulk || _bulk.fatal) return;
+  const gen = ++_bulkCheckGen, biz = currentBiz(); if(!biz) return;
+  await ensureBizPrints(biz.id);
+  const taken = [];   // {print, line}
+  for(const r of _bulk.rows){
+    const errs = [];
+    if(!r.errors.length && !r.skip){
+      const ph = bulkPhotoFor(r);
+      const files = [ph.kind==='file' ? ph.file : null, ...bulkExtraPhotos(r).map(x=>x.kind==='file' ? x.file : null)].filter(Boolean);
+      const mine = [];
+      for(const f of files){
+        const pr = await photoPrint(f); if(!pr) continue;
+        if(gen !== _bulkCheckGen) return;
+        const other = itemUsingPhoto(pr, biz.id, r.replaceId ? [r.replaceId] : []);
+        const earlier = taken.find(t=>printsMatch(t.print, pr));
+        if(other) errs.push(photoInUseMsg(other));
+        else if(earlier) errs.push(`Same photo as row ${earlier.line}. Each item needs its own photo`);
+        else if(mine.some(m=>printsMatch(m, pr))) errs.push(`The same photo is in this row twice (${f.name})`);
+        mine.push(pr);
+      }
+      if(!errs.length) mine.forEach(pr=>taken.push({ print:pr, line:r.line }));
+    }
+    r.photoErrs = [...new Set(errs)];
+  }
+  if(gen === _bulkCheckGen && state.sheet==='bulkItems') render();
+}
+function bulkToggleSkip(idx){ const r = _bulk && _bulk.rows[idx]; if(!r) return; r.skip = !r.skip; render(); bulkCheckPhotos(); }
 let _bulkPickRow = null;
 function bulkChangePhoto(idx){ _bulkPickRow = idx; const el = document.getElementById('bulkRowPhoto'); if(el){ el.value=''; el.click(); } }
 function onBulkRowPhoto(ev){
   const f = ev.target.files && ev.target.files[0];
   if(f && _bulk && _bulk.rows[_bulkPickRow]){ _bulk.rows[_bulkPickRow].override = f; }
-  _bulkPickRow = null; render();
+  _bulkPickRow = null; render(); bulkCheckPhotos();
 }
-function bulkRemovePhoto(idx){ if(_bulk && _bulk.rows[idx]){ _bulk.rows[idx].override = 'none'; render(); } }
-function bulkResetPhoto(idx){ if(_bulk && _bulk.rows[idx]){ delete _bulk.rows[idx].override; render(); } }
+function bulkRemovePhoto(idx){ if(_bulk && _bulk.rows[idx]){ _bulk.rows[idx].override = 'none'; render(); bulkCheckPhotos(); } }
+function bulkResetPhoto(idx){ if(_bulk && _bulk.rows[idx]){ delete _bulk.rows[idx].override; render(); bulkCheckPhotos(); } }
 let _bulkThumbs = new Map();
 function bulkThumbURL(f){ if(!_bulkThumbs.has(f)) _bulkThumbs.set(f, URL.createObjectURL(f)); return _bulkThumbs.get(f); }
 async function onBulkFile(ev){
@@ -6839,15 +7124,17 @@ async function onBulkFile(ev){
   if(!header.includes('name')){ _bulk = { fileName:f.name, rows:[], fatal:'This doesn’t look like the Maldexpress template: there’s no "name" column. Download the template and copy your items into it.' }; render(); return; }
   const biz = currentBiz();
   const out = rows.slice(1).map((r,i)=>{ const data={}; header.forEach((h,j)=>{ if(h) data[h]=r[j]; }); return bulkBuildRow(data, i+2, biz.id); });
+  bulkMarkDuplicates(out, biz.id);
   _bulk = { fileName:f.name, rows:out };
-  render();
+  render(); bulkCheckPhotos();
 }
 function sheetBulkItems(){
   const biz = currentBiz(); const t = tierInfo(biz);
   const room = Math.max(0, t.limit - DB.items.filter(i=>i.businessId===biz.id).length);
-  const ok = _bulk ? _bulk.rows.filter(r=>!r.errors.length) : [];
-  const bad = _bulk ? _bulk.rows.filter(r=>r.errors.length) : [];
-  const willAdd = Math.min(ok.length, room);
+  const ok = _bulk ? _bulk.rows.filter(bulkRowOK) : [];
+  const bad = _bulk ? _bulk.rows.filter(r=>bulkRowErrs(r).length) : [];
+  const okNew = ok.filter(r=>!r.replaceId), okRep = ok.filter(r=>r.replaceId);
+  const willAdd = Math.min(okNew.length, room) + okRep.length;
   const typeLbl = {buy_now:'Buy now', auction:'Auction', rental:'Rental'};
   const audit = _bulk && !_bulk.fatal ? bulkPhotoAudit(_bulk.rows) : { unused:[], shared:[] };
   return `
@@ -6879,41 +7166,45 @@ function sheetBulkItems(){
   <div class="bulk-summary">
     <span class="status-pill ok">${ok.length} ready</span>
     ${bad.length?`<span class="status-pill bad">${bad.length} with problems</span>`:''}
-    ${ok.length>room?`<span class="status-pill wait">${ok.length-room} over your limit</span>`:''}
+    ${okRep.length?`<span class="status-pill mid">${okRep.length} replace${okRep.length===1?'s':''} an item you have</span>`:''}
+    ${okNew.length>room?`<span class="status-pill wait">${okNew.length-room} over your limit</span>`:''}
     <span class="status-pill mid">${ok.filter(r=>['file','url'].includes(bulkPhotoFor(r).kind)).length} with photos</span>
   </div>
-  ${ok.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} ready item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.${biz.tier==='free'?' Go Pro for up to 500 items.':''}</p></div>` : ''}
+  ${okNew.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} new item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.${biz.tier==='free'?' Go Pro for up to 500 items.':''}</p></div>` : ''}
   ${audit.unused.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.unused.length} photo${audit.unused.length===1?' isn\u2019t':'s aren\u2019t'} matched to any item:</strong> ${audit.unused.slice(0,12).map(f=>escapeAttr(f.name)).join(', ')}${audit.unused.length>12?'…':''}. Put the file name in that item's photo column, or use Choose photo on the item.</p></div>` : ''}
-  ${audit.shared.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.shared.length} photo${audit.shared.length===1?' is':'s are'} used by more than one item.</strong> Check the rows marked below.</p></div>` : ''}
+  ${_bulk.rows.some(r=>(r.photoErrs||[]).length) ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>Each item needs its own photo.</strong> Rows whose photo is already used are marked below and won't be added until you change the photo.</p></div>` : ''}
   <input type="file" accept="image/*" id="bulkRowPhoto" style="display:none;" onchange="onBulkRowPhoto(event)">
   <div class="bulk-list">
     ${_bulk.rows.map((r,idx)=>`
-      <div class="bulk-row ${r.errors.length?'has-err':''}">
+      <div class="bulk-row ${bulkRowErrs(r).length?'has-err':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
           <span class="bulk-thumb-wrap">${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more" aria-label="${ex} more photo${ex===1?'':'s'}">+${ex}</span>` : ''; })()}
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}</span>
           <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>
-        ${r.errors.map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
+        ${bulkRowErrs(r).map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
+        ${r.replaceId ? (r.skip ? `<p class="bulk-note">Skipped: you already have “${escapeAttr(r.replaceName)}”. <button class="link-btn" onclick="bulkToggleSkip(${idx})">Replace it instead</button></p>` : `<p class="bulk-warn">! You already have “${escapeAttr(r.replaceName)}”. This row replaces it (photos, price and details). <button class="link-btn" onclick="bulkToggleSkip(${idx})">Skip this row</button></p>`) : ''}
         ${r.warnings.map(w=>`<p class="bulk-warn">! ${escapeAttr(w)}</p>`).join('')}
         ${(()=>{ const ph = bulkPhotoFor(r); const shared = audit.shared.find(([f])=>ph.file===f);
           const msg = ph.kind==='missing' ? `<p class="bulk-warn">! Photo "${escapeAttr(ph.name)}" isn't picked yet, so this item is added without a photo</p>`
             : ph.kind==='none' ? `<p class="bulk-note">${ph.removed?'Photo removed':'No photo'}: you can add one later in Edit item</p>`
             : `<p class="bulk-note">Photo: ${ph.kind==='file'?escapeAttr(ph.file.name):'web link'} · ${ph.how==='you'?'chosen by you':'matched by '+ph.how}</p>`;
-          const dup = shared ? `<p class="bulk-warn">! Same photo as row${shared[1].length>2?'s':''} ${shared[1].filter(x=>x!==r).map(x=>x.line).join(', ')}. Check it's the right one</p>` : '';
-          const btns = r.errors.length ? '' : `<div class="bulk-photo-acts"><button class="link-btn" onclick="bulkChangePhoto(${idx})">${ph.kind==='file'||ph.kind==='url'?'Change photo':'Choose photo'}</button>${ph.kind==='file'||ph.kind==='url'?`<button class="link-btn" onclick="bulkRemovePhoto(${idx})">Remove photo</button>`:''}${r.override?`<button class="link-btn" onclick="bulkResetPhoto(${idx})">Undo</button>`:''}</div>`;
+          const dup = '';
+          const btns = r.errors.length || r.skip ? '' : `<div class="bulk-photo-acts"><button class="link-btn" onclick="bulkChangePhoto(${idx})">${ph.kind==='file'||ph.kind==='url'?'Change photo':'Choose photo'}</button>${ph.kind==='file'||ph.kind==='url'?`<button class="link-btn" onclick="bulkRemovePhoto(${idx})">Remove photo</button>`:''}${r.override?`<button class="link-btn" onclick="bulkResetPhoto(${idx})">Undo</button>`:''}</div>`;
           return msg + dup + btns; })()}
       </div>`).join('')}
   </div>
   ${bad.length ? `<p class="muted" style="font-size:.84em; margin-top:10px;">Rows with problems are skipped. Fix them in the sheet and upload again, or add them one by one.</p>` : ''}
-  <button class="btn btn-primary" style="margin-top:14px;" ${willAdd?'':'disabled'} onclick="submitBulkItems()">${willAdd?`Add ${willAdd} item${willAdd===1?'':'s'} to store`:'Nothing to add yet'}</button>` : ''}`;
+  <button class="btn btn-primary" style="margin-top:14px;" ${willAdd?'':'disabled'} onclick="submitBulkItems()">${willAdd?(okRep.length && !Math.min(okNew.length, room) ? `Replace ${okRep.length} item${okRep.length===1?'':'s'}` : `Add ${willAdd} item${willAdd===1?'':'s'} to store`):'Nothing to add yet'}</button>` : ''}`;
 }
 async function submitBulkItems(){
   if(!_bulk) return;
   const biz = currentBiz(); const t = tierInfo(biz);
   const room = Math.max(0, t.limit - DB.items.filter(i=>i.businessId===biz.id).length);
-  const rows = _bulk.rows.filter(r=>!r.errors.length).slice(0, room);
+  await bulkCheckPhotos();
+  const okRows = _bulk.rows.filter(bulkRowOK);
+  const rows = [...okRows.filter(r=>r.replaceId), ...okRows.filter(r=>!r.replaceId).slice(0, room)];
   if(!rows.length){ toast('Nothing to add','bad'); return; }
   toast(`Adding ${rows.length} item${rows.length===1?'':'s'}…`);
   // Every photo for every row (cover + extras from the photo column), uploaded
@@ -6922,7 +7213,7 @@ async function submitBulkItems(){
   const jobs = [];   // {r, slot, file|url}
   rows.forEach(r=>{
     const ph = bulkPhotoFor(r);
-    r._imgs = new Array(PHOTO_MAX).fill(null);
+    r._imgs = new Array(PHOTO_MAX).fill(null); r._prt = new Array(PHOTO_MAX).fill(null);
     if(ph.kind==='url') r._imgs[0] = ph.url;
     else if(ph.kind==='file') jobs.push({ r, slot:0, file:ph.file });
     bulkExtraPhotos(r).forEach((x,k)=>{ if(x.kind==='url') r._imgs[k+1] = x.url; else if(x.kind==='file') jobs.push({ r, slot:k+1, file:x.file }); });
@@ -6932,20 +7223,31 @@ async function submitBulkItems(){
     while(next < jobs.length){
       const j = jobs[next++];
       const url = sb ? await uploadItemPhoto(j.file) : bulkThumbURL(j.file);   // no server: local preview
-      if(url) j.r._imgs[j.slot] = url; else photoFails++;
+      if(url){ j.r._imgs[j.slot] = url; j.r._prt[j.slot] = await photoPrint(j.file); } else photoFails++;
       done++; if(sb && (done % 3 === 0 || done === jobs.length)) toast(`Uploading photos… ${done} of ${jobs.length}`);
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
-  rows.forEach(r=>{ const imgs = r._imgs.filter(Boolean).slice(0, PHOTO_MAX); r.item.images = imgs; r.item.imageUrl = imgs[0] || r.item.imageUrl || null; delete r._imgs; });
-  const items = rows.map(r=>r.item);
+  rows.forEach(r=>{ const keep = r._imgs.map((u,k)=>u?k:-1).filter(k=>k>=0).slice(0, PHOTO_MAX); const imgs = keep.map(k=>r._imgs[k]); r.item.images = imgs; r.item.photoPrints = keep.map(k=>r._prt[k]); r.item.imageUrl = imgs[0] || r.item.imageUrl || null; delete r._imgs; delete r._prt; });
+  // Rows that replace an item the store already has update that item (same id, reviews and sales kept).
+  const replaced = [], backups = [];
+  rows.filter(r=>r.replaceId).forEach(r=>{
+    const ex = DB.items.find(i=>i.id===r.replaceId); if(!ex) return;
+    backups.push({ ...ex });
+    const { id, businessId, approvalStatus, submittedAt, images, imageUrl, photoPrints, ...fields } = r.item;
+    Object.assign(ex, fields);
+    if(images && images.length){ ex.images = images; ex.imageUrl = imageUrl; ex.photoPrints = photoPrints; }
+    replaced.push(ex);
+  });
+  const items = rows.filter(r=>!r.replaceId).map(r=>r.item);
   items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
   DB.items.push(...items);
-  const saved = await saveDB('items', items);
+  const saved = await saveDB('items', [...items, ...replaced]);
   if(saved === false){
     // Nothing was stored, so don't show the items as if they were.
     const ids = new Set(items.map(i=>i.id));
     DB.items = DB.items.filter(i=>!ids.has(i.id));
+    backups.forEach(b=>{ const ex = DB.items.find(i=>i.id===b.id); if(ex) Object.assign(ex, b); });
     render();
     return;
   }
@@ -6958,7 +7260,7 @@ async function submitBulkItems(){
   const others = [...new Set(items.map(i=>i.categoryOtherName).filter(Boolean))];
   for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
   _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
-  toast(`${items.length} item${items.length===1?'':'s'} added${sb?'. They show to customers once Maldexpress approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
+  toast(`${items.length} item${items.length===1?'':'s'} added${replaced.length?` · ${replaced.length} replaced`:''}${sb?'. They show to customers once Maldexpress approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
 }
 function sheetEditItem(){
   const item = DB.items.find(i=>i.id===state.sheetData);
@@ -7039,9 +7341,13 @@ function sheetEditItem(){
 async function submitEditItem(itemId){
   const item = DB.items.find(i=>i.id===itemId);
   if(!item) return;
-  if(item.approvalStatus==='rejected'){ item.approvalStatus = 'pending'; item.approvalNote = ''; }
   const name = val('e_name');
   if(!name){ toast('Enter an item name','bad'); return; }
+  const dupE = storeItemByName(item.businessId, name, item.id);
+  if(dupE){ toast(`You already have an item called “${dupE.name}”. Use a different name`,'bad'); return; }
+  const printsE = await slotPrintsOrBlock(item.businessId, [item.id]);
+  if(!printsE) return;
+  if(item.approvalStatus==='rejected'){ item.approvalStatus = 'pending'; item.approvalNote = ''; }
   item.name = name;
   item.category = val('e_cat') || 'General';
   item.categoryOtherName = item.category==='Other' ? (val('e_cat_other')||'') : '';
@@ -7078,7 +7384,7 @@ async function submitEditItem(itemId){
   item.extraDeliveryFee = Math.max(0, Number(val('e_extra_fee')||0));
   if(_photoSlots.some(ph=>ph.file)) toast('Saving photos…');
   const imgs = await uploadPhotoSlots();
-  item.images = imgs; item.imageUrl = imgs[0] || null;
+  item.images = imgs; item.imageUrl = imgs[0] || null; item.photoPrints = printsE.slice(0, imgs.length);
   if(await saveDB('items', [item]) === false) return;
   _itemPhotoFile = null;
   closeSheet(); toast('Item updated'); render();
@@ -7319,7 +7625,7 @@ function orderDetailBizBody(o){
   if(!o) return `<h2>Order not found</h2>`;
   const itemsList = o.items.map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
   const payoutAmt = Math.round(o.deliveryPartnerPayout!=null ? o.deliveryPartnerPayout : o.deliveryFee);
-  const buyerPaidFee = o.deliveryType!=='free';
+  const buyerPaidFee = o.deliveryType!=='free' || (o.deliveryFee||0) > 0;   // a boat / island charge the store set counts even on a free-delivery item
   const cashCut = cashCutAmount(o);
   let actionArea = '';
   if(o.paymentStatus==='awaiting_completion'){
@@ -7328,7 +7634,7 @@ function orderDetailBizBody(o){
     actionArea = swipeBizActionHTML(o);
   } else if(o.paymentMethod==='transfer'){
     if(o.status==='declined'){
-      actionArea = `<div class="status-pill bad" style="display:inline-block;">You declined this order</div>`;
+      actionArea = `<div class="status-pill bad" style="display:inline-block;">${o.cancelledAt?`${escapeAttr(o.customerName||'The customer')} cancelled this order`:'You declined this order'}</div>`;
     } else if(o.paymentStatus==='awaiting_approval'){
       actionArea = orderApprovalHTML(o);
     } else if(o.paymentStatus==='pending_transfer'){
@@ -7429,7 +7735,10 @@ function orderDetailBizBody(o){
       actionArea += rentalReturnActionHTML(o);
     }
   } else if(buyNowNeedsPayment(o) || o.status==='declined'){
-    // Nothing to hand over: a Buy now order goes out only once it's paid.
+    // Not paid yet: the store can still deliver it itself (it takes the risk);
+    // the customer then can't check out again until they pay.
+    if(o.status==='delivered') actionArea += `<div class="status-pill wait" style="display:inline-block; margin-top:10px;">Delivered · not paid yet</div><p class="muted" style="font-size:.82em; margin-top:6px;">${escapeAttr(o.customerName||'The customer')} can't place new orders until they pay ${money(o.total)}.</p>`;
+    else if(canDeliverUnpaid(o)) actionArea += `<button class="btn btn-outline" style="width:100%; margin-top:10px;" onclick="openSheet('deliverUnpaid','${o.id}')">Mark as delivered (not paid yet)</button>`;
   } else if(o.deliveryPersonId){
     if(o.status==='delivered'){
       actionArea += `<div class="status-pill ok" style="display:inline-block; margin-top:10px;">Delivered by ${o.deliveryPersonName} ✓</div>`;
@@ -9545,7 +9854,7 @@ function homeSearchRowHTML(where='hero'){
 function toggleCatDrop(where){ state.catDropOpen = state.catDropOpen===where ? false : where; state.homeSwitcherOpen = false; render(); }
 function pickCatDrop(c){ state.catDropOpen = false; setHomeCategory(c); }
 function catDropHTML(){
-  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-drop" role="listbox" aria-label="Categories" onclick="event.stopPropagation()">
     ${cats.map(c=>`<button role="option" aria-selected="${state.homeCategory===c}" class="cat-drop-opt ${state.homeCategory===c?'on':''}" onclick="pickCatDrop('${escapeAttr(c)}')"><span aria-hidden="true">${c==='All'?'✨':categoryIcon(c)}</span>${c==='All'?'All categories':escapeAttr(c)}</button>`).join('')}
   </div>`;
@@ -9626,7 +9935,7 @@ function setHomeCategory(cat){ state.homeCategory = cat; render(); }
 // menu in the header) instead of always taking the top of the home page.
 function pickCategoryFromSheet(c){ state.sheet = null; state.sheetData = null; state.deskCatsOpen = false; state.homeCategory = c; if(state.screen!=='custHome') state.screen = 'custHome'; render(); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
 function categoryGridHTML(){
-  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-grid">${cats.map(c=>`
     <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="pickCategoryFromSheet('${escapeAttr(c)}')">
       <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
@@ -10065,7 +10374,7 @@ function moreRailsHTML(rest){
   const groups = {};
   rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
   const keys = Object.keys(groups);
-  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
+  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : viewShuffle(keys, 11).map(k=>[k, groups[k], k]);
   return rails.map(([title, list, cat])=>`
       <div class="section">
         <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
@@ -10076,8 +10385,9 @@ function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
   const filtered0 = homeFilteredItems();
-  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(filtered0) : filtered0;
-  const featured = featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i));
+  const mixed0 = viewShuffle(filtered0);   // new order every visit; anything that has sold stays first, by sales
+  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(mixed0) : mixed0;
+  const featured = viewShuffle(featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i)), 7);
   // Fixed master list (see MARKETPLACE_CATEGORIES) rather than only categories that
   // already have an item in them - so a shopper can browse into a category before
   // any business has listed anything there yet, same as a real marketplace app.
@@ -10138,7 +10448,7 @@ function siteHeaderHTML(active){
   const notifs = customerNotifications();
   const hasUnread = notifs.some(n=>!state.notifSeenIds[n.id]);
   const cartN = deskCartCount();
-  const navCats = MARKETPLACE_CATEGORIES.slice(0, 8);
+  const navCats = viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 19).slice(0, 8);
   return `
   <header class="site-head">
     <div class="site-util"><div class="site-wrap">
@@ -10218,12 +10528,12 @@ function deskBannerHTML(){
 }
 const DESK_TILE_TINTS = ['#DDF5F2','#FFE6DE','#E2ECFF','#E3F4E7','#FFF1D9','#F0E6FF','#E4F1FA','#FCE7F0'];
 function renderDeskHome(){
-  const filtered = homeFilteredItems();
+  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(viewShuffle(homeFilteredItems())) : viewShuffle(homeFilteredItems());
   const allOfType = DB.items.filter(i=>(i.listingType||'buy_now')===(state.homeListingType||'buy_now'));
-  const featNow = featuredItemsNow(state.homeListingType||'buy_now');
+  const featNow = viewShuffle(featuredItemsNow(state.homeListingType||'buy_now'), 7);
   const featShow = featNow.length;   // all sponsored items: 4 on screen, slide for more
-  const picks = featNow.length ? featNow.slice(0, featShow) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
-  const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
+  const picks = featNow.length ? featNow.slice(0, featShow) : viewShuffle(allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0), 3).concat(viewShuffle(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0)), 5)).slice(0, 6);
+  const tiles = viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 13).slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
   const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? '🐚 Fresh off the Boat' : typeLabel;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
@@ -10686,6 +10996,7 @@ function renderCustCart(){
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
     ${topbar('Your Dhoni')}
     <div style="padding:4px 0 ${lines.length?'190px':'0'};">
+      ${lines.length ? unpaidBlockHTML(unpaidDeliveredOrder()) : ''}
       ${lines.length? `
         ${groups.length>1?`<div class="tabs">${groups.map(g=>`<button class="tab ${g.biz&&g.biz.id===activeId?'active':''}" onclick="setCartActiveStore('${g.biz?g.biz.id:''}')">${g.biz?g.biz.name:'Store'} (${g.lines.length})</button>`).join('')}</div>`:''}
         ${groups.length>1?`<div class="row" style="align-items:center; gap:8px; margin:2px 4px 6px;">
@@ -11096,6 +11407,8 @@ function refreshCheckoutTotals(){
 }
 function goCheckout(){
   if(sb && !state.authed){ state.pendingItemAction = {type:'checkout'}; openSheet('signIn', {intent:'checkout'}); return; }
+  const owed = unpaidDeliveredOrder();
+  if(owed){ openSheet('unpaidBlock', owed.id); return; }
   openSheet('checkout');
   applyAutoDeliveryTarget();   // e.g. default address on another island
 }
@@ -12009,7 +12322,11 @@ async function placeStoreOrder(bizId){
     const dbRow = toDbRow('orders', order);
     await encryptOrderRow(dbRow, order);
     const { error } = await sb.from('orders').insert(dbRow);
-    if(error){ toast('Could not place order: '+error.message, 'bad'); return; }
+    if(error){
+      const m = /checkout_blocked:?\s*([\w-]+)?/.exec(error.message||'');
+      if(m){ const owed = (m[1] && DB.orders.find(x=>x.id===m[1])) || unpaidDeliveredOrder(); if(owed){ openSheet('unpaidBlock', owed.id); return; } toast("You haven't paid for a delivered order. Pay it before placing a new one",'bad'); return; }
+      toast('Could not place order: '+error.message, 'bad'); return;
+    }
     await rememberDeliveryAddress(deliveryTarget);
   }
   DB.orders.push(order);
@@ -12229,6 +12546,77 @@ function orderThumbHTML(o){
   </div>`;
 }
 function setOrdersTab(tab){ state.ordersTab = tab; render(); }
+// ---- Deliver before payment / pay before the next checkout ----
+function canDeliverUnpaid(o){ return isBuyNowOrder(o) && !o.deliveryPersonId && o.status!=='delivered' && o.status!=='declined' && ['pending_transfer','awaiting_swipe'].includes(o.paymentStatus); }
+function sheetDeliverUnpaid(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<p class="muted">Order not found.</p>`;
+  return `<h2>Delivered before payment?</h2>
+  <p class="muted" style="margin:6px 0 16px;">${escapeAttr(o.customerName||'The customer')} still owes ${money(o.total)} for #${o.id.slice(-5).toUpperCase()}. They can pay from their order, and they can't place a new order until they do.</p>
+  <div class="row" style="gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Not yet</button><button class="btn btn-primary" style="flex:1;" onclick="markUnpaidDelivered('${o.id}')">Mark as delivered</button></div>`;
+}
+async function markUnpaidDelivered(id){
+  closeSheet();
+  const o = DB.orders.find(x=>x.id===id);
+  if(!sb){ if(o){ o.status='delivered'; o.selfDelivery=true; } toast('Marked as delivered · payment still due'); render(); return; }
+  const updated = await callOrderRpc('mark_unpaid_order_delivered', { p_order_id: id }, id, "Couldn't update this order. It may have been paid or changed");
+  if(!updated) return;
+  toast('Marked as delivered · payment still due'); render();
+}
+// A delivered order this customer hasn't paid for blocks new checkouts
+// (customer_checkout_blocked() on the server does the same).
+function unpaidDeliveredOrder(){
+  return (DB.orders||[]).filter(o=>(!sb || o.customerId===state.customerId) && o.status==='delivered' && o.paymentReview!=='approved'
+    && (['pending_transfer','pending_cash','awaiting_swipe'].includes(o.paymentStatus) || ['problem','resubmitted'].includes(o.paymentReview)))
+    .sort((a,b)=>(a.createdAt||0)-(b.createdAt||0))[0] || null;
+}
+function unpaidBlockHTML(o){
+  if(!o) return '';
+  return `<div class="card unpaid-block" role="alert">
+    <strong>You haven't paid for order #${o.id.slice(-5).toUpperCase()}</strong>
+    <p>${escapeAttr(o.businessName||'The store')} delivered it. Pay ${money(o.total)} before placing a new order.</p>
+    <button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="closeSheet(); openCustOrderDetail('${o.id}')">Pay for #${o.id.slice(-5).toUpperCase()}</button>
+  </div>`;
+}
+// Items + delivery = total, so the customer always sees whether delivery was added.
+function custCostRowsHTML(o){
+  if(o.rentalItemId || o.paymentStatus==='awaiting_completion') return '';
+  const items = Math.max(0, (o.itemsTotal||0) - (o.discountAmount||0));
+  const fee = (o.deliveryFee||0) + (o.extraDeliveryFee||0);
+  const waitCharge = routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined';
+  const deliv = waitCharge ? 'Added when the store confirms' : fee<=0 ? 'Free' : money(fee);
+  return `<div class="cost-rows">
+    <div><span>Items</span><span>${money(items)}</span></div>
+    <div><span>Delivery${o.route==='boat_to_island'||o.route==='boat_to_male' ? ' (by boat)' : o.route==='local' ? ' (on the island)' : o.zone ? ` (${escapeAttr(o.zone)})` : ''}</span><span class="${deliv==='Free'?'free':''}">${deliv}</span></div>
+    <div class="tot"><span>${waitCharge?'Total so far':'Total'}</span><span>${money(o.total||items)}</span></div>
+  </div>`;
+}
+// Before paying, a customer can cancel a Buy now order (cancel_order_by_customer).
+function custCanCancel(o){
+  return isBuyNowOrder(o) && o.status!=='declined' && o.status!=='delivered' && (
+    (o.paymentMethod==='swipe' && ['awaiting_approval','awaiting_swipe'].includes(o.paymentStatus)) ||
+    (o.paymentMethod==='transfer' && ['awaiting_approval','pending_transfer'].includes(o.paymentStatus)));
+}
+function sheetCancelOrder(){
+  const o = DB.orders.find(x=>x.id===state.sheetData);
+  if(!o) return `<p class="muted">Order not found.</p>`;
+  return `<h2>Cancel order #${o.id.slice(-5).toUpperCase()}?</h2>
+  <p class="muted" style="margin:6px 0 16px;">${escapeAttr(o.businessName||'The store')} will see that you cancelled it. You haven't paid anything, so there's nothing to refund.</p>
+  <div class="row" style="gap:8px;">
+    <button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep order</button>
+    <button class="btn btn-primary danger-bg" style="flex:1;" onclick="cancelOrderByCustomer('${o.id}')">Cancel order</button>
+  </div>`;
+}
+async function cancelOrderByCustomer(id){
+  const o = DB.orders.find(x=>x.id===id);
+  if(!o || !custCanCancel(o)){ toast("This order can't be cancelled now",'bad'); closeSheet(); return; }
+  if(!sb || SWIPE_PREVIEW){ o.status='declined'; o.cancelledAt=Date.now(); closeSheet(); toast('Order cancelled'); render(); return; }
+  const updated = await callOrderRpc('cancel_order_by_customer', { p_order_id: id }, id, "Couldn't cancel this order. It may already be paid");
+  closeSheet();
+  if(!updated) return;
+  const fresh = DB.orders.find(x=>x.id===id); if(fresh && !fresh.cancelledAt) fresh.cancelledAt = Date.now();
+  toast('Order cancelled'); render();
+}
 function custOrderCard(o){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
   if(o.paymentStatus==='awaiting_completion'){
@@ -12256,6 +12644,7 @@ function custOrderCard(o){
       </div>
     </div>
     ${o.status==='out_for_delivery' ? `<div class="status-pill mid" style="display:inline-block; margin-bottom:8px;">🚚 Out for delivery</div>` : ''}
+    ${o.status==='delivered' && unpaidDeliveredOrder() && ['pending_transfer','awaiting_swipe','pending_cash'].includes(o.paymentStatus) ? `<p class="unpaid-note">Delivered. You haven't paid for this order yet. Pay ${money(o.total)} to place new orders.</p>` : ''}
     ${custSwipeHTML(o, true)}
     ${showAcct ? `
       <div class="acct-box"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>
@@ -12266,7 +12655,8 @@ function custOrderCard(o){
       <button class="btn btn-outline btn-sm" style="width:100%; margin-top:8px;" onclick="event.stopPropagation(); openSheet('uploadSlip','${o.id}')">Upload transfer slip instead</button>
     ` : ''}
     ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
-    ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:6px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
+    ${custCostRowsHTML(o)}
+    ${custCanCancel(o) ? `<button class="btn btn-ghost btn-sm cancel-ord" onclick="event.stopPropagation(); openSheet('cancelOrder','${o.id}')">Cancel order</button>` : ''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<p class="muted" style="font-size:.82em; margin-top:6px;">${o.rentalReturnFeeStatus==='collected' ? `Rental fee of ${money(o.rentalFeeAmount||0)} collected on return.` : `Rental fee of ${money(o.rentalFeeAmount||0)} due when you return the item.`}</p>` : ''}
     ${o.rentalItemId && o.rentalReturnedAt ? `<div class="status-pill ok" style="display:inline-block; margin-top:6px;">Returned ✓</div>` : ''}
   </div>`;
@@ -12303,7 +12693,7 @@ function sheetCustOrderDetail(){
   <div class="card tight">
     ${itemsList || `<div class="row between"><span class="muted">Winning bid</span><span>${money(o.itemsTotal)}</span></div>`}
     ${o.discountAmount>0?`<div class="row between" style="margin-top:6px;"><span class="muted">Discount</span><span>-${money(o.discountAmount)}</span></div>`:''}
-    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${o.deliveryType==='free'?'Free':money(o.deliveryFee)}</span></div>`}
+    ${o.rentalItemId ? '' : `<div class="row between" style="margin-top:6px;"><span class="muted">Delivery</span><span>${routeNeedsStoreCharge(o.route) && o.paymentStatus==='awaiting_approval' && o.status!=='declined' ? 'Added when the store confirms' : !(o.deliveryFee>0) ? 'Free' : money(o.deliveryFee)}</span></div>`}
     ${o.extraDeliveryFee?`<div class="row between" style="margin-top:6px;"><span class="muted">Extra delivery fee</span><span>${money(o.extraDeliveryFee)}</span></div>`:''}
     ${o.rentalItemId && o.rentalFeeTiming==='on_return' ? `<div class="row between" style="margin-top:6px;"><span class="muted">Rental fee ${o.rentalReturnFeeStatus==='collected'?'(collected on return)':'(due on return)'}</span><span>${money(o.rentalFeeAmount||0)}</span></div>` : ''}
     <div class="row between" style="margin-top:6px;"><strong>${o.rentalItemId && o.rentalFeeTiming==='on_return' ? 'Paid now':'Total'}</strong><strong class="price">${money(o.total||o.itemsTotal)}</strong></div>
@@ -12321,7 +12711,7 @@ function sheetCustOrderDetail(){
   ` : ''}
   ${o.paymentMethod==='cash_on_pickup' && o.paymentStatus==='pending_cash' ? `<p class="muted" style="font-size:.82em; margin-top:10px;">Have ${money(o.total)} cash ready to pay ${biz?biz.name:'the store'} on ${o.rentalFulfillment==='pickup'?'pickup':'delivery'}.</p>` : ''}
   ${o.paymentStatus==='awaiting_completion' ? `<button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="closeSheet(); openSheet('completeAuctionOrder','${o.id}')">Complete your order</button>` : ''}
-  ${o.deliveryType==='free' && !o.rentalItemId ? `<p class="muted" style="font-size:.8em; margin-top:10px;">🚚 Free delivery — no delivery fee charged</p>` : ''}
+  ${custCanCancel(o) ? `<button class="btn btn-outline" style="width:100%; margin-top:12px;" onclick="openSheet('cancelOrder','${o.id}')">Cancel order</button><p class="muted" style="font-size:.8em; margin-top:6px; text-align:center;">You can cancel until you pay.</p>` : ''}
   `;
 }
 function sheetUploadSlip(){

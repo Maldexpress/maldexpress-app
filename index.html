@@ -4249,8 +4249,16 @@ function goBack(){
 }
 
 /* =================== RENDER ROOT =================== */
+// Home shuffles its items and categories every time it's opened (a new view):
+// arriving on Home, or changing its listing type / category / search. Plain
+// re-renders (live refresh, tapping a heart) keep the same order so nothing
+// jumps while you look.
+let _homeSeed = (Math.random()*4294967296)>>>0, _lastViewKey = '';
+function viewShuffle(list, salt){ const seed = (_homeSeed ^ (salt||0))>>>0; return list.slice().sort((a,b)=>seededRank(String(a.id||a),seed)-seededRank(String(b.id||b),seed)); }
 function render(){
   const app = document.getElementById('app');
+  { const vk = state.adminMode ? 'admin' : [state.role, state.screen, state.screen==='custHome' ? [state.homeListingType, state.homeCategory, state.homeSearch].join('|') : ''].join(':');
+    if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeSeed = (Math.random()*4294967296)>>>0; _lastViewKey = vk; } }
   if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
   if(state.adminMode) renderAdmin();
   else if(state.role==='business') renderBusiness();
@@ -4692,7 +4700,7 @@ function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.feat
 function featuredSlotsUsed(){ return DB.items.filter(isFeaturedNow).length; }
 // Same order for everyone within an hour, a new random order each hour.
 function hourSeed(){ return Math.floor(Date.now()/3600000); }
-function seededRank(id, seed){ let h = 2166136261 ^ seed; for(let k=0;k<id.length;k++){ h ^= id.charCodeAt(k); h = Math.imul(h, 16777619); } return (h>>>0); }
+function seededRank(id, seed){ let h = 2166136261 ^ seed; for(let k=0;k<id.length;k++){ h ^= id.charCodeAt(k); h = Math.imul(h, 16777619); } h ^= h>>>16; h = Math.imul(h, 0x85ebca6b); h ^= h>>>13; h = Math.imul(h, 0xc2b2ae35); h ^= h>>>16; return (h>>>0); }   // FNV-1a + final mix so similar ids spread out
 function featuredItemsNow(type){
   const seed = hourSeed();
   return DB.items.filter(i=>isFeaturedNow(i) && (!type || (i.listingType||'buy_now')===type))
@@ -9664,7 +9672,7 @@ function homeSearchRowHTML(where='hero'){
 function toggleCatDrop(where){ state.catDropOpen = state.catDropOpen===where ? false : where; state.homeSwitcherOpen = false; render(); }
 function pickCatDrop(c){ state.catDropOpen = false; setHomeCategory(c); }
 function catDropHTML(){
-  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-drop" role="listbox" aria-label="Categories" onclick="event.stopPropagation()">
     ${cats.map(c=>`<button role="option" aria-selected="${state.homeCategory===c}" class="cat-drop-opt ${state.homeCategory===c?'on':''}" onclick="pickCatDrop('${escapeAttr(c)}')"><span aria-hidden="true">${c==='All'?'✨':categoryIcon(c)}</span>${c==='All'?'All categories':escapeAttr(c)}</button>`).join('')}
   </div>`;
@@ -9745,7 +9753,7 @@ function setHomeCategory(cat){ state.homeCategory = cat; render(); }
 // menu in the header) instead of always taking the top of the home page.
 function pickCategoryFromSheet(c){ state.sheet = null; state.sheetData = null; state.deskCatsOpen = false; state.homeCategory = c; if(state.screen!=='custHome') state.screen = 'custHome'; render(); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
 function categoryGridHTML(){
-  const cats = ['All', ...MARKETPLACE_CATEGORIES];
+  const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-grid">${cats.map(c=>`
     <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="pickCategoryFromSheet('${escapeAttr(c)}')">
       <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
@@ -10184,7 +10192,7 @@ function moreRailsHTML(rest){
   const groups = {};
   rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
   const keys = Object.keys(groups);
-  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : keys.sort((a,b)=>groups[b].length-groups[a].length).map(k=>[k, groups[k], k]);
+  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : viewShuffle(keys, 11).map(k=>[k, groups[k], k]);
   return rails.map(([title, list, cat])=>`
       <div class="section">
         <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
@@ -10195,8 +10203,9 @@ function renderCustHome(){
   settleExpiredAuctions(DB.items);
   if(isDesktop()) return renderDeskHome();
   const filtered0 = homeFilteredItems();
-  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(filtered0) : filtered0;
-  const featured = featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i));
+  const mixed0 = viewShuffle(filtered0);   // new order every visit; anything that has sold stays first, by sales
+  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(mixed0) : mixed0;
+  const featured = viewShuffle(featuredItemsNow(state.homeListingType||'buy_now').filter(i=>filtered.includes(i)), 7);
   // Fixed master list (see MARKETPLACE_CATEGORIES) rather than only categories that
   // already have an item in them - so a shopper can browse into a category before
   // any business has listed anything there yet, same as a real marketplace app.
@@ -10257,7 +10266,7 @@ function siteHeaderHTML(active){
   const notifs = customerNotifications();
   const hasUnread = notifs.some(n=>!state.notifSeenIds[n.id]);
   const cartN = deskCartCount();
-  const navCats = MARKETPLACE_CATEGORIES.slice(0, 8);
+  const navCats = viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 19).slice(0, 8);
   return `
   <header class="site-head">
     <div class="site-util"><div class="site-wrap">
@@ -10337,12 +10346,12 @@ function deskBannerHTML(){
 }
 const DESK_TILE_TINTS = ['#DDF5F2','#FFE6DE','#E2ECFF','#E3F4E7','#FFF1D9','#F0E6FF','#E4F1FA','#FCE7F0'];
 function renderDeskHome(){
-  const filtered = homeFilteredItems();
+  const filtered = (state.homeListingType||'buy_now')==='buy_now' ? sortByAppSales(viewShuffle(homeFilteredItems())) : viewShuffle(homeFilteredItems());
   const allOfType = DB.items.filter(i=>(i.listingType||'buy_now')===(state.homeListingType||'buy_now'));
-  const featNow = featuredItemsNow(state.homeListingType||'buy_now');
+  const featNow = viewShuffle(featuredItemsNow(state.homeListingType||'buy_now'), 7);
   const featShow = featNow.length;   // all sponsored items: 4 on screen, slide for more
-  const picks = featNow.length ? featNow.slice(0, featShow) : allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0).concat(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0))).slice(0, 6);
-  const tiles = MARKETPLACE_CATEGORIES.filter(c=>c!=='Other').slice(0, 14);
+  const picks = featNow.length ? featNow.slice(0, featShow) : viewShuffle(allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0), 3).concat(viewShuffle(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0)), 5)).slice(0, 6);
+  const tiles = viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 13).slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
   const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? '🐚 Fresh off the Boat' : typeLabel;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `

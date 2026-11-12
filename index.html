@@ -239,7 +239,7 @@
     display:flex; align-items:center; justify-content:center; font-size:1.5em;
     background:var(--lagoon-50); overflow:hidden;
   }
-  .item-thumb img{width:100%; height:100%; object-fit:contain; background:#fff;}
+  .item-thumb img{width:100%; height:100%; object-fit:cover; object-position:50% 35%; background:#fff;}
   .item-info{flex:1; min-width:0;}
   .item-info h3{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   /* Multi-item order thumbnail: top item in front, runner-up peeking behind. */
@@ -597,7 +597,7 @@
     background:var(--lagoon-50); border-radius:22px; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(13,43,51,.04);
   }
   .top-card .img-wrap > div:first-child{font-size:2.6em;}
-  .top-card .img-wrap img{width:100%; height:100%; object-fit:contain; background:#fff;}
+  .top-card .img-wrap img{width:100%; height:100%; object-fit:cover; object-position:50% 35%; background:#fff;   /* photos fill the square card (tall photos lose a little top and bottom) */}
   .item-detail-hero{
     position:relative; width:260px; max-width:100%; height:260px; margin:0 auto 16px; border-radius:28px; overflow:hidden;
     display:flex; align-items:center; justify-content:center; font-size:4em;

@@ -9626,7 +9626,7 @@ function homeHeaderHTML(){
   return `
   <div class="topbar home-header">
     <div class="brand">
-      <button class="brand-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
+      <button class="iconbtn avatar-btn" aria-label="Menu" onclick="toggleDrawer(true)">${(state.authed && state.customerEmail) ? `<span class="av-letter">${escapeAttr(state.customerEmail[0].toUpperCase())}</span>` : ICON_HAMBURGER}</button>
     </div>
     <div class="row" style="gap:8px;">
       ${workModeButtonsHTML()}
@@ -9634,7 +9634,7 @@ function homeHeaderHTML(){
         <button class="iconbtn" aria-label="Notifications" style="position:relative;" onclick="event.stopPropagation(); toggleNotifDropdown()">${ICON_BELL}${hasUnread?`<span class="notif-dot"></span>`:''}</button>
         ${state.notifOpen ? notifDropdownHTML(notifs) : ''}
       </div>
-      <button class="iconbtn avatar-btn" aria-label="Menu" onclick="toggleDrawer(true)">${(state.authed && state.customerEmail) ? `<span class="av-letter">${escapeAttr(state.customerEmail[0].toUpperCase())}</span>` : ICON_HAMBURGER}</button>
+      <button class="brand-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
     </div>
   </div>`;
 }

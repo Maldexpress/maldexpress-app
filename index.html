@@ -932,7 +932,15 @@
   .adm-name{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .adm-desc{font-size:.8em; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .adm-acts{display:flex; flex-direction:column; gap:6px; flex-shrink:0;}
-  .adm-group{grid-column:1/-1;}
+  .adm-group{grid-column:1/-1; min-width:0;}
+  .adm-store-head{display:flex; align-items:center; gap:12px; width:100%; padding:0; border:none; background:none; color:var(--ink); font-size:1em;}
+  .adm-store-av{width:44px; height:44px; flex-shrink:0; border-radius:14px; display:flex; align-items:center; justify-content:center; font-family:var(--display); font-weight:800; font-size:1.15em; color:#fff; background:linear-gradient(135deg, var(--lagoon-500), var(--ocean));}
+  .adm-store-count{min-width:30px; height:26px; padding:0 9px; border-radius:99px; background:var(--sunset); color:#fff; font-weight:800; font-size:.86em; line-height:26px; text-align:center;}
+  .adm-chev{font-size:1.4em; color:var(--ink-400); transition:transform .2s ease;}
+  .adm-group.open .adm-chev{transform:rotate(90deg);}
+  .adm-peek{display:flex; gap:6px; margin-top:12px; cursor:pointer; overflow:hidden;}
+  .adm-peek .adm-thumb{width:44px; height:44px; border-radius:10px;}
+  .adm-more{width:44px; height:44px; flex-shrink:0; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--sand-2); color:var(--ink-600); font-weight:800; font-size:.86em;}
   .cap-bar{height:10px; border-radius:99px; background:var(--sand-3); overflow:hidden; margin-top:10px;}
   .cap-bar span{display:block; height:100%; background:linear-gradient(90deg, var(--lagoon-500), var(--ocean)); border-radius:99px;}
   /* Featured: larger cards on a gold and light-blue panel */
@@ -4706,6 +4714,7 @@ function adminItemLine(i){
   const typeLbl = i.listingType==='auction'?'Auction':i.listingType==='rental'?'Rental':'Buy now';
   return `<div style="min-width:0; flex:1;"><strong class="adm-name">${escapeAttr(i.name)}</strong><p class="muted" style="font-size:.84em;">${typeLbl} · ${escapeAttr(i.category==='Other'&&i.categoryOtherName?i.categoryOtherName:i.category||'General')} · <span class="price">${money(i.price)}</span>${i.listingType!=='auction'&&i.stock!=null?` · ${i.stock} in stock`:''}</p>${i.description?`<p class="muted adm-desc">${escapeAttr(i.description)}</p>`:''}</div>`;
 }
+function toggleApprStore(id){ state.admApprOpen = Object.assign({}, state.admApprOpen); state.admApprOpen[id] = !state.admApprOpen[id]; render(); }
 function adminItemsTab(){
   const pending = DB.items.filter(i=>i.approvalStatus==='pending').sort((a,b)=>(a.submittedAt||0)-(b.submittedAt||0));
   const byStore = {};
@@ -4713,14 +4722,22 @@ function adminItemsTab(){
   const rejected = DB.items.filter(i=>i.approvalStatus==='rejected').slice(0, 20);
   if(!pending.length && !rejected.length) return `<div class="empty"><span class="ic">✅</span>No items waiting for approval. New items from stores show up here.</div>`;
   return `
-  ${Object.entries(byStore).map(([bizId, items])=>{ const biz = DB.businesses.find(b=>b.id===bizId); const ids = JSON.stringify(items.map(i=>i.id)).replace(/"/g,'&quot;');
+  ${Object.entries(byStore).sort((a,b)=>b[1].length-a[1].length).map(([bizId, items])=>{ const biz = DB.businesses.find(b=>b.id===bizId); const ids = JSON.stringify(items.map(i=>i.id)).replace(/"/g,'&quot;');
+    const open = !!(state.admApprOpen||{})[bizId];
     return `
-    <div class="glass card adm-group">
-      <div class="row between" style="gap:10px; flex-wrap:wrap;">
-        <div><h3>${escapeAttr(biz?biz.name:'Unknown store')}</h3><p class="muted" style="font-size:.84em;">${items.length} new item${items.length===1?'':'s'} · ${escapeAttr(bizIsland(biz))}</p></div>
-        ${items.length>1 ? `<div class="row" style="gap:8px;"><button class="btn btn-primary btn-sm" onclick="adminApproveItems(${ids})">Approve all ${items.length}</button><button class="btn btn-outline btn-sm" onclick="adminRejectItems(${ids})">Reject all</button></div>` : ''}
+    <div class="glass card adm-group ${open?'open':''}">
+      <button class="adm-store-head" aria-expanded="${open}" onclick="toggleApprStore('${bizId}')">
+        <span class="adm-store-av" aria-hidden="true">${escapeAttr((biz?biz.name:'?').trim().charAt(0).toUpperCase())}</span>
+        <span style="flex:1; min-width:0; text-align:left;"><strong class="adm-name">${escapeAttr(biz?biz.name:'Unknown store')}</strong><span class="muted" style="display:block; font-size:.84em;">${items.length} item${items.length===1?'':'s'} to approve · ${escapeAttr(bizIsland(biz))}</span></span>
+        <span class="adm-store-count">${items.length}</span><span class="adm-chev" aria-hidden="true">›</span>
+      </button>
+      ${open ? '' : `<div class="adm-peek" onclick="toggleApprStore('${bizId}')">${items.slice(0,5).map(i=>adminItemThumb(i)).join('')}${items.length>5?`<span class="adm-more">+${items.length-5}</span>`:''}</div>`}
+      <div class="row" style="gap:8px; margin-top:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="adminApproveItems(${ids})">Approve all${items.length>1?` ${items.length}`:''}</button>
+        <button class="btn btn-outline btn-sm" onclick="adminRejectItems(${ids})">Reject all</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleApprStore('${bizId}')">${open?'Hide items':'Check one by one'}</button>
       </div>
-      <div class="adm-list">
+      ${open ? `<div class="adm-list">
         ${items.map(i=>`
         <div class="adm-item">
           ${adminItemThumb(i)}
@@ -4730,8 +4747,8 @@ function adminItemsTab(){
             <button class="btn btn-ghost btn-sm" onclick="adminRejectItems(['${i.id}'])">Reject</button>
           </div>
         </div>`).join('')}
-      </div>
-      <div class="field" style="margin:10px 0 0;"><input id="rejNote_${items[0].id}" placeholder="Reason if you reject (optional, shown to the store)"></div>
+      </div>` : ''}
+      <div class="field" style="margin:10px 0 0;"><input id="rejNote_${items[0].id}" placeholder="Reason if you reject (shown to the store)"></div>
     </div>`; }).join('')}
   ${rejected.length ? `<h3 style="grid-column:1/-1; margin-top:8px;">Not approved</h3>${rejected.map(i=>{ const biz = DB.businesses.find(b=>b.id===i.businessId); return `
     <div class="glass card tight"><div class="row" style="gap:12px; align-items:flex-start;">${adminItemThumb(i)}${adminItemLine(i)}</div>

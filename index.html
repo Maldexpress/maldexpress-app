@@ -3203,17 +3203,6 @@ function fromDbRow(part, r){
   if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, island:r.island||'', harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
 }
 
-// A store's phone isn't public: everyone reads these columns, and the phone
-// comes from business_contacts() only for the owner, the admin, customers with
-// an order from the store and riders on its orders.
-const BIZ_PUBLIC_COLS = 'id,owner_id,name,owner_name,account_number,account_name,tier,join_date,paid_at,category,category_other_name,rating,address,island,lat,lng';
-async function loadBusinessContacts(){
-  if(!sb || !state.authed) return;
-  try{ const { data, error } = await sb.rpc('business_contacts'); if(error) return;
-    const m = Object.fromEntries((data||[]).map(r=>[r.business_id, r.phone]));
-    DB.businesses.forEach(b=>{ if(m[b.id]!==undefined) b.phone = m[b.id]; });
-  }catch(_){}
-}
 async function loadDB(){
   if(!sb){
     // Unconfigured copy (local preview): runs on sample data. Setup steps are
@@ -3223,7 +3212,7 @@ async function loadDB(){
   }
   try{
     const [b,i,o,d,pr,au,bk,bd,cr,cc,ad,fr,ps] = await Promise.all([
-      sb.from('businesses').select(BIZ_PUBLIC_COLS),
+      sb.from('businesses').select('*'),
       sb.from('items').select('*'),
       sb.from('orders').select('*'),
       sb.from('delivery_persons').select('*'),
@@ -3249,7 +3238,6 @@ async function loadDB(){
       toast(`Could not load ${failed.map(([label])=>label).join(', ')} — some data may be missing`, 'bad');
     }
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
-    await loadBusinessContacts();
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
     DB.orders.sort((a,b2)=>b2.createdAt-a.createdAt);
@@ -3852,14 +3840,13 @@ async function refreshLiveListings(){
     // jobs), same as every other fetch in this app.
     const [i, b, au, o] = await Promise.all([
       sb.from('items').select('*'),
-      sb.from('businesses').select(BIZ_PUBLIC_COLS),
+      sb.from('businesses').select('*'),
       sb.from('auction_listings').select('*'),
       sb.from('orders').select('*')
     ]);
     if(i.error || b.error || au.error || o.error) return; // silent - background refresh, not a user action
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
-    await loadBusinessContacts();
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
     DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
     // Only auto-render on the screens that actually read this data, and never

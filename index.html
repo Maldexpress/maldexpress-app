@@ -768,7 +768,29 @@
   .admin-grid > .glass.card{margin-bottom:0 !important;}
   .admin-grid > .field, .admin-grid > .empty{grid-column:1/-1; margin-bottom:0 !important;}
   .tab-count{display:inline-flex; min-width:20px; height:20px; padding:0 6px; border-radius:99px; background:var(--sunset); color:#fff; font-size:.78em; align-items:center; justify-content:center; margin-left:auto;}
-  .admin-store{margin-bottom:12px;}
+  .admin-store{margin-bottom:12px; cursor:pointer;}
+  .admin-store .adm-chev{align-self:center; margin-left:8px;}
+  .adm-back{display:inline-block; margin:0 0 10px; grid-column:1/-1;}
+  .adm-store-card, .adm-tools, .adm-cat{grid-column:1/-1; min-width:0;}
+  .adm-counts{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:12px;}
+  .adm-counts div{display:flex; flex-direction:column; align-items:center; padding:8px 2px; border-radius:12px; background:var(--sand-bg);}
+  .adm-counts strong{font-family:var(--display); font-size:1.15em;}
+  .adm-counts span{font-size:.7em; color:var(--ink-600); text-align:center;}
+  .adm-filters{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px;}
+  .adm-filters .chip{flex-shrink:0; padding:7px 12px; border-radius:99px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.84em;}
+  .adm-filters .chip.active{background:var(--lagoon-50); border-color:var(--lagoon-500); color:var(--lagoon-700);}
+  .adm-cat{margin-top:18px;}
+  .adm-cat-head{display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .adm-cat-head h3{font-family:var(--display);}
+  .adm-cat-list{display:grid; gap:10px;}
+  @media (min-width:768px){ .adm-cat-list{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  .adm-row{padding:12px; border-radius:16px; background:var(--surface); border:1px solid var(--edge); min-width:0;}
+  .adm-row-main{display:flex; gap:12px; align-items:flex-start; width:100%; padding:0; border:none; background:none; text-align:left; color:var(--ink); font-size:1em;}
+  .adm-row-main .adm-name{white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .adm-row-pill{margin-top:8px;}
+  .adm-note{font-size:.8em; margin-top:6px;}
+  .adm-row-acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .adm-row-acts .btn{flex:1 1 auto;}
   .admin-av{width:44px; height:44px; border-radius:14px; background:var(--lagoon-50); color:var(--lagoon-700); font-family:var(--display); font-weight:800; font-size:1em; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   @media (min-width:1024px){
     .admin-top-in{max-width:1280px; padding:14px 40px;}
@@ -4374,7 +4396,7 @@ function renderAdmin(){
     </div></header>
     <div class="admin-layout">
       <nav class="admin-side" aria-label="Admin sections">
-        ${NAV.map(([k,ic,label,count])=>`<button class="admin-nav ${state.adminTab===k?'on':''}" ${state.adminTab===k?'aria-current="page"':''} onclick="state.adminTab='${k}'; render();"><span class="an-ic">${ic}</span><span class="an-lbl">${label}</span>${count?`<span class="tab-count">${count}</span>`:''}</button>`).join('')}
+        ${NAV.map(([k,ic,label,count])=>`<button class="admin-nav ${state.adminTab===k?'on':''}" ${state.adminTab===k?'aria-current="page"':''} onclick="state.adminTab='${k}'; state.adminStoreId=null; render();"><span class="an-ic">${ic}</span><span class="an-lbl">${label}</span>${count?`<span class="tab-count">${count}</span>`:''}</button>`).join('')}
       </nav>
       <section class="admin-main">
         <div class="admin-hero">
@@ -4397,7 +4419,7 @@ function renderAdmin(){
             ${state.adminTab==='items' ? adminItemsTab() : ''}
             ${state.adminTab==='featured' ? adminFeaturedTab() : ''}
             ${state.adminTab==='settings' ? adminSettingsTab() : ''}
-            ${state.adminTab==='businesses' ? adminBusinessesTab(businesses) : ''}
+            ${state.adminTab==='businesses' ? (state.adminStoreId && DB.businesses.some(b=>b.id===state.adminStoreId) ? adminStoreView() : adminBusinessesTab(businesses)) : ''}
             ${state.adminTab==='bankRequests' ? adminBankRequestsTab(bankPending) : ''}
             ${state.adminTab==='swipeRequests' ? adminSwipeRequestsTab(swipeLog) : ''}
             ${state.adminTab==='catRequests' ? adminCategoryRequestsTab(DB.categoryRequests) : ''}
@@ -4428,20 +4450,108 @@ function adminSupportTab(){
     </button>`).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">🎧</span>No ${f==='closed'?'closed ':f==='open'?'open ':''}tickets.</div>`}`;
 }
 function adminGoHome(){ state.adminTab='businesses'; state.adminSearch=''; state.sheet=null; render(); document.body.scrollTop=0; document.documentElement.scrollTop=0; }
+
+// ---- Admin -> Stores -> one store: its listings by category, with actions ----
+const ADMIN_ITEM_FILTERS = [['all','All'],['pending','Waiting'],['live','Live'],['paused','Paused'],['rejected','Taken down']];
+function adminItemState(i){ return i.approvalStatus==='pending' ? 'pending' : i.approvalStatus==='rejected' ? 'rejected' : i.paused ? 'paused' : 'live'; }
+function openAdminStore(id){ state.adminStoreId = id; state.adminItemFilter = 'all'; state.adminItemSearch = ''; render(); window.scrollTo(0,0); }
+function adminStoreView(){
+  const b = DB.businesses.find(x=>x.id===state.adminStoreId);
+  const all = DB.items.filter(i=>i.businessId===b.id);
+  const f = state.adminItemFilter || 'all', q = (state.adminItemSearch||'').trim().toLowerCase();
+  const count = k => all.filter(i=>adminItemState(i)===k).length;
+  const list = all.filter(i=>(f==='all' || adminItemState(i)===f) && (!q || (i.name||'').toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q)));
+  const groups = {};
+  list.forEach(i=>{ const c = i.category==='Other' && i.categoryOtherName ? i.categoryOtherName : (i.category||'General'); (groups[c] = groups[c] || []).push(i); });
+  const pill = i => { const st = adminItemState(i);
+    return st==='pending' ? '<span class="status-pill wait">Waiting</span>' : st==='rejected' ? '<span class="status-pill bad">Taken down</span>' : st==='paused' ? '<span class="status-pill mid">Paused</span>' : isFeaturedNow(i) ? '<span class="status-pill ok">Live · ★ Featured</span>' : '<span class="status-pill ok">Live</span>'; };
+  const acts = i => { const st = adminItemState(i), id = i.id, btn = (cls,lbl,fn)=>`<button class="btn ${cls} btn-sm" onclick="${fn}">${lbl}</button>`;
+    return [
+      st==='pending' || st==='rejected' ? btn('btn-primary','Approve',`adminApproveItems(['${id}'])`) : '',
+      st==='pending' ? btn('btn-outline','Reject',`adminRejectItems(['${id}'])`) : '',
+      st==='live' || st==='paused' ? btn('btn-outline','Take down',`adminRejectItems(['${id}'])`) : '',
+      st==='live' ? btn('btn-ghost','Pause',`adminPauseItems(['${id}'], true)`) : st==='paused' ? btn('btn-ghost','Resume',`adminPauseItems(['${id}'], false)`) : '',
+      st==='live' ? (isFeaturedNow(i) ? btn('btn-ghost','Unfeature',`adminFeatureItem('${id}', 0)`) : btn('btn-ghost','★ Feature',`adminFeatureItem('${id}', ${DB.settings.featuredDays||3})`)) : '',
+      btn('btn-ghost danger-txt','Delete',`openSheet('adminDeleteItems', ['${id}'])`),
+    ].join(''); };
+  return `
+  <button class="link-btn adm-back" onclick="state.adminStoreId=null; render();">‹ All stores</button>
+  <div class="glass card adm-store-card">
+    <div class="row" style="gap:12px; align-items:center;">
+      <span class="adm-store-av" aria-hidden="true">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
+      <div style="flex:1; min-width:0;"><h3 class="adm-name">${escapeAttr(b.name)}</h3><p class="muted" style="font-size:.84em;">${escapeAttr(b.ownerName||'')}${b.phone?` · ${escapeAttr(b.phone)}`:''} · ${escapeAttr(bizIsland(b))}</p></div>
+    </div>
+    ${b.phone ? contactHTML(b.phone, b.name) : ''}
+    <div class="adm-counts">
+      <div><strong>${all.length}</strong><span>of ${STORE_ITEM_LIMIT}</span></div>
+      <div><strong>${count('live')}</strong><span>Live</span></div>
+      <div><strong>${count('pending')}</strong><span>Waiting</span></div>
+      <div><strong>${count('paused')}</strong><span>Paused</span></div>
+      <div><strong>${count('rejected')}</strong><span>Taken down</span></div>
+    </div>
+  </div>
+  <div class="adm-tools">
+    <div class="adm-filters">${ADMIN_ITEM_FILTERS.map(([k,l])=>{ const n = k==='all'?all.length:count(k); return `<button class="chip ${f===k?'active':''}" onclick="state.adminItemFilter='${k}'; render();">${l}${n?` · ${n}`:''}</button>`; }).join('')}</div>
+    <div class="field" style="margin:10px 0 0;"><input id="adminItemSearch" type="search" aria-label="Search this store's items" placeholder="Search this store's items…" value="${escapeAttr(state.adminItemSearch||'')}" oninput="state.adminItemSearch=this.value; clearTimeout(window._aisT); window._aisT=setTimeout(()=>{ render(); const e=document.getElementById('adminItemSearch'); if(e){ e.focus(); e.setSelectionRange(e.value.length,e.value.length); } },250);"></div>
+    <div class="field" style="margin:10px 0 0;"><input id="rejNoteAll" placeholder="Reason for take down (shown to the store)"></div>
+  </div>
+  ${list.length ? Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).map(([cat, items])=>{
+    const ids = JSON.stringify(items.map(i=>i.id)).replace(/"/g,'&quot;');
+    const waiting = items.filter(i=>i.approvalStatus==='pending');
+    const wids = JSON.stringify(waiting.map(i=>i.id)).replace(/"/g,'&quot;');
+    return `
+    <section class="adm-cat">
+      <div class="adm-cat-head"><h3>${categoryIcon(cat)} ${escapeAttr(cat)} <span class="muted">· ${items.length}</span></h3>
+        <div class="row" style="gap:6px; flex-wrap:wrap;">
+          ${waiting.length ? `<button class="btn btn-primary btn-sm" onclick="adminApproveItems(${wids})">Approve ${waiting.length} waiting</button>` : ''}
+          ${items.some(i=>adminItemState(i)==='live') ? `<button class="btn btn-ghost btn-sm" onclick="adminPauseItems(${JSON.stringify(items.filter(i=>adminItemState(i)==='live').map(i=>i.id)).replace(/"/g,'&quot;')}, true)">Pause all</button>` : ''}
+        </div>
+      </div>
+      <div class="adm-cat-list">
+        ${items.map(i=>`
+        <div class="adm-row">
+          <div class="adm-row-main">${adminItemThumb(i)}${adminItemLine(i)}</div>
+          <div class="adm-row-pill">${pill(i)}</div>
+          ${i.approvalStatus==='rejected' && i.approvalNote ? `<p class="muted adm-note">Reason: ${escapeAttr(i.approvalNote)}</p>` : ''}
+          <div class="adm-row-acts">${acts(i)}</div>
+        </div>`).join('')}
+      </div>
+    </section>`; }).join('') : `<div class="empty"><span class="ic">📦</span>${all.length ? 'No items match' : 'This store has no items yet'}</div>`}`;
+}
+async function adminPauseItems(ids, paused){
+  if(!ids.length) return;
+  const rows = await adminRpc('admin_set_items_paused', { p_ids: ids, p_paused: paused }); if(!rows) return;
+  adminApplyItems(rows); toast(`${rows.length} item${rows.length===1?'':'s'} ${paused?'paused':'resumed'}`); render();
+}
+function sheetAdminDeleteItems(){
+  const ids = state.sheetData || []; const items = DB.items.filter(i=>ids.includes(i.id));
+  return `<h2>Delete ${items.length===1 ? escapeAttr(items[0].name) : items.length+' items'}?</h2>
+  <p class="muted" style="margin:6px 0 16px;">It's removed from the store for good. To hide it for a while, pause it or take it down instead. Auctions with bids and rentals with bookings can't be deleted.</p>
+  <div class="row" style="gap:8px;"><button class="btn btn-ghost" style="flex:1;" onclick="closeSheet()">Keep</button><button class="btn btn-primary danger-bg" style="flex:1;" onclick="adminDeleteItemsNow()">Delete</button></div>`;
+}
+async function adminDeleteItemsNow(){
+  const ids = state.sheetData || []; closeSheet();
+  const rows = await adminRpc('admin_delete_items', { p_ids: ids }); if(!rows) return;
+  const gone = rows.map(r=>typeof r==='string' ? r : (r.admin_delete_items||r.id));
+  DB.items = DB.items.filter(i=>!gone.includes(i.id));
+  const kept = ids.length - gone.length;
+  toast(gone.length ? `${gone.length} deleted${kept?` · ${kept} in use, not deleted`:''}` : 'In use (bids or bookings), not deleted', gone.length?'':'bad'); render();
+}
 function adminBusinessesTab(list){
   return `
   <div class="field" style="margin-bottom:14px;">
     <input id="adminSearchInput" type="search" aria-label="Search stores" placeholder="Search by store, owner, or phone…" value="${state.adminSearch}" oninput="adminSearchInput(this.value)">
   </div>
   ${list.length? list.map(b=>`
-    <div class="glass card admin-store">
+    <div class="glass card admin-store" role="button" tabindex="0" onclick="openAdminStore('${b.id}')" onkeydown="if(event.key==='Enter')openAdminStore('${b.id}')">
       <div class="row" style="align-items:flex-start;">
         <span class="admin-av">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
         <div style="flex:1; min-width:0;">
           <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge free">${DB.items.filter(i=>i.businessId===b.id).length} / ${STORE_ITEM_LIMIT} items</span></div>
           <p class="muted" style="font-size:.86em; margin-top:2px;">${b.ownerName}${b.phone?` · ${b.phone}`:''}</p>
-          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}</p>
+          <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${(()=>{ const w=DB.items.filter(i=>i.businessId===b.id && i.approvalStatus==='pending').length; return w?` · <strong style="color:var(--amber);">${w} waiting</strong>`:''; })()}</p>
         </div>
+        <span class="adm-chev" aria-hidden="true">›</span>
       </div>
     </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
   `;
@@ -5219,6 +5329,7 @@ function sheetHTML(){
   else if(state.sheet==='upgradeBankSlip') body = sheetUpgradeBankSlip();
   else if(state.sheet==='uploadSlip') body = sheetUploadSlip();
   else if(state.sheet==='cancelOrder') body = sheetCancelOrder();
+  else if(state.sheet==='adminDeleteItems') body = sheetAdminDeleteItems();
   else if(state.sheet==='markCash') body = sheetMarkCash();
   else if(state.sheet==='rentalReturn') body = sheetRentalReturn();
   else if(state.sheet==='checkout') body = sheetCheckout();

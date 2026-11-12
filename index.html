@@ -4259,6 +4259,10 @@ function applyReveal(){
     if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar') || el._rvOn) return;
     el._rvOn = true; el._rvKey = rvKey(el);
     const r = el.getBoundingClientRect();
+    // A card taller than the screen (e.g. a store's long list of items to
+    // approve) could never reach the 8% threshold while only its top shows,
+    // so it would stay invisible: show such cards as they are.
+    if(r.height > vh * 0.7) return;
     const onScreen = r.top < vh && r.bottom > 0 && r.left < window.innerWidth && r.right > 0;
     el.classList.add('rv');
     if(onScreen && same && _rvSeen.has(el._rvKey)) el.classList.add('rv-in','rv-now');   // re-render: no replay

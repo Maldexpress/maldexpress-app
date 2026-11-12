@@ -3285,7 +3285,7 @@ async function callOrderRpc(rpcName, args, orderId, failMsg){
   // call; this used to throw on sb being null.
   if(!sb){ toast("You're offline, so this can't be saved. Reconnect and try again", 'bad'); return null; }
   const { data, error } = await sb.rpc(rpcName, args);
-  if(error){ toast('Could not update order: '+error.message, 'bad'); return null; }
+  if(error){ toast('Could not update order: '+bankErrText(error.message), 'bad'); return null; }
   if(!data || !data.length){ toast(failMsg || "Couldn't update this order — it may have changed, or you may not have permission", 'bad'); return null; }
   const updated = fromDbRow('orders', data[0]);
   await decryptOrderRow(updated, data[0]);
@@ -3662,9 +3662,7 @@ function jobVisibleToRider(o, d){
   const from = o.originIsland || bizIsland(biz);
   const riderIsland = d.island || 'Malé';   // same rule as the server (rider_can_see_open_order)
   const sameArea = isGreaterMale(from) ? isGreaterMale(riderIsland) : from===riderIsland;
-  if(sameArea) return true;
-  if(riderIsLive(d) && biz && biz.lat!=null && biz.lng!=null) return kmBetween(d.lat, d.lng, biz.lat, biz.lng) <= NEARBY_KM;
-  return false;
+  return sameArea;   // own island only (Greater Malé is one area), no nearby exception: same as rider_fits_business() on the server
 }
 function riderDistanceText(o, d){
   const biz = DB.businesses.find(b=>b.id===o.businessId);
@@ -5806,7 +5804,7 @@ function bankNeededCardHTML(who){
 // Gatekeepers: return true when the action can go ahead.
 function requireStoreBank(){ const b = currentBiz(); if(bizHasBank(b)) return true; toast('Add your bank account first','bad'); openSheet('bizSettings'); return false; }
 function requireRiderBank(){ const d = currentDel(); if(riderHasBank(d) || !sb) return true; toast('Add your bank account first','bad'); openSheet('delSettings'); return false; }
-function bankErrText(msg){ return /rider_bank_required/.test(msg||'') ? 'Add your bank account in Settings before taking jobs' : /store_bank_required/.test(msg||'') ? 'Add your store bank account in Settings first' : msg; }
+function bankErrText(msg){ return /rider_wrong_island/.test(msg||'') ? 'This job is picked up on another island. You can only take jobs from stores on your island' : /rider_bank_required/.test(msg||'') ? 'Add your bank account in Settings before taking jobs' : /store_bank_required/.test(msg||'') ? 'Add your store bank account in Settings first' : msg; }
 
 
 /* =================== OPENING AD =================== */
@@ -8657,8 +8655,8 @@ function riderStatusCardHTML(d){
       <div style="min-width:0;">
         <h3>${d.online ? "You're online" : "You're offline"}</h3>
         <p class="muted" style="font-size:.84em; margin-top:2px;">${d.online
-          ? (live ? `Getting jobs on ${d.island||'your island'} and within ${NEARBY_KM} km of you.` : 'Waiting for your location…')
-          : `Getting jobs on ${d.island||'your island'} only. Go online to get jobs from stores near you too.`}</p>
+          ? `Getting jobs from stores on ${isGreaterMale(d.island) ? 'Malé, Hulhumalé and Villimalé' : (d.island||'your island')}.`
+          : `Go online to get new job alerts. You only get jobs from stores on ${isGreaterMale(d.island) ? 'Malé, Hulhumalé and Villimalé' : (d.island||'your island')}.`}</p>
       </div>
       <button type="button" class="switch ${d.online?'on':''}" role="switch" aria-checked="${!!d.online}" aria-label="Online" onclick="toggleRiderOnline()"><span></span></button>
     </div>
@@ -8743,7 +8741,7 @@ function payoutAmountFor(o){ return o.deliveryPartnerPayout!=null ? o.deliveryPa
 function cashCutAmount(o){ return o.deliveryType==='free' ? 0 : payoutAmountFor(o); }
 function renderDelHome(d){
   if(d.online) startRiderTracking(d);
-  const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && o.status!=='delivered');
+  const jobs = DB.orders.filter(o=>o.deliveryPersonId===d.id && !['delivered','declined','cancelled'].includes(o.status));   // a declined / cancelled order isn't a job any more
   // A store offering this rider a second (or third...) order directly - see
   // offerOrderToRider() - because they're already picking up another one of
   // that store's orders. Sits here, separate from Active jobs, until this

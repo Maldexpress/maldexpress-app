@@ -68,6 +68,7 @@ Maldexpress: a marketplace + delivery app for the Maldives. Three portals in one
 4. Payment for the Pro tier upgrade (`payForPro()`) is currently simulated client-side with no real payment gateway. Needs BML/real payment integration before launch.
 
 ## Conventions
+- **Frontend design skill:** `.claude/skills/frontend-design/SKILL.md` (Apache-2.0, `LICENSE.txt` beside it) gives general guidance on distinctive visual design: plan colours, type and layout before building, avoid templated defaults, one bold element, check screenshots. Use it together with the taste skill below; for Maldexpress the taste skill's Bright lagoon rules win where they differ.
 - **Design taste skill:** `.claude/skills/maldexpress-taste/SKILL.md` holds the app's design rules (colours, type, spacing, island-voice headings, what looks cheap, motion, pre-ship checks). Follow it for any visual change.
 - Keep everything mobile-first; this is meant to be used primarily on phones.
 - Money is always Maldivian Rufiyaa (MVR); the `money()` helper formats it — don't hardcode currency strings elsewhere.

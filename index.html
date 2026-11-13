@@ -1355,7 +1355,7 @@
     .site-logo-mark svg{width:36px; height:36px;}
     .site-logo-mark.small{width:28px; height:28px; border-radius:9px;}
     .site-logo-mark.small svg{width:22px; height:22px;}
-    .site-logo-word{font-family:var(--display); font-weight:800; font-size:1.65em; letter-spacing:-.03em; color:var(--ink);}
+    .site-logo-word{font-family:'Poiret One', var(--display), sans-serif; font-weight:400; font-size:1.75em; letter-spacing:.06em; color:var(--ink); -webkit-text-stroke:.4px var(--ink);}
     .site-search{flex:1; min-width:0; display:flex; align-items:center; height:50px; border:2px solid var(--ink-900); border-radius:999px; background:#fff; padding:0 6px 0 18px; transition:border-color .2s ease, box-shadow .2s ease;}
     .site-search:focus-within{border-color:var(--lagoon-600); box-shadow:0 0 0 4px rgba(15,163,163,.15);}
     .ss-ic{color:var(--ink-dim); display:flex; margin-right:10px;}
@@ -1383,19 +1383,28 @@
     body.site-desk main{min-height:calc(100vh - 170px);}
 
     .desk-home{padding-top:22px;}
-    .desk-banner{position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,520px); align-items:center; gap:32px; min-height:340px; padding:44px 56px 64px; border-radius:28px 28px 0 0; color:#fff; overflow:hidden; margin-bottom:44px;}
+    /* PC home banner: a wide, fixed-height band. With the admin's header photo the
+       photo fills the whole band (dark wash on the left for the words), the
+       Maarukeytu name sits above the headline in the same frosted line type as
+       the phone header; other slides keep their colour and a small picture. */
+    .desk-banner{position:relative; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; gap:32px; height:clamp(320px, 30vw, 440px); padding:0 64px; border-radius:28px; color:#fff; overflow:hidden; margin-bottom:44px; box-shadow:0 18px 40px rgba(8,60,80,.14);}
+    .desk-banner.has-photo, .desk-banner.has-photo.tone-lagoon{grid-template-columns:minmax(0,1fr); background:linear-gradient(90deg, rgba(6,32,44,.78) 0%, rgba(6,32,44,.52) 38%, rgba(6,32,44,.08) 70%, rgba(6,32,44,0) 100%), var(--hero-img) center 40% / cover no-repeat;}
+    .desk-banner .db-copy{max-width:560px;}
+    .db-word{font-family:'Poiret One', var(--display), sans-serif; font-size:2.2em; letter-spacing:.08em; line-height:1; margin-bottom:18px; color:#fff; -webkit-text-stroke:.6px #fff; text-shadow:0 4px 18px rgba(6,40,52,.45);}
+    .db-word.glass-word{-webkit-text-stroke:.8px rgba(255,255,255,.95);}
     .desk-banner.tone-lagoon{background:radial-gradient(90% 70% at 100% 0%, rgba(255,255,255,.25), transparent 60%), linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
     .desk-banner.tone-sunset{background:radial-gradient(80% 70% at 100% 0%, rgba(255,214,140,.45), transparent 60%), linear-gradient(150deg, #FF8A5C 0%, #E24A24 55%, #B8306A 100%);}
     .desk-banner.tone-ocean{background:radial-gradient(80% 70% at 100% 0%, rgba(160,230,255,.35), transparent 60%), linear-gradient(150deg, #1E6FD9 0%, #1650A8 55%, #0D2B6B 100%);}
-    .desk-banner h1{font-size:2.9em; font-weight:800; letter-spacing:-.03em; line-height:1.04; color:#fff; max-width:15ch;}
+    .desk-banner h1{font-size:2.6em; font-weight:800; letter-spacing:-.03em; line-height:1.06; color:#fff; max-width:16ch; text-wrap:balance;}
     .desk-banner p{font-size:1.08em; line-height:1.55; margin:14px 0 24px; max-width:44ch; color:rgba(255,255,255,.92);}
     .db-cta{border:none; border-radius:999px; padding:13px 26px; background:#fff; color:var(--ink-900); font-weight:800; font-size:1em; box-shadow:0 6px 18px rgba(0,0,0,.12);}
     .db-cta:hover{transform:translateY(-1px);}
     .db-cta.dark{background:var(--ink-900); color:#fff; box-shadow:none;}
     .db-art{display:flex; align-items:center; justify-content:center; min-height:220px;}
     .db-art .hero-scene{height:230px; width:100%; margin:0;}
+    .desk-banner .db-art{min-height:0; height:100%;}
     .db-emoji{font-size:9em; filter:drop-shadow(0 18px 30px rgba(0,0,0,.25));}
-    .db-ctrl{position:absolute; right:40px; bottom:40px; display:flex; align-items:center; gap:8px; z-index:2;}
+    .db-ctrl{position:absolute; right:32px; bottom:28px; display:flex; align-items:center; gap:8px; z-index:2;}
     .db-arrow{width:38px; height:38px; border-radius:50%; border:none; background:#fff; color:var(--ink); font-size:1.4em; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,.15);}
     .db-dot{width:9px; height:9px; border-radius:50%; border:none; padding:0; background:rgba(255,255,255,.5);}
     .db-dot.on{background:#fff; width:24px; border-radius:99px;}
@@ -10586,7 +10595,7 @@ function siteHeaderHTML(active){
       </div>
     </div></div>
     <div class="site-main"><div class="site-wrap">
-      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maldexpress home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maldexpress</span></button>
+      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maldexpress home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu</span></button>
       <div class="site-search">
         <span class="ss-ic" aria-hidden="true">${ICON_SEARCH}</span>
         <input id="homeSearchInput" placeholder="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="deskSearch(this.value)" aria-label="Search">
@@ -10626,20 +10635,21 @@ function deskBannerStep(d){ _deskBanner = (_deskBanner + d + DESK_BANNERS.length
 function deskBannerGo(i){ _deskBanner = i; render(); }
 function deskBannerHTML(){
   const b = DESK_BANNERS[_deskBanner];
+  const photo = b.art==='scene' && DB.settings.heroImageUrl;
   return `
-  <section class="desk-banner tone-${b.tone}" aria-roledescription="carousel">
+  <section class="desk-banner tone-${b.tone} ${photo?'has-photo':''}" aria-roledescription="carousel" ${photo?`style="--hero-img:url('${escapeAttr(DB.settings.heroImageUrl)}')"`:''}>
     <div class="db-copy">
+      ${b.art==='scene' ? `<div class="db-word ${photo?'glass-word':''}" aria-hidden="true">Maarukeytu</div>` : ''}
       <h1>${b.title}</h1>
       <p>${b.text}</p>
       <button class="db-cta" onclick="${b.act}">${b.cta}</button>
     </div>
-    <div class="db-art">${b.art==='scene' ? (DB.settings.heroImageUrl ? `<img class="db-photo" src="${escapeAttr(DB.settings.heroImageUrl)}" alt="">` : HERO_SCENE_SVG) : `<span class="db-emoji">${b.art}</span>`}</div>
+    ${photo ? '' : `<div class="db-art">${b.art==='scene' ? HERO_SCENE_SVG : `<span class="db-emoji">${b.art}</span>`}</div>`}
     <div class="db-ctrl">
       <button class="db-arrow" aria-label="Previous banner" onclick="deskBannerStep(-1)">‹</button>
       ${DESK_BANNERS.map((_,i)=>`<button class="db-dot ${i===_deskBanner?'on':''}" aria-label="Banner ${i+1}" onclick="deskBannerGo(${i})"></button>`).join('')}
       <button class="db-arrow" aria-label="Next banner" onclick="deskBannerStep(1)">›</button>
     </div>
-    <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
   </section>`;
 }
 const DESK_TILE_TINTS = ['#DDF5F2','#FFE6DE','#E2ECFF','#E3F4E7','#FFF1D9','#F0E6FF','#E4F1FA','#FCE7F0'];

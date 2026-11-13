@@ -332,6 +332,7 @@
   }
   .drawer.glass{border-radius:0 24px 24px 0; background:var(--surface); border:none;}
   .drawer.show{transform:translateX(0); box-shadow:var(--shadow-lift);}
+  body.edge-swiping .drawer:not(.show), body.edge-swiping .overlay:not(.show){visibility:hidden;}
   .drawer .who{padding:4px 8px 18px; margin-bottom:8px; border-bottom:1px solid var(--edge);}
   .drawer .who .av{width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg, var(--lagoon-500), var(--ocean)); color:#fff; display:flex;align-items:center;justify-content:center; font-family:var(--display); font-weight:800; font-size:1.2em; margin-bottom:10px;}
   .drawer-item{
@@ -9772,6 +9773,9 @@ function handleEdgeSwipeMove(e){
     _edgeSwipeDeciding = false;
   }
   _edgeSwipeDx = Math.max(0, dx);
+  // While #app is moved, its position:fixed children (the closed menu sitting
+  // just off the left edge) would move with it and slide into view: hide them.
+  document.body.classList.add('edge-swiping');
   const app = document.getElementById('app');
   app.style.transition = 'none';
   app.style.transform = `translateX(${_edgeSwipeDx}px)`;
@@ -9788,12 +9792,13 @@ function handleEdgeSwipeEnd(){
     setTimeout(()=>{
       app.style.transition = 'none';
       app.style.transform = '';
+      document.body.classList.remove('edge-swiping');
       goBackScreen();
     }, 220);
   } else {
     app.style.transition = 'transform .2s ease-out';
     app.style.transform = 'translateX(0)';
-    setTimeout(()=>{ if(!_edgeSwipeActive){ app.style.transition = 'none'; app.style.transform = ''; } }, 200);   // no transform left behind: it would pin position:fixed headers to #app
+    setTimeout(()=>{ if(!_edgeSwipeActive){ app.style.transition = 'none'; app.style.transform = ''; document.body.classList.remove('edge-swiping'); } }, 200);   // no transform left behind: it would pin position:fixed headers to #app
   }
   _edgeSwipeDx = 0;
 }

@@ -1612,6 +1612,19 @@
   .btn-primary:hover{filter:saturate(1.05) brightness(1.02);}
   .tabs{background:rgba(13,43,51,.05);}
   @media (min-width:640px) and (max-width:1023px){ .home-hero .hero-scene{height:104px;} }
+
+  /* ---------- Polish pass (2026-11-17) ----------
+     Real icons instead of text glyphs on the Categories pill and drop-down
+     carets, a compact Buy now switcher row, a quieter sale tag and a clean
+     fallback tile when a product photo can't load. */
+  .switcher-caret{display:inline-flex; align-items:center; line-height:0;}
+  .switcher-caret svg{display:block;}
+  .search-row .sw-ic svg{display:block;}
+  .cat-bar{margin:-10px 0 14px;}
+  .cat-bar-btn{padding:7px 13px 7px 12px; gap:6px; font-size:.86em; box-shadow:none; border-color:rgba(13,43,51,.12);}
+  .cat-bar-btn:hover{border-color:var(--lagoon-500, #14A3A0);}
+  .discount-badge{background:#E3F3EA; color:var(--palm); font-weight:800; border-radius:999px; padding:2px 8px;}
+  :focus-visible{outline:2px solid var(--lagoon-500, #14A3A0); outline-offset:2px;}
 </style>
 </head>
 <body>
@@ -5293,6 +5306,7 @@ const ICON_MAIL = `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" s
 const ICON_LINK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>`;
 const ICON_SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
+const ICON_GRID = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>`;
 const ICON_CHEVRON_DOWN = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 // Cart line select/deselect circle - a thin white outline circle always, with a
 // thin white checkmark added inside only when selected (not a filled dot).
@@ -9521,8 +9535,19 @@ function itemArtHTML(item){
   return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:${tint};">${glyph}</div>`;
 }
 function itemThumbHTML(item){
-  return item && item.imageUrl ? `<img src="${item.imageUrl}" alt="">` : itemArtHTML(item);
+  // A photo that fails to load (deleted file, bad link, offline) falls back to the
+  // same tinted art tile an item without a photo gets, never a broken-image icon.
+  return item && item.imageUrl ? `<img src="${item.imageUrl}" alt="" data-art-id="${escapeAttr(String(item.id||''))}">` : itemArtHTML(item);
 }
+document.addEventListener('error', e=>{
+  const img = e.target;
+  if(!img || img.tagName!=='IMG' || !img.dataset || !img.dataset.artId || img._artDone) return;
+  img._artDone = true;
+  const item = (typeof DB!=='undefined' && DB.items || []).find(i=>String(i.id)===img.dataset.artId) || { id:img.dataset.artId };
+  const wrap = document.createElement('div'); wrap.className = 'img-art'; wrap.innerHTML = itemArtHTML(item);
+  const w = img.closest('.img-wrap, .ip-photo'); if(w) w.classList.remove('img-loading');
+  img.replaceWith(wrap.firstElementChild);
+}, true);
 function homeFilteredItems(){
   const q = (state.homeSearch||'').trim().toLowerCase();
   const wantType = state.homeListingType || 'buy_now';
@@ -10030,9 +10055,9 @@ function homeSearchRowHTML(where='hero'){
       ${state.homeSearch ? `<button type="button" class="hs-clear" aria-label="Clear search" onclick="updateHomeSearch('', '${inputId}')">✕</button>` : ''}
     </div>
     <button class="switcher-pill accent cat-open-btn ${state.homeCategory!=='All'?'on':''}" aria-haspopup="listbox" aria-expanded="${state.catDropOpen===where}" onclick="event.stopPropagation(); toggleCatDrop('${where}')" aria-label="${state.homeCategory!=='All' ? 'Category: '+escapeAttr(state.homeCategory)+'. Change category' : 'All categories'}">
-      <span class="sw-ic" aria-hidden="true">${state.homeCategory!=='All' ? categoryIcon(state.homeCategory) : '▦'}</span>
+      <span class="sw-ic" aria-hidden="true">${state.homeCategory!=='All' ? categoryIcon(state.homeCategory) : ICON_GRID}</span>
       <span class="cob-txt">${state.homeCategory!=='All' ? escapeAttr(state.homeCategory) : 'Categories'}</span>
-      <span class="switcher-caret" style="${state.catDropOpen===where?'transform:rotate(180deg);':''}">▾</span>
+      <span class="switcher-caret" aria-hidden="true" style="${state.catDropOpen===where?'transform:rotate(180deg);':''}">${ICON_CHEVRON_DOWN}</span>
     </button>
     ${state.catDropOpen===where ? catDropHTML() : ''}
   </div>`;
@@ -10074,7 +10099,7 @@ function listingSwitcherHTML(where='bar'){
   return `<div class="switcher-wrap">
       <button class="cat-bar-btn" aria-haspopup="true" aria-expanded="${open}" onclick="toggleHomeSwitcher('${where}')">
         <span aria-hidden="true">${cur.icon}</span> ${cur.label}
-        <span class="switcher-caret" style="${open?'transform:rotate(180deg);':''}">▾</span>
+        <span class="switcher-caret" aria-hidden="true" style="${open?'transform:rotate(180deg);':''}">${ICON_CHEVRON_DOWN}</span>
       </button>
       ${open ? `
       <div class="switcher-dropdown glass" style="left:0; right:auto;">

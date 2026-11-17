@@ -1450,7 +1450,7 @@
   .sf-cover, .sf-banner{position:relative; border-radius:22px; overflow:hidden; color:#fff; display:flex; align-items:flex-end;
     background:linear-gradient(135deg, var(--lagoon-500), #2F6FD1); box-shadow:0 8px 22px rgba(15,60,80,.14);}
   .sf-cover.has-photo, .sf-banner.has-photo{background:linear-gradient(180deg, rgba(5,25,40,0) 30%, rgba(5,25,40,.62)), var(--sf-img) center/cover no-repeat, #1B4F6B;}
-  .sf-cover{min-height:clamp(150px, 42vw, 300px);}
+  .sf-cover{min-height:clamp(120px, 34vw, 200px);}
   .sf-banner{min-height:clamp(170px, 48vw, 340px);}
   .sf-banner.has-photo{background:linear-gradient(90deg, rgba(5,25,40,.66), rgba(5,25,40,.12) 70%), var(--sf-img) center/cover no-repeat, #1B4F6B;}
   .sf-banner:not(.has-photo){background:linear-gradient(135deg, #FFE8D6, #FFD2BF 45%, #CFEFF0); color:var(--ink);}
@@ -1462,6 +1462,39 @@
   .sf-btn{margin-top:12px; background:#fff; color:#0E2A3A; border:0; border-radius:999px; padding:10px 18px; font-weight:700; font-size:.9em; letter-spacing:.02em; box-shadow:0 4px 12px rgba(0,0,0,.18); cursor:pointer;}
   .sf-banner:not(.has-photo) .sf-btn{background:var(--sunset); color:#fff;}
   .sf-btn:active{transform:scale(.97);}
+  .sf-slides{position:relative; margin:0 0 14px;}
+  .sf-slides-track{display:flex; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; border-radius:20px; scrollbar-width:none; box-shadow:0 8px 22px rgba(15,60,80,.14); overscroll-behavior-x:contain; touch-action:pan-x pan-y;}
+  .sf-slides-track::-webkit-scrollbar{display:none;}
+  .sf-slide{flex:0 0 100%; scroll-snap-align:start; scroll-snap-stop:always; aspect-ratio:5/2; max-height:220px; background:var(--sf-img) center/cover no-repeat, #1B4F6B;}
+  .sf-slide[data-l]{cursor:pointer;}
+  .sf-dots{position:absolute; left:0; right:0; bottom:8px; display:flex; justify-content:center; gap:6px; pointer-events:none;}
+  .sf-dot{pointer-events:auto; width:7px; height:7px; padding:0; border-radius:99px; border:0; background:rgba(255,255,255,.6); box-shadow:0 0 0 1px rgba(0,0,0,.15); transition:width .25s, background .25s; cursor:pointer;}
+  .sf-dot.on{width:20px; background:#fff;}
+  @media (min-width:768px){ .sf-slide{aspect-ratio:4/1; max-height:280px;} }
+  .sf-top-strip .sf-top-card{flex:0 0 84%; max-width:440px; scroll-snap-align:start; display:flex; gap:12px; align-items:stretch; background:#fff; border-radius:20px; padding:10px; box-shadow:0 6px 18px rgba(15,60,80,.10); cursor:pointer;}
+  .sf-top-img{flex:0 0 46%; aspect-ratio:1; border-radius:14px; overflow:hidden; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); display:grid; place-items:center; font-size:2.6em;}
+  .sf-top-img img{width:100%; height:100%; object-fit:cover; object-position:50% 35%;}
+  .sf-top-info{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:4px; padding-right:4px;}
+  .sf-top-info h3{font-size:1em; line-height:1.25; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .sf-top-info .price{font-size:1.05em;}
+  .sf-top-info .discount-badge, .sf-top-info .sold-tag{align-self:flex-start;}
+  .sf-rank{align-self:flex-start; font-family:var(--display); font-weight:800; font-size:.85em; color:#fff; background:linear-gradient(135deg,var(--lagoon-500),#2F6FD1); border-radius:99px; padding:3px 10px;}
+  @media (min-width:768px){ .sf-top-strip .sf-top-card{flex:0 0 calc((100% - 2*12px) / 2.4); max-width:none;} }
+  .sf-chips{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px 2px 12px; margin:0 -2px;}
+  .sf-chips::-webkit-scrollbar{display:none;}
+  .sf-chip{flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:99px; border:1.5px solid var(--edge-2, var(--edge)); background:#fff; color:var(--ink); font-weight:600; font-size:.88em; white-space:nowrap; cursor:pointer;}
+  .sf-chip span{font-size:.82em; color:#5B6B75; font-weight:700;}
+  .sf-chip.on{background:var(--lagoon-700); border-color:var(--lagoon-700); color:#fff;}
+  .sf-chip.on span{color:#DDF5F2;}
+  .sf-slides-ed{padding:14px;}
+  .sf-slide-tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); gap:10px;}
+  .sf-slide-tile{display:flex; flex-direction:column; gap:6px;}
+  .sf-slide-tile select{font-size:.8em; padding:6px 8px; border-radius:10px; border:1px solid var(--edge); background:#fff; color:var(--ink); min-height:34px;}
+  .sf-slide-tile .sf-ed-acts{justify-content:flex-start;}
+  .sf-slide-thumb{position:relative; aspect-ratio:5/2; border-radius:12px; background:var(--sf-img) center/cover no-repeat, var(--sand-2);}
+  .sf-slide-thumb span{position:absolute; top:6px; left:6px; min-width:22px; height:22px; border-radius:99px; background:rgba(0,0,0,.55); color:#fff; font-size:.75em; font-weight:800; display:grid; place-items:center;}
+  .sf-slide-thumb.add{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:1.5px dashed var(--edge); background:var(--sand-bg); color:var(--lagoon-700); font-weight:700; font-size:.85em; cursor:pointer;}
+  .sf-slide-thumb.add b{font-size:1.4em; line-height:1;}
   .sf-preview-wrap{pointer-events:none; border:1.5px dashed var(--edge); border-radius:24px; padding:12px; background:var(--sand-bg);}
   .sf-ed-list{gap:10px;}
   .sf-ed-card{display:flex; align-items:center; gap:12px; padding:12px; border-radius:18px;}
@@ -1485,7 +1518,7 @@
   .sf-pick-n{position:absolute; top:6px; left:6px; min-width:22px; height:22px; border-radius:999px; background:var(--lagoon-500); color:#fff; font-size:.75em; font-weight:800; display:grid; place-items:center;}
   .sf-pick-name{font-size:.72em; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .sf-empty{padding:16px;}
-  @media (min-width:768px){ .sf-txt{padding:28px 32px;} .sf-cover{min-height:260px;} .sf-banner{min-height:300px;} .sf-banner:not(.has-photo){min-height:220px;} }
+  @media (min-width:768px){ .sf-txt{padding:28px 32px;} .sf-cover{min-height:220px;} .sf-banner{min-height:280px;} .sf-banner:not(.has-photo){min-height:220px;} }
   /* ---------- Every screen size uses its room ----------
      Tablets (640-1023px) get the full width instead of a phone column: more
      product columns, a two-column item page, wider sheets. Store and rider
@@ -10760,6 +10793,13 @@ function siteFooterHTML(){
 function storeCategoriesForItems(items){
   return [...new Set(items.map(i=>i.category||'General'))].sort();
 }
+// Category chips over All items (replaced the drop-down): one tap filters the
+// list; counts are for the tab being shown.
+function storeCategoryChipsHTML(categories, current, items){
+  if(categories.length<2) return '';
+  const count = c => c==='All' ? items.length : items.filter(i=>(i.category||'General')===c).length;
+  return `<div class="sf-chips" data-noswipe role="group" aria-label="Filter by category">${['All',...categories].map(c=>`<button class="sf-chip ${current===c?'on':''}" aria-pressed="${current===c}" data-c="${escapeAttr(c)}" onclick="setStoreCategoryFilter(this.dataset.c)">${c==='All'?'All':categoryIcon(c)+' '+escapeAttr(c)} <span>${count(c)}</span></button>`).join('')}</div>`;
+}
 function storeCategoryDropdownHTML(categories, current){
   if(categories.length<2) return '';
   return `
@@ -10774,7 +10814,11 @@ function storeCategoryDropdownHTML(categories, current){
 // categories rarely mean anything for Rental/Auction's own items, so
 // whatever was picked under one tab shouldn't silently narrow another.
 function setStoreTab(tab){ state.storeTab = tab; state.storeCategoryFilter = 'All'; render(); }
-function setStoreCategoryFilter(cat){ state.storeCategoryFilter = cat; render(); }
+function setStoreCategoryFilter(cat){
+  state.storeCategoryFilter = cat; render();
+  const el = document.getElementById('storeAll');
+  if(el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block:'start' });
+}
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
   if(!biz){ go('custHome'); return; }
@@ -10799,26 +10843,28 @@ function renderCustStore(){
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
   }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions ${catFilter==='All'?'right now':'in this category'}</div>`;
-  const sfCover = sfTopCover(biz);
-  const showSf = state.storeTab==='buyNow' && catFilter==='All' && storefrontOf(biz).length > (sfCover?1:0);
+  const sfSlides = sfSlidesOf(biz);
+  const sfCover = sfSlides.length ? null : sfTopCover(biz);
+  const sfBody = state.storeTab==='buyNow' ? sfBodyHTML(biz, buyNowItems, !!sfCover) : '';
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar(biz.name, biz.category, { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
     <div style="padding:4px 0 0;">
-      ${sfCover ? `<div class="sf-page" style="margin-bottom:14px;">${sfSectionHTML(biz, sfCover, buyNowItems, false)}</div>` : ''}
+      ${sfSlides.length ? sfSlidesHTML(biz, sfSlides, false) : sfCover ? `<div class="sf-page" style="margin-bottom:14px;">${sfSectionHTML(biz, sfCover, buyNowItems, false)}</div>` : ''}
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
         <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="setStoreTab('auction')">Auction</button>
         <button class="tab ${state.storeTab==='rental'?'active':''}" onclick="setStoreTab('rental')">Rental</button>
       </div>
-      ${showSf ? storefrontHTML(biz, buyNowItems, false, true) + `<div class="section-head" id="storeAll" style="margin-top:8px;"><h2>All items</h2></div>` : '<div id="storeAll"></div>'}
-      ${storeCategoryDropdownHTML(categoriesForTab, catFilter)}
+      ${sfBody ? sfBody + `<div class="section-head" id="storeAll" style="margin-top:8px;"><h2>All items</h2></div>` : '<div id="storeAll"></div>'}
+      ${storeCategoryChipsHTML(categoriesForTab, catFilter, activeItems)}
       <div class="${catFilter!=='All'?'store-grid-expanded':''}">
         ${state.storeTab==='buyNow' ? buyNowHTML : state.storeTab==='auction' ? auctionHTML : rentalHTML}
       </div>
     </div>
   `);
   ensureCountdownTimer();
+  if(sfSlides.length) setTimeout(()=>{ restoreSfSlides(); ensureSfSlideTimer(); }, 0);
 }
 // ===== Store page sections (storefront) =====
 // A store owner arranges their own store page from sections (Store page in the
@@ -10868,14 +10914,14 @@ function sfSectionHTML(biz, sec, items, preview){
       <div class="sf-txt"><h2>${t(title)}</h2>${sec.subtitle?`<p>${t(sec.subtitle)}</p>`:''}</div></div>`;
   }
   if(sec.type==='banner'){
-    const go = preview ? '' : `onclick="sfGo('${t(sec.link||'all')}')"`;
+    const go = preview ? '' : `data-l="${t(sec.link||'all')}" onclick="sfGo(this.dataset.l)"`;
     return `<div class="sf-banner ${sec.image?'has-photo':''}" ${sec.image?`style="--sf-img:url('${t(sec.image)}')"`:''}>
       <div class="sf-txt">${sec.title?`<h2>${t(sec.title)}</h2>`:''}${sec.subtitle?`<p>${t(sec.subtitle)}</p>`:''}
       <button class="sf-btn" ${go}>${t(sec.button||'Shop now')} ›</button></div></div>`;
   }
   const list = sfItemsFor(sec, items);
   if(!list.length) return preview ? `<div class="sf-sec"><div class="section-head"><h2>${t(sec.title||sfSourceLabel(sec.source))}</h2></div><p class="muted" style="font-size:.84em;">No live items here yet, so customers won't see this section.</p></div>` : '';
-  const seeAll = !preview && sec.source && (sec.source.startsWith('cat:')) ? `<button class="link-btn" onclick="sfGo('${t(sec.source)}')">See all ›</button>` : '';
+  const seeAll = !preview && sec.source && (sec.source.startsWith('cat:')) ? `<button class="link-btn" data-l="${t(sec.source)}" onclick="sfGo(this.dataset.l)">See all ›</button>` : '';
   const head = `<div class="section-head rail-head"><h2>${t(sec.title||sfSourceLabel(sec.source))}</h2>${seeAll}</div>`;
   if(sec.type==='row') return `<div class="sf-sec section">${head}<div class="rail">${list.map(i=>topSellingCardHTML(i)).join('')}</div></div>`;
   return `<div class="sf-sec section">${head}<div class="top-grid">${list.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div></div>`;
@@ -10890,11 +10936,167 @@ function storefrontHTML(biz, items, preview, skipCover){
   return `<div class="sf-page ${preview?'preview':''}">${secs.map(sec=>sfSectionHTML(biz, sec, items, preview)).join('')}</div>`;
 }
 
+// --- Header slides: up to 5 ad photos that slide by on their own at the top
+// of the store (storefront.slides = [{id, image, link}]). A short band, not a
+// tall banner. Each can open All items or a category.
+const SF_MAX_SLIDES = 5;
+const SF_SLIDE_MS = 4500;
+const _sfSlideIdx = {};
+let _sfSlideTimer = null;
+function sfSlidesOf(biz){ const s = biz && biz.storefront; return (s && Array.isArray(s.slides)) ? s.slides.filter(x=>x && x.image).slice(0, SF_MAX_SLIDES) : []; }
+function sfSlidesHTML(biz, slides, preview){
+  const t = escapeAttr; const n = slides.length;
+  return `<div class="sf-slides" data-noswipe data-biz="${t(biz.id)}">
+    <div class="sf-slides-track" onscroll="sfSlideScrolled(this)" ontouchstart="sfSlideHold(this)" onpointerdown="sfSlideHold(this)" onmouseenter="sfSlideHold(this, 1)" onmouseleave="sfSlideHold(this)">
+      ${slides.map((sl,i)=>{ const link = sl.link && sl.link!=='none' ? sl.link : '';
+        return `<div class="sf-slide" style="--sf-img:url('${t(sl.image)}')" role="img" aria-label="Store advert ${i+1} of ${n}"${link && !preview ? ` data-l="${t(link)}" onclick="sfGo(this.dataset.l)"` : ''}></div>`; }).join('')}
+    </div>
+    ${n>1 ? `<div class="sf-dots">${slides.map((_,i)=>`<button class="sf-dot ${i===0?'on':''}" aria-label="Show advert ${i+1}" onclick="sfSlideTo(this.closest('.sf-slides').querySelector('.sf-slides-track'), ${i}, true)"></button>`).join('')}</div>` : ''}
+  </div>`;
+}
+function sfSlideHold(track, hover){ track._hold = hover ? Infinity : Date.now(); }
+function sfSlideTo(track, i, user){
+  if(!track) return;
+  if(user) track._hold = Date.now();
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  track.scrollTo({ left: i * track.clientWidth, behavior: reduce ? 'auto' : 'smooth' });
+}
+function sfSlideScrolled(track){
+  const w = track.clientWidth || 1;
+  const i = Math.round(track.scrollLeft / w);
+  const box = track.closest('.sf-slides');
+  if(box){ _sfSlideIdx[box.dataset.biz] = i; box.querySelectorAll('.sf-dot').forEach((d,k)=>d.classList.toggle('on', k===i)); }
+}
+// The live refresh re-renders the store page; put each slider back on the
+// photo it was showing instead of jumping to the first.
+function restoreSfSlides(){
+  document.querySelectorAll('.sf-slides').forEach(box=>{
+    const tr = box.querySelector('.sf-slides-track'); const i = _sfSlideIdx[box.dataset.biz] || 0;
+    if(tr && i){ tr.scrollLeft = i * tr.clientWidth; sfSlideScrolled(tr); }
+  });
+}
+function ensureSfSlideTimer(){
+  if(_sfSlideTimer) return;
+  _sfSlideTimer = setInterval(()=>{
+    const tracks = document.querySelectorAll('.sf-slides-track');
+    if(!tracks.length){ clearInterval(_sfSlideTimer); _sfSlideTimer = null; return; }
+    if(document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    tracks.forEach(tr=>{
+      const n = tr.children.length; if(n<2) return;
+      if(tr._hold && Date.now() - tr._hold < SF_SLIDE_MS + 2500) return;
+      const i = Math.round(tr.scrollLeft / (tr.clientWidth||1));
+      sfSlideTo(tr, (i+1) % n);
+    });
+  }, SF_SLIDE_MS);
+}
+
+// --- The Buy Now part of a store page: the owner's sections, with a wide
+// bestsellers strip after the third category section (or after the last
+// section when there are fewer). A store that hasn't set up any rows or grids
+// gets its 3 biggest categories as rows automatically.
+const SF_STRIP_AFTER = 3;
+function sfIsCatSection(sec){ return (sec.type==='row' || sec.type==='grid') && String(sec.source||'').startsWith('cat:'); }
+function sfBodyHTML(biz, items, skipCover, preview){
+  let secs = storefrontOf(biz);
+  if(skipCover && sfTopCover(biz)) secs = secs.slice(1);
+  const cats = storeCategoriesForItems(items);
+  if(!secs.some(s=>s.type==='row' || s.type==='grid') && cats.length>=2 && items.length>=6){
+    const byCount = cats.slice().sort((a,b)=>items.filter(i=>(i.category||'General')===b).length - items.filter(i=>(i.category||'General')===a).length);
+    secs = secs.concat(byCount.slice(0, SF_STRIP_AFTER).map(c=>({ id:'auto_'+c, type:'row', title:categoryIcon(c)+' '+c, source:'cat:'+c })));
+  }
+  const strip = items.length>=4 ? sfTopStripHTML(items, preview) : '';
+  if(!secs.length && !strip) return '';
+  let out = '', catN = 0, placed = false;
+  secs.forEach(sec=>{
+    out += sfSectionHTML(biz, sec, items, preview);
+    if(sfIsCatSection(sec) && sfItemsFor(sec, items).length) catN++;
+    if(!placed && catN===SF_STRIP_AFTER){ out += strip; placed = true; }
+  });
+  if(!placed) out += strip;
+  return `<div class="sf-page ${preview?'preview':''}">${out}</div>`;
+}
+function sfTopStripHTML(items, preview){
+  const list = sortByAppSales(items).slice(0, 10);
+  if(list.length<2) return '';
+  const sold = list.some(i=>unitsSold(i.id)>0);
+  const t = escapeAttr;
+  return `<div class="sf-sec section"><div class="section-head rail-head"><h2>${sold ? '🏝️ Bestsellers here' : '🐚 Fresh off the Boat'}</h2></div>
+    <div class="rail sf-top-strip">${list.map((it,k)=>`
+      <div class="sf-top-card" role="button" tabindex="0" ${preview?'':`onclick="openItemDetail('${it.id}')"`}>
+        <div class="sf-top-img">${itemThumbHTML(it)}</div>
+        <div class="sf-top-info">
+          ${sold ? `<span class="sf-rank">#${k+1}</span>` : ''}
+          <h3>${t(it.name)}</h3>
+          <div class="price">${itemPriceLine(it)}</div>
+          ${it.discountPercent>0?`<span class="discount-badge">${it.discountPercent}% OFF</span>`:''}
+          ${soldLabelHTML(it)}
+        </div>
+      </div>`).join('')}</div></div>`;
+}
+
+// --- Owner: header slides editor (top of the Store page screen)
+function sfSlidesEditorHTML(biz){
+  const slides = sfSlidesOf(biz);
+  const cats = storeCategoriesForItems(sfStoreItems(biz));
+  const t = escapeAttr;
+  return `<div class="glass card sf-slides-ed">
+    <div class="row between" style="align-items:baseline;"><strong>Header slides</strong><span class="muted" style="font-size:.82em;">${slides.length} / ${SF_MAX_SLIDES}</span></div>
+    <p class="muted" style="font-size:.82em; margin:2px 0 10px;">Up to ${SF_MAX_SLIDES} advert photos that slide by on their own at the top of your store. Wide photos look best (about 5 : 2).</p>
+    <div class="sf-slide-tiles">
+      ${slides.map((sl,i)=>`<div class="sf-slide-tile">
+        <div class="sf-slide-thumb" style="--sf-img:url('${t(sl.image)}')"><span>${i+1}</span></div>
+        <select aria-label="Slide ${i+1} opens" onchange="sfSlideLink('${sl.id}', this.value)">
+          <option value="none" ${!sl.link||sl.link==='none'?'selected':''}>Just a picture</option>
+          <option value="all" ${sl.link==='all'?'selected':''}>Opens All items</option>
+          ${cats.map(c=>`<option value="cat:${t(c)}" ${sl.link==='cat:'+c?'selected':''}>Opens ${t(c)}</option>`).join('')}
+        </select>
+        <div class="sf-ed-acts">
+          <button class="sf-mini" aria-label="Move left" ${i===0?'disabled':''} onclick="sfSlideMove('${sl.id}',-1)">←</button>
+          <button class="sf-mini" aria-label="Move right" ${i===slides.length-1?'disabled':''} onclick="sfSlideMove('${sl.id}',1)">→</button>
+          <button class="sf-mini ${state.sfDelAsk===sl.id?'danger':''}" aria-label="${state.sfDelAsk===sl.id?'Tap again to remove':'Remove slide'}" onclick="sfSlideRemove('${sl.id}')">${state.sfDelAsk===sl.id?'Remove?':'✕'}</button>
+        </div></div>`).join('')}
+      ${slides.length < SF_MAX_SLIDES ? `<label class="sf-slide-tile add"><span class="sf-slide-thumb add"><b>＋</b>Add photo${SF_MAX_SLIDES-slides.length>1?'s':''}</span><input type="file" accept="image/*" multiple hidden onchange="onSfSlideFiles(event)"></label>` : ''}
+    </div></div>`;
+}
+async function onSfSlideFiles(e){
+  const biz = currentBiz(); if(!biz) return;
+  const files = [...(e.target.files||[])].filter(f=>/^image\//.test(f.type)); e.target.value = '';
+  const room = SF_MAX_SLIDES - sfSlidesOf(biz).length;
+  if(!files.length) return;
+  if(files.length > room) toast(`Only ${room} more photo${room===1?'':'s'} fit. Adding the first ${room}`, 'bad');
+  const added = [];
+  for(const f of files.slice(0, room)){
+    if(f.size > 20*1024*1024){ toast('A picture is over 20 MB, skipped','bad'); continue; }
+    toast(`Uploading photo ${added.length+1}…`);
+    const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+    if(url) added.push({ id:uid('sl'), image:url, link:'all' });
+  }
+  if(!added.length) return;
+  if(await saveStorefront(biz, null, sfSlidesOf(biz).concat(added))) toast(added.length===1 ? 'Slide added' : `${added.length} slides added`);
+}
+async function sfSlideMove(id, dir){
+  const biz = currentBiz(); const sl = sfSlidesOf(biz).slice();
+  const i = sl.findIndex(x=>x.id===id), j = i+dir;
+  if(i<0 || j<0 || j>=sl.length) return;
+  [sl[i], sl[j]] = [sl[j], sl[i]];
+  await saveStorefront(biz, null, sl);
+}
+async function sfSlideLink(id, link){
+  const biz = currentBiz();
+  await saveStorefront(biz, null, sfSlidesOf(biz).map(x=>x.id===id ? Object.assign({}, x, { link }) : x));
+}
+async function sfSlideRemove(id){
+  if(state.sfDelAsk!==id){ state.sfDelAsk = id; render(); clearTimeout(sfSlideRemove._t); sfSlideRemove._t = setTimeout(()=>{ if(state.sfDelAsk===id){ state.sfDelAsk=null; render(); } }, 4000); return; }
+  state.sfDelAsk = null;
+  const biz = currentBiz();
+  if(await saveStorefront(biz, null, sfSlidesOf(biz).filter(x=>x.id!==id))) toast('Slide removed');
+}
+
 // --- Owner side ---
 function openStorefrontEditor(){ toggleDrawer(false); go('bizStorefront'); }
-async function saveStorefront(biz, sections){
+async function saveStorefront(biz, sections, slides){
   const before = biz.storefront;
-  biz.storefront = { sections };
+  biz.storefront = { sections: sections || storefrontOf(biz), slides: slides || sfSlidesOf(biz) };
   if(!sb){ render(); return true; }
   const ok = await saveDB('businesses', [biz]);
   if(!ok){ biz.storefront = before; render(); return false; }
@@ -10928,12 +11130,14 @@ function renderBizStorefront(biz){
         ${cats.length && !secs.length ? `<button class="btn btn-ghost btn-sm" onclick="sfQuickStart()">✨ Make rows from my categories</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="sfViewAsCustomer()">👁 View my store</button>
       </div>
+      ${sfSlidesEditorHTML(biz)}
+      <div class="section-head" style="margin-top:18px;"><h2>Sections</h2></div>
       ${secs.length ? `<div class="card-list one sf-ed-list">${secs.map(card).join('')}</div>
-        <p class="muted" style="font-size:.8em; margin:6px 2px 0;">${secs.length} of ${SF_MAX_SECTIONS} sections. All your items still show under them, under All items.</p>`
+        <p class="muted" style="font-size:.8em; margin:6px 2px 0;">${secs.length} of ${SF_MAX_SECTIONS} sections. A wide Bestsellers strip shows after your third category, then All items.</p>`
       : `<div class="glass card sf-empty"><strong>Make your store look like a shop window</strong>
-          <p class="muted" style="font-size:.86em; margin-top:4px;">Add a banner with your store photo, promo banners with a button, and rows of items by category. Customers see them at the top of your store, above all your items.</p></div>`}
-      ${secs.length ? `<div class="section-head" style="margin-top:22px;"><h2>Preview</h2></div>
-        <div class="sf-preview-wrap">${storefrontHTML(biz, live, true)}</div>` : ''}
+          <p class="muted" style="font-size:.86em; margin-top:4px;">Add promo banners with a button and rows or grids of items by category. Until you do, customers see your 3 biggest categories as rows. A wide Bestsellers strip follows the third category, then All items with category filters.</p></div>`}
+      ${secs.length || sfSlidesOf(biz).length ? `<div class="section-head" style="margin-top:22px;"><h2>Preview</h2></div>
+        <div class="sf-preview-wrap">${sfSlidesOf(biz).length ? sfSlidesHTML(biz, sfSlidesOf(biz), true) : ''}${sfBodyHTML(biz, live, false, true)}<p class="muted" style="font-size:.8em; margin-top:10px;">Then All items, with a category filter.</p></div>` : ''}
     </div>
   `);
 }
@@ -10958,7 +11162,7 @@ async function sfDelete(id){
 async function sfQuickStart(){
   const biz = currentBiz(); const live = sfStoreItems(biz);
   const cats = storeCategoriesForItems(live).sort((a,b)=>live.filter(i=>i.category===b).length - live.filter(i=>i.category===a).length);
-  const secs = [{ id:uid('sf'), type:'cover', title:biz.name, subtitle:'', image:'' }];
+  const secs = [];
   if(live.some(i=>i.discountPercent>0)) secs.push({ id:uid('sf'), type:'row', title:'On sale', source:'sale' });
   cats.slice(0, SF_MAX_SECTIONS - secs.length).forEach(c=>secs.push({ id:uid('sf'), type:'row', title:c, source:'cat:'+c }));
   if(await saveStorefront(biz, secs)) toast('Sections added. Tap one to change it');

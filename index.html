@@ -114,10 +114,10 @@
     --link:var(--lagoon-700);
 
     --radius:20px;
-    --shadow:0 1px 2px rgba(13,43,51,.05), 0 6px 20px rgba(13,43,51,.06);
+    --shadow:0 1px 2px rgba(13,43,51,.04), 0 8px 24px -8px rgba(13,43,51,.10);
     --shadow-lift:0 2px 6px rgba(13,43,51,.06), 0 18px 44px rgba(13,43,51,.14);
     --glow-cyan:0 6px 16px rgba(15,163,163,.25);
-    --glow-coral:0 8px 22px rgba(226,74,36,.28);
+    --glow-coral:0 6px 16px -6px rgba(226,74,36,.45);
     --display:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif;
     --fs:12px;
     font-size:var(--fs);
@@ -1585,6 +1585,25 @@
     *,*::before,*::after{transition-duration:.01ms !important; animation:none !important;}
   }
   ::-webkit-scrollbar{width:0; height:0;}
+
+  /* ---------- Elegance pass ----------
+     A smaller Home header with a straight edge (the wavy shore is gone), and
+     quieter chrome everywhere: borderless top-bar buttons, softer shadows,
+     a calmer coral glow, tighter headings. */
+  .home-hero{padding-bottom:18px; border-radius:0; box-shadow:0 16px 30px -24px rgba(8,60,90,.6);}
+  .home-hero .hero-scene{height:84px; margin:-12px -4px 0;}
+  .home-hero .hero-wordmark{margin:0 0 10px;}
+  .home-hero > .home-header{padding-bottom:4px;}
+  .home-header .iconbtn, .brand-mark, .mode-pill{border-color:rgba(255,255,255,.22);}
+  .topbar .iconbtn, .ip-back{border:none; box-shadow:0 1px 2px rgba(13,43,51,.06), 0 4px 12px -4px rgba(13,43,51,.12);}
+  .topbar.glass{border-bottom-color:rgba(13,43,51,.06);}
+  .topbar .titles h1{letter-spacing:-.015em;}
+  h1, h2, h3, .section-head h2{letter-spacing:-.012em;}
+  .glass{border-color:rgba(13,43,51,.06);}
+  .btn-primary{box-shadow:var(--glow-coral), inset 0 1px 0 rgba(255,255,255,.22);}
+  .btn-primary:hover{filter:saturate(1.05) brightness(1.02);}
+  .tabs{background:rgba(13,43,51,.05);}
+  @media (min-width:640px) and (max-width:1023px){ .home-hero .hero-scene{height:104px;} }
 </style>
 </head>
 <body>
@@ -10616,7 +10635,6 @@ function renderCustHome(){
       ${DB.settings.heroImageUrl ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       <h1 class="hero-wordmark" aria-label="Maarukeytu">Maarukeytu</h1>
       ${homeSearchRowHTML('hero')}
-      <svg class="hero-shore" viewBox="0 0 400 30" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18 C 40 4, 80 4, 120 16 S 200 30, 240 16 S 330 2, 400 14 V30 H0 Z"/></svg>
     </div>
     <div style="padding:0 4px;">
       ${addressPromptHTML()}

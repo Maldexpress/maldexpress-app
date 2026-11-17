@@ -1586,6 +1586,14 @@
   }
   ::-webkit-scrollbar{width:0; height:0;}
 
+  .biz-quick{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .bq{display:flex; align-items:center; gap:10px; min-width:0; text-align:left; padding:12px; border-radius:18px; border:1px solid rgba(13,43,51,.06); background:var(--surface); box-shadow:var(--shadow); color:var(--ink); cursor:pointer; transition:transform .15s ease;}
+  .bq:active{transform:scale(.98);}
+  .bq-ic{flex:0 0 38px; height:38px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); color:var(--lagoon-700); font-size:1.1em;}
+  .bq-ic svg{width:18px; height:18px;}
+  .bq-t{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  .bq-t strong{font-size:.92em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .bq-t small{font-size:.76em; color:var(--ink-600, #4A5A63); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   /* ---------- Elegance pass ----------
      A smaller Home header with a straight edge (the wavy shore is gone), and
      quieter chrome everywhere: borderless top-bar buttons, softer shadows,
@@ -4086,7 +4094,7 @@ function sheetCompleteAuctionOrder(){
   <h2>Complete your order</h2>
   <p class="muted" style="margin-bottom:14px;">You won this auction for ${money(o.itemsTotal)} — choose your delivery zone and how you'll pay to finish placing the order.</p>
   <div class="field">
-    <label id="cao_zone_lbl">Deliver to</label>
+    <label id="cao_zone_lbl">Destination</label>
     ${zoneRouteHTML('cao_zone', 'refreshCompleteOrderTotals', o.deliveryType==='free')}
   </div>
   ${deliveryTargetFieldsHTML()}
@@ -6238,8 +6246,10 @@ function renderBizHome(biz,t){
     <div style="padding:4px 0 0;">
       ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
-      <div class="card share-store"><div style="flex:1; min-width:0;"><strong>Share your store</strong><p class="muted" style="font-size:.84em;">Send your store link on WhatsApp, Viber, Instagram, Facebook… Buyers open it straight to your items.</p></div><button class="btn btn-primary btn-sm" onclick="openShare('store','${biz.id}')">${ICON_SHARE} Share</button></div>
-      <div class="card share-store sf-promo"><div style="flex:1; min-width:0;"><strong>${storefrontOf(biz).length ? 'Your store page' : 'Design your store page'}</strong><p class="muted" style="font-size:.84em;">${storefrontOf(biz).length ? `${storefrontOf(biz).length} section${storefrontOf(biz).length===1?'':'s'} at the top of your store. Change banners, rows and grids any time.` : 'Add a banner, promo banners and rows of items by category, like a shop window.'}</p></div><button class="btn btn-ghost btn-sm" onclick="go('bizStorefront')">🎨 ${storefrontOf(biz).length ? 'Edit' : 'Start'}</button></div>
+      <div class="biz-quick">
+        <button class="bq" onclick="openShare('store','${biz.id}')"><span class="bq-ic" aria-hidden="true">${ICON_SHARE}</span><span class="bq-t"><strong>Share your store</strong><small>WhatsApp, Viber, Instagram…</small></span></button>
+        <button class="bq" onclick="go('bizStorefront')"><span class="bq-ic" aria-hidden="true">🎨</span><span class="bq-t"><strong>Store page</strong><small>${storefrontOf(biz).length || sfSlidesOf(biz).length ? `${sfSlidesOf(biz).length} slide${sfSlidesOf(biz).length===1?'':'s'} · ${storefrontOf(biz).length} section${storefrontOf(biz).length===1?'':'s'}` : 'Slides, banners and rows'}</small></span></button>
+      </div>
       <div class="row" style="gap:10px; margin:14px 0 18px;">
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
@@ -11697,12 +11707,12 @@ function sheetCheckout(){
   <div class="card tight" style="background:rgba(34,184,200,.12); margin-bottom:14px;"><p style="font-size:.85em;">${sb ? `Ordering as <strong>${escapeAttr(state.customerName)}${state.customerPhone?` · ${escapeAttr(state.customerPhone)}`:''}</strong>` : 'This is a preview with sample stores, so orders here aren\'t sent to a real shop'}</p></div>
   ${isPartial ? `<p class="muted" style="font-size:.82em; margin-bottom:10px;">Checking out ${lines.length} selected item${lines.length>1?'s':''} — the rest stays in your cart.</p>` : ''}
   <div class="field"><label>Your name</label><input id="c_name" value="${escapeAttr(state.customerName)}" ${sb && state.authed?'disabled style="opacity:.7;"':''}></div>
-  <div class="field"><label>Phone</label><input id="c_phone" placeholder="7XXXXXX" value="${escapeAttr(state.customerPhone||'')}" ${sb && state.authed && state.customerPhone?'disabled style="opacity:.7;"':''}></div>
+  <div class="field"><label>Your phone</label><input id="c_phone" placeholder="7XXXXXX" value="${escapeAttr(state.customerPhone||'')}" ${sb && state.authed && state.customerPhone?'disabled style="opacity:.7;"':''}></div>
   ${sb && state.authed && state.customerPhone ? `<p class="muted" style="font-size:.78em; margin-top:-8px; margin-bottom:14px;">Name and phone come from your account, so the order matches who you signed up as — update your name in Settings if it's wrong.</p>` : ''}
   ${sb && state.authed && !state.customerPhone ? `<p class="muted" style="font-size:.78em; margin-top:-8px; margin-bottom:14px;">We'll save this to your account so you don't need to re-enter it next time.</p>` : ''}
   ${deliveryTargetFieldsHTML()}
   <div class="field">
-    <label id="c_zone_lbl">Deliver to</label>
+    <label id="c_zone_lbl">Destination</label>
     <div class="tabs" role="tablist" style="margin-bottom:10px;">
       <button type="button" class="tab ${_destMode==='male'?'active':''}" id="destTab_male" onclick="setDestMode('male')">Greater Malé</button>
       <button type="button" class="tab ${_destMode==='island'?'active':''}" id="destTab_island" onclick="setDestMode('island')">Another island</button>
@@ -11820,7 +11830,7 @@ function deliveryTargetFieldsHTML(){
   const boatHarbour = boatDefault ? boatDefault.harbour : '';
   return `
   <div class="field">
-    <label>Deliver to</label>
+    <label>Who receives it</label>
     <div class="tabs">
       <button type="button" class="tab ${_deliverTargetMode!=='boat'?'active':''}" id="deliverTabPerson" style="flex:1; text-align:center;" onclick="setDeliveryTarget('person', true)">Deliver to a person</button>
       <button type="button" class="tab ${_deliverTargetMode==='boat'?'active':''}" id="deliverTabBoat" style="flex:1; text-align:center;" onclick="setDeliveryTarget('boat', true)">Deliver to a boat</button>
@@ -11841,10 +11851,10 @@ function deliveryTargetFieldsHTML(){
       ${sb && state.authed ? (ownDefault
         ? `<p class="addr-note">📍 Your default address is filled in. Change anything for this order; we'll save it as your new default.</p>`
         : `<p class="addr-note new">📍 Add your delivery address below. We'll save it as your default, so next time it's filled in for you.</p>`) : ''}
-      <div class="field"><label>Name</label><input id="c_recv_name" value="${escapeAttr(selfName)}" onfocus="this.select()" oninput="handleRecvNameEdit()"></div>
-      <div class="field"><label>Phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(selfPhone)}"></div>
+      <div class="field"><label>Receiver's name</label><input id="c_recv_name" value="${escapeAttr(selfName)}" onfocus="this.select()" oninput="handleRecvNameEdit()"></div>
+      <div class="field"><label>Receiver's phone</label><input id="c_recv_phone" placeholder="7XXXXXX" value="${escapeAttr(selfPhone)}"></div>
       <div class="field"><label>Address</label><input id="c_recv_address" placeholder="House, street, island" value="${escapeAttr(selfAddress)}"></div>
-      <button type="button" class="link-btn" onclick="switchDeliverToOther()">Deliver to another person instead</button>
+      <button type="button" class="link-btn" style="margin-bottom:16px;" onclick="switchDeliverToOther()">Deliver to another person instead</button>
     </div>
     <div id="recvOtherBlock" class="hidden">
       ${otherList.length>1 ? `

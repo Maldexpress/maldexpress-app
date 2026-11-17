@@ -1471,6 +1471,19 @@
   .sf-dot{pointer-events:auto; width:7px; height:7px; padding:0; border-radius:99px; border:0; background:rgba(255,255,255,.6); box-shadow:0 0 0 1px rgba(0,0,0,.15); transition:width .25s, background .25s; cursor:pointer;}
   .sf-dot.on{width:20px; background:#fff;}
   @media (min-width:768px){ .sf-slide{aspect-ratio:4/1; max-height:280px;} }
+  .sf-slides.hero{margin:0 -16px 14px;}
+  .sf-slides.hero .sf-slides-track{border-radius:0 0 26px 26px;}
+  .sf-slides.hero .sf-slide{aspect-ratio:2/1; max-height:300px;}
+  .sf-hero-bar{position:absolute; z-index:2; top:0; left:0; right:0; display:flex; align-items:center; gap:12px; padding:calc(10px + env(safe-area-inset-top)) 16px 28px; background:linear-gradient(180deg, rgba(4,20,32,.55), rgba(4,20,32,0)); pointer-events:none; border-radius:0;}
+  .sf-hero-bar h1{flex:1; min-width:0; color:#fff; font-family:var(--display); font-size:1.35em; line-height:1.15; text-shadow:0 1px 8px rgba(0,0,0,.45); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sf-hero-btn{pointer-events:auto; flex:0 0 42px; width:42px; height:42px; border-radius:14px; border:1px solid rgba(255,255,255,.45); background:rgba(255,255,255,.88); color:var(--ink); display:grid; place-items:center; box-shadow:0 4px 12px rgba(0,0,0,.18); cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  .sf-hero-btn svg{width:20px; height:20px;}
+  .sf-preview-wrap .sf-slides.hero{margin:0 0 14px;}
+  .sf-preview-wrap .sf-slides.hero .sf-slides-track, .sf-preview-wrap .sf-hero-bar{border-radius:20px;}
+  @media (min-width:768px){ .sf-slides.hero .sf-slide{aspect-ratio:4/1;} }
+  body.site-desk .sf-slides.hero{margin:16px 0 16px;}
+  body.site-desk .sf-slides.hero .sf-slides-track{border-radius:24px;}
+  body.site-desk .sf-hero-bar{border-radius:24px 24px 0 0; padding:16px 20px 32px;}
   .sf-top-strip .sf-top-card{flex:0 0 84%; max-width:440px; scroll-snap-align:start; display:flex; gap:12px; align-items:stretch; background:#fff; border-radius:20px; padding:10px; box-shadow:0 6px 18px rgba(15,60,80,.10); cursor:pointer;}
   .sf-top-img{flex:0 0 46%; aspect-ratio:1; border-radius:14px; overflow:hidden; background:linear-gradient(150deg,#E8F8F6,#DCEBFF); display:grid; place-items:center; font-size:2.6em;}
   .sf-top-img img{width:100%; height:100%; object-fit:cover; object-position:50% 35%;}
@@ -10843,14 +10856,16 @@ function renderCustStore(){
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
   }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions ${catFilter==='All'?'right now':'in this category'}</div>`;
+  // The header: the store's advert slides (or, without any, the photo of a
+  // Store banner section) with the menu, store name and share button on top.
   const sfSlides = sfSlidesOf(biz);
-  const sfCover = sfSlides.length ? null : sfTopCover(biz);
-  const sfBody = state.storeTab==='buyNow' ? sfBodyHTML(biz, buyNowItems, !!sfCover) : '';
+  const sfCover = storefrontOf(biz).find(x=>x.type==='cover' && x.image);
+  const heroSlides = sfSlides.length ? sfSlides : sfCover ? [{ id:'cover', image:sfCover.image, link:'none' }] : [];
+  const sfBody = state.storeTab==='buyNow' ? sfBodyHTML(biz, buyNowItems) : '';
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${topbar(biz.name, biz.category, { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
+    ${heroSlides.length ? sfSlidesHTML(biz, heroSlides, false, true) : topbar(escapeAttr(biz.name), '', { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
     <div style="padding:4px 0 0;">
-      ${sfSlides.length ? sfSlidesHTML(biz, sfSlides, false) : sfCover ? `<div class="sf-page" style="margin-bottom:14px;">${sfSectionHTML(biz, sfCover, buyNowItems, false)}</div>` : ''}
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
         <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="setStoreTab('auction')">Auction</button>
@@ -10864,7 +10879,7 @@ function renderCustStore(){
     </div>
   `);
   ensureCountdownTimer();
-  if(sfSlides.length) setTimeout(()=>{ restoreSfSlides(); ensureSfSlideTimer(); }, 0);
+  if(heroSlides.length) setTimeout(()=>{ restoreSfSlides(); ensureSfSlideTimer(); }, 0);
 }
 // ===== Store page sections (storefront) =====
 // A store owner arranges their own store page from sections (Store page in the
@@ -10874,7 +10889,7 @@ function renderCustStore(){
 // tab above All items (renderCustStore()).
 const SF_MAX_SECTIONS = 12;
 const SF_TYPES = {
-  cover:  { icon:'🖼️', label:'Store banner', hint:'A wide photo across the top of your store, with your name on it' },
+  cover:  { icon:'🖼️', label:'Store banner', hint:'Old single header photo; used only when there are no header slides' },
   banner: { icon:'📣', label:'Promo banner', hint:'A photo with a headline and a button, e.g. "New arrivals · Shop now"' },
   row:    { icon:'↔️', label:'Swipe row',    hint:'A row of items customers swipe sideways' },
   grid:   { icon:'▦',  label:'Product grid', hint:'Items in a grid, 2 across on phones' },
@@ -10944,10 +10959,15 @@ const SF_SLIDE_MS = 4500;
 const _sfSlideIdx = {};
 let _sfSlideTimer = null;
 function sfSlidesOf(biz){ const s = biz && biz.storefront; return (s && Array.isArray(s.slides)) ? s.slides.filter(x=>x && x.image).slice(0, SF_MAX_SLIDES) : []; }
-function sfSlidesHTML(biz, slides, preview){
+function sfSlidesHTML(biz, slides, preview, hero){
   const t = escapeAttr; const n = slides.length;
-  return `<div class="sf-slides" data-noswipe data-biz="${t(biz.id)}">
-    <div class="sf-slides-track" onscroll="sfSlideScrolled(this)" ontouchstart="sfSlideHold(this)" onpointerdown="sfSlideHold(this)" onmouseenter="sfSlideHold(this, 1)" onmouseleave="sfSlideHold(this)">
+  return `<div class="sf-slides ${hero?'hero':''}" data-noswipe data-biz="${t(biz.id)}">
+    ${hero ? `<div class="sf-hero-bar">
+      <button class="sf-hero-btn" aria-label="Menu" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
+      <h1>${t(biz.name)}</h1>
+      <button class="sf-hero-btn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>
+    </div>` : ''}
+    <div class="sf-slides-track" onscroll="sfSlideScrolled(this)" ontouchstart="sfSlideHold(this)" onpointerdown="sfSlideHold(this)" onpointerenter="if(event.pointerType==='mouse') sfSlideHold(this, 1)" onpointerleave="if(event.pointerType==='mouse') sfSlideHold(this)">
       ${slides.map((sl,i)=>{ const link = sl.link && sl.link!=='none' ? sl.link : '';
         return `<div class="sf-slide" style="--sf-img:url('${t(sl.image)}')" role="img" aria-label="Store advert ${i+1} of ${n}"${link && !preview ? ` data-l="${t(link)}" onclick="sfGo(this.dataset.l)"` : ''}></div>`; }).join('')}
     </div>
@@ -10996,9 +11016,8 @@ function ensureSfSlideTimer(){
 // gets its 3 biggest categories as rows automatically.
 const SF_STRIP_AFTER = 3;
 function sfIsCatSection(sec){ return (sec.type==='row' || sec.type==='grid') && String(sec.source||'').startsWith('cat:'); }
-function sfBodyHTML(biz, items, skipCover, preview){
-  let secs = storefrontOf(biz);
-  if(skipCover && sfTopCover(biz)) secs = secs.slice(1);
+function sfBodyHTML(biz, items, preview){
+  let secs = storefrontOf(biz).filter(x=>x.type!=='cover');
   const cats = storeCategoriesForItems(items);
   if(!secs.some(s=>s.type==='row' || s.type==='grid') && cats.length>=2 && items.length>=6){
     const byCount = cats.slice().sort((a,b)=>items.filter(i=>(i.category||'General')===b).length - items.filter(i=>(i.category||'General')===a).length);
@@ -11137,7 +11156,7 @@ function renderBizStorefront(biz){
       : `<div class="glass card sf-empty"><strong>Make your store look like a shop window</strong>
           <p class="muted" style="font-size:.86em; margin-top:4px;">Add promo banners with a button and rows or grids of items by category. Until you do, customers see your 3 biggest categories as rows. A wide Bestsellers strip follows the third category, then All items with category filters.</p></div>`}
       ${secs.length || sfSlidesOf(biz).length ? `<div class="section-head" style="margin-top:22px;"><h2>Preview</h2></div>
-        <div class="sf-preview-wrap">${sfSlidesOf(biz).length ? sfSlidesHTML(biz, sfSlidesOf(biz), true) : ''}${sfBodyHTML(biz, live, false, true)}<p class="muted" style="font-size:.8em; margin-top:10px;">Then All items, with a category filter.</p></div>` : ''}
+        <div class="sf-preview-wrap">${sfSlidesOf(biz).length ? sfSlidesHTML(biz, sfSlidesOf(biz), true, true) : ''}${sfBodyHTML(biz, live, true)}<p class="muted" style="font-size:.8em; margin-top:10px;">Then All items, with a category filter.</p></div>` : ''}
     </div>
   `);
 }
@@ -11205,7 +11224,7 @@ function sheetSfSection(){
   const live = sfStoreItems(biz);
   const cats = storeCategoriesForItems(live);
   const t = escapeAttr;
-  const typeChips = Object.entries(SF_TYPES).map(([k,ty])=>`<button type="button" class="sf-type ${d.type===k?'active':''}" aria-pressed="${d.type===k}" onclick="sfSetType('${k}')"><span aria-hidden="true">${ty.icon}</span>${ty.label}</button>`).join('');
+  const typeChips = Object.entries(SF_TYPES).filter(([k])=>k!=='cover' || d.type==='cover').map(([k,ty])=>`<button type="button" class="sf-type ${d.type===k?'active':''}" aria-pressed="${d.type===k}" onclick="sfSetType('${k}')"><span aria-hidden="true">${ty.icon}</span>${ty.label}</button>`).join('');
   const photo = `<div class="field"><label>Photo${d.type==='cover'?'':' (optional)'}</label>
       ${d.image ? `<div class="sf-photo" style="--sf-img:url('${t(d.image)}')"></div>
         <div class="row" style="gap:8px; margin-top:8px;"><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Change photo<input type="file" accept="image/*" hidden onchange="onSfPhoto(event)"></label><button type="button" class="btn btn-ghost btn-sm" onclick="sfRemovePhoto()">Remove</button></div>`

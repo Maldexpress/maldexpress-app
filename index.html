@@ -11,7 +11,7 @@
     document.querySelector('meta[name=viewport]').setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover');
   }
 </script>
-<!-- Add-to-Home-Screen: the Maldexpress logo (icons/) is the app icon on
+<!-- Add-to-Home-Screen: the Maarukeytu logo (icons/) is the app icon on
      Android (manifest.webmanifest, incl. a maskable icon) and iPhone
      (apple-touch-icon). Opened from the home screen it runs full-screen. -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -21,13 +21,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Maldexpress">
+<meta name="apple-mobile-web-app-title" content="Maarukeytu">
 <meta name="theme-color" content="#0FA3A3">
-<title>Maldexpress</title>
+<title>Maarukeytu</title>
 <meta name="description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Maldexpress">
-<meta property="og:title" content="Maldexpress · Shop every island">
+<meta property="og:site_name" content="Maarukeytu">
+<meta property="og:title" content="Maarukeytu · Shop every island">
 <meta property="og:description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
 <meta property="og:image" content="https://maldexpress.github.io/maldexpress-app/icons/icon-512.png">
 <meta name="twitter:card" content="summary">
@@ -1625,6 +1625,58 @@
   .cat-bar-btn:hover{border-color:var(--lagoon-500, #14A3A0);}
   .discount-badge{background:#E3F3EA; color:var(--palm); font-weight:800; border-radius:999px; padding:2px 8px;}
   :focus-visible{outline:2px solid var(--lagoon-500, #14A3A0); outline-offset:2px;}
+
+  /* ---------- Shallows refresh (2026-11-17) ----------
+     One idea carried through every screen: the page is the shallow lagoon.
+     Screen headers are a band of shallow water (tinted, no hard line) with big
+     display titles and round white buttons; cards float on it with a
+     lagoon-tinted shadow instead of grey outlines; tabs are lagoon segments;
+     empty screens show a ripple instead of a grey square. Section titles lose
+     the gradient underline: weight and space carry them now. */
+  :root{
+    --radius:22px;
+    --shadow:0 1px 1px rgba(13,43,51,.03), 0 10px 28px -14px rgba(8,106,112,.22);
+    --shadow-lift:0 2px 4px rgba(13,43,51,.05), 0 22px 48px -18px rgba(8,106,112,.32);
+  }
+  .glass{border-color:transparent; box-shadow:var(--shadow), inset 0 0 0 1px rgba(13,43,51,.045);}
+  .topbar.glass{background:linear-gradient(180deg, rgba(214,240,237,.95) 0%, rgba(232,246,244,.93) 100%); border-bottom:1px solid rgba(8,106,112,.07); box-shadow:none;}
+  .topbar .titles h1{font-size:1.42em; font-weight:800; letter-spacing:-.022em;}
+  .topbar .titles .sub{color:var(--lagoon-700); font-weight:600;}
+  .topbar .iconbtn, .ip-back{border-radius:999px; background:#fff; color:var(--lagoon-700);}
+  .section > h2::after, .section-head h2::after{display:none;}
+  .section > h2, .section-head h2{padding-bottom:0; font-size:1.3em; font-weight:800; letter-spacing:-.022em;}
+  .section-head{margin-bottom:12px;}
+  .link-btn{color:var(--lagoon-700);}
+
+  .tabs{background:var(--lagoon-50); border-radius:999px; padding:4px; gap:2px;}
+  .tab{border-radius:999px; color:var(--lagoon-700);}
+  .tab.active{background:var(--lagoon-700); color:#fff; opacity:1; box-shadow:0 6px 14px -6px rgba(8,106,112,.6);}
+
+  .empty{color:var(--ink-600); font-weight:600; padding-top:56px;}
+  .empty .ic{width:84px; height:84px; border-radius:50%; margin-bottom:30px;
+    background:radial-gradient(circle at 34% 30%, #fff 0 16%, var(--lagoon-50) 58%, #CBEDE8 100%);
+    box-shadow:0 0 0 12px rgba(15,163,163,.08), 0 0 0 26px rgba(15,163,163,.04);}
+
+  .stat-tile{background:linear-gradient(165deg, #fff 30%, #EEF9F7 100%); color:var(--lagoon-700);}
+  .stat-tile h1{font-size:2em !important; letter-spacing:-.03em;}
+  .stat-tile .muted{color:var(--ink-600);}
+
+  .drawer-item{padding:7px 10px; font-weight:650;}
+  .drawer-item .ic{width:36px; height:36px; border-radius:12px; background:#EEF6F5; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .drawer-item:hover .ic{background:#fff;}
+  .drawer .who .av{border-radius:50%;}
+
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--lagoon-500); box-shadow:0 0 0 4px rgba(15,163,163,.15); outline:none;}
+
+  /* The name is always the thin Poiret One wordmark, in every portal. */
+  .admin-logo .site-logo-word, .nav-brand .site-logo-word{font-family:'Poiret One', var(--display), sans-serif; font-weight:400; letter-spacing:.06em; -webkit-text-stroke:.4px var(--ink);}
+  @media (min-width:1024px){
+    .topbar.glass{border-radius:22px; border-bottom:none; margin-top:10px;}
+  }
+  @media (max-width:1023px){
+    .bottomnav{border-top:none; box-shadow:0 -1px 0 rgba(13,43,51,.04), 0 -12px 30px -20px rgba(8,106,112,.45);}
+    .navbtn.active .ic{background:linear-gradient(135deg, #C9EEE9, #E4F6F4);}
+  }
 </style>
 </head>
 <body>
@@ -1701,7 +1753,7 @@ function fbErrorText(e){
   if(c==='auth/weak-password') return 'Use a password with at least 6 characters';
   if(c==='auth/invalid-credential' || c==='auth/wrong-password' || c==='auth/user-not-found' || c==='auth/invalid-login-credentials') return 'Incorrect mobile/email or password. New here? Sign up below';
   if(c==='auth/too-many-requests') return 'Firebase paused emails for this account after several tries. Wait about 15 minutes, then tap Resend email';
-  if(c==='auth/quota-exceeded') return 'The daily email limit was reached. Try again tomorrow, or contact Maldexpress';
+  if(c==='auth/quota-exceeded') return 'The daily email limit was reached. Try again tomorrow, or contact Maarukeytu';
   if(c==='auth/internal-error') return 'The sign-in service had a problem sending the email. Try Resend email in a minute';
   if(c==='auth/network-request-failed') return "Can't reach the sign-in service. Check your connection";
   if(c==='auth/unauthorized-continue-uri' || c==='auth/unauthorized-domain') return "This site address isn't allowed in Firebase yet (Authentication > Settings > Authorized domains)";
@@ -2899,9 +2951,9 @@ grant execute on function set_default_address(text, text) to authenticated;
 -- order to a rider until it's paid. Cash on delivery and bank transfer are
 -- no longer offered for Buy now orders; rentals and auctions are unchanged.
 --
--- Fees: Maldexpress takes 5% of each order total. Swipe's 1% charge is
--- split 1:1 between the store and Maldexpress. Money lands in the store's
--- wallet minus Swipe's 1%, so the store owes Maldexpress
+-- Fees: Maarukeytu takes 5% of each order total. Swipe's 1% charge is
+-- split 1:1 between the store and Maarukeytu. Money lands in the store's
+-- wallet minus Swipe's 1%, so the store owes Maarukeytu
 -- platform_fee - swipe_fee/2 (4.5% of the total). Recorded per order in
 -- platform_fee_due and cleared by an admin with settle_platform_fees().
 -- =========================================================================
@@ -3008,7 +3060,7 @@ as $$
 $$;
 grant execute on function decline_swipe_order(text) to authenticated;
 
--- Admin marks everything a store owes Maldexpress as paid.
+-- Admin marks everything a store owes Maarukeytu as paid.
 create or replace function settle_platform_fees(p_business_id text)
 returns setof orders
 language sql
@@ -3505,8 +3557,8 @@ function contactHTML(phone, who){
 // Flow: placed (awaiting_approval) -> store approves (awaiting_swipe) or
 // declines -> customer pays on the store's own Swipe link -> paid (set by
 // the swipe-order-webhook edge function, which also records the fees).
-// Fees: Maldexpress takes 5% of the total; Swipe's 1% charge is split 1:1
-// between the store and Maldexpress. Keep in sync with swipe-order-webhook.
+// Fees: Maarukeytu takes 5% of the total; Swipe's 1% charge is split 1:1
+// between the store and Maarukeytu. Keep in sync with swipe-order-webhook.
 const SWIPE_FEES = { platformRate: 0.05, swipeRate: 0.01 };
 const round2 = n => Math.round(n*100)/100;
 function swipeFeeBreakdown(o){
@@ -3531,7 +3583,7 @@ function bizHasBankAccount(biz){ return !!(biz && String(biz.accountNumber||'').
 function swipeLive(){ return SWIPE_PREVIEW || !!(DB.settings && DB.settings.swipeEnabled); }
 function bizTakesSwipe(biz){ return !!(biz && biz.swipeConnected && swipeLive()); }
 function bizCanTakeOrders(biz){ return !!(biz && (bizTakesSwipe(biz) || bizHasBankAccount(biz))); }
-const TRANSFER_FEE_RATE = 0.05;   // Maldexpress fee on Buy now bank-transfer orders (no Swipe charge to split)
+const TRANSFER_FEE_RATE = 0.05;   // Maarukeytu fee on Buy now bank-transfer orders (no Swipe charge to split)
 let _ckPay = {};                  // checkout: chosen payment per store id
 function ckPayFor(biz){ if(!bizTakesSwipe(biz)) return 'transfer'; if(!bizHasBankAccount(biz)) return 'swipe'; return _ckPay[biz.id] || 'swipe'; }
 function setCkPay(bizId, m){ _ckPay[bizId] = m; refreshCheckoutCards(); }
@@ -3580,10 +3632,10 @@ function transferFeeRowsHTML(o){
   return `
   <div class="glass card tight fee-card" style="margin-top:10px;">
     <div class="row between"><span class="muted">Customer paid by transfer</span><span>${money(total)}</span></div>
-    <div class="row between"><span class="muted">Maldexpress fee (5%)</span><span>−${money(due)}</span></div>
+    <div class="row between"><span class="muted">Maarukeytu fee (5%)</span><span>−${money(due)}</span></div>
     <div class="divider" style="margin:8px 0;"></div>
     <div class="row between"><strong>You keep</strong><strong>${money(round2(total-due))}</strong></div>
-    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maldexpress fee settled ✓' : `You owe Maldexpress ${money(due)} for this order.`}</p>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maarukeytu fee settled ✓' : `You owe Maarukeytu ${money(due)} for this order.`}</p>
   </div>`;
 }
 async function approveSwipeOrder(id){
@@ -3656,7 +3708,7 @@ function sheetConnectSwipe(){
     <div class="lbl">In Swipe, set your webhook URL to</div>
     <div class="val" style="font-size:.86em; font-weight:700; word-break:break-all;"><span class="copy-num" onclick="copyText('${hook}')">${hook}</span></div>
   </div>
-  <p class="muted" style="font-size:.82em; margin-bottom:14px;">Maldexpress keeps 5% of each order. Swipe's 1% charge is split equally between you and Maldexpress, so you keep 94.5%.</p>
+  <p class="muted" style="font-size:.82em; margin-bottom:14px;">Maarukeytu keeps 5% of each order. Swipe's 1% charge is split equally between you and Maarukeytu, so you keep 94.5%.</p>
   <button class="btn btn-primary" onclick="saveSwipeAccount()">Save Swipe details</button>`;
 }
 function copyText(s){
@@ -3669,10 +3721,10 @@ function swipeFeeRowsHTML(o){
   <div class="glass card tight fee-card" style="margin-top:10px;">
     <div class="row between"><span class="muted">Customer paid</span><span>${money(f.total)}</span></div>
     <div class="row between"><span class="muted">Swipe charge (1%, taken by Swipe)</span><span>−${money(f.swipeFee)}</span></div>
-    <div class="row between"><span class="muted">Maldexpress fee (5%, less half the Swipe charge)</span><span>−${money(f.due)}</span></div>
+    <div class="row between"><span class="muted">Maarukeytu fee (5%, less half the Swipe charge)</span><span>−${money(f.due)}</span></div>
     <div class="divider" style="margin:8px 0;"></div>
     <div class="row between"><strong>You keep</strong><strong>${money(f.keep)}</strong></div>
-    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maldexpress fee settled ✓' : `You owe Maldexpress ${money(f.due)} for this order.`}</p>
+    <p class="muted" style="font-size:.8em; margin-top:6px;">${o.feeSettledAt ? 'Maarukeytu fee settled ✓' : `You owe Maarukeytu ${money(f.due)} for this order.`}</p>
   </div>`;
 }
 function swipeBizActionHTML(o){
@@ -4429,7 +4481,7 @@ function render(){
   const app = document.getElementById('app');
   { const vk = state.adminMode ? 'admin' : [state.role, state.screen, state.screen==='custHome' ? [state.homeListingType, state.homeCategory, state.homeSearch].join('|') : ''].join(':');
     if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeSeed = (Math.random()*4294967296)>>>0; _lastViewKey = vk; } }
-  if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maldexpress…</div>`; return; }
+  if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maarukeytu…</div>`; return; }
   if(state.adminMode) renderAdmin();
   else if(state.role==='business') renderBusiness();
   else if(state.role==='delivery') renderDelivery();
@@ -4446,7 +4498,7 @@ function render(){
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
   requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); });
-  if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maldexpress server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
+  if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
 
@@ -4566,7 +4618,7 @@ function renderAdmin(){
   app.innerHTML = `
   <div class="admin">
     <header class="admin-top"><div class="admin-top-in">
-      <button class="admin-logo" aria-label="Admin home" onclick="adminGoHome()"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="admin-logo-txt"><span class="site-logo-word">Maldexpress</span><span class="admin-badge">Super Admin</span></span></button>
+      <button class="admin-logo" aria-label="Admin home" onclick="adminGoHome()"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="admin-logo-txt"><span class="site-logo-word">Maarukeytu</span><span class="admin-badge">Super Admin</span></span></button>
       <div class="admin-top-r">
         <span class="admin-who" title="${escapeAttr(who)}"><span class="site-av">${escapeAttr((who||'?')[0].toUpperCase())}</span><span class="admin-who-mail">${escapeAttr(who)}</span></span>
         <button class="btn btn-ghost btn-sm" onclick="signOutCustomer()">Sign out</button>
@@ -4579,7 +4631,7 @@ function renderAdmin(){
       <section class="admin-main">
         <div class="admin-hero">
           <h1>Overview</h1>
-          <p class="admin-sub">Everything on Maldexpress that needs you, at a glance.</p>
+          <p class="admin-sub">Everything on Maarukeytu that needs you, at a glance.</p>
           <div class="admin-stats">
             ${stat('items', DB.items.filter(i=>i.approvalStatus==='pending').length, 'Items to approve', DB.items.some(i=>i.approvalStatus==='pending'))}
             ${stat('featured', DB.featuredRequests.filter(r=>r.status==='pending').length, 'Featured requests', DB.featuredRequests.some(r=>r.status==='pending'))}
@@ -4588,7 +4640,7 @@ function renderAdmin(){
             ${stat('fees', (DB.orders||[]).length, 'Orders')}
             ${stat('bankRequests', bankPending.length, 'Transfers to check', bankPending.length)}
             ${stat('catRequests', catPending.length, 'Category ideas', catPending.length)}
-            ${stat('fees', money(feesDueTotal), 'Fees owed to Maldexpress', feesDueTotal>0)}
+            ${stat('fees', money(feesDueTotal), 'Fees owed to Maarukeytu', feesDueTotal>0)}
           </div>
         </div>
         <div class="admin-panel">
@@ -4734,7 +4786,7 @@ function adminBusinessesTab(list){
     </div>`).join('') : `<div class="empty"><span class="ic">🏝️</span>No businesses match</div>`}
   `;
 }
-// What each store owes Maldexpress from paid Swipe orders (5% less half of
+// What each store owes Maarukeytu from paid Swipe orders (5% less half of
 // Swipe's 1% charge), with a button to record that the store has paid it.
 function adminFeesTab(){
   const byStore = {};
@@ -4889,7 +4941,7 @@ function fmtDateTime(ms){ return new Date(ms).toLocaleString([], { day:'numeric'
 // Seller: status line on each item card.
 function itemStatusNoteHTML(i){
   if(i.paused) return `<p class="item-status paused">Paused. Customers can't see it until you resume it</p>`;
-  if(i.approvalStatus==='pending') return `<p class="item-status wait">🕓 Waiting for Maldexpress approval. Customers can't see it yet</p>`;
+  if(i.approvalStatus==='pending') return `<p class="item-status wait">🕓 Waiting for Maarukeytu approval. Customers can't see it yet</p>`;
   if(i.approvalStatus==='rejected') return `<p class="item-status bad">✕ Not approved${i.approvalNote?`: ${escapeAttr(i.approvalNote)}`:''}. Edit it to send it again</p>`;
   if(isFeaturedNow(i)) return `<p class="item-status feat">⭐ Featured until ${fmtDateTime(i.featuredUntil)}</p>`;
   const req = DB.featuredRequests.find(r=>r.itemId===i.id && r.status==='pending');
@@ -4900,14 +4952,14 @@ function itemStatusNoteHTML(i){
 function editItemFeaturedHTML(item){
   const st = DB.settings;
   if(!isApprovedItem(item)) return `
-  <div class="feat-box"><h3>⭐ Feature this item</h3><p class="muted">You can feature it once Maldexpress has approved it.</p></div>`;
+  <div class="feat-box"><h3>⭐ Feature this item</h3><p class="muted">You can feature it once Maarukeytu has approved it.</p></div>`;
   const req = DB.featuredRequests.find(r=>r.itemId===item.id && r.status==='pending');
   const last = DB.featuredRequests.find(r=>r.itemId===item.id && r.status==='rejected');
   return `
   <div class="feat-box">
     <h3>⭐ Feature this item</h3>
     ${isFeaturedNow(item) ? `<p>Featured until <strong>${fmtDateTime(item.featuredUntil)}</strong>. You can extend it by another ${st.featuredDays} days.</p>` : `<p class="muted">Show it in the Featured section on the home page for ${st.featuredDays} days for ${money(st.featuredPrice)}. Featured items are shuffled every hour.</p>`}
-    ${req ? `<div class="card tight notice-info" style="margin-top:10px;"><p style="font-size:.88em;">Your request (${money(req.amount)}, ${req.paymentMethod==='swipe'?'Swipe':'bank transfer'}) is waiting for Maldexpress approval.</p></div>`
+    ${req ? `<div class="card tight notice-info" style="margin-top:10px;"><p style="font-size:.88em;">Your request (${money(req.amount)}, ${req.paymentMethod==='swipe'?'Swipe':'bank transfer'}) is waiting for Maarukeytu approval.</p></div>`
       : `${last && last.note ? `<p class="bulk-warn" style="margin-top:8px;">Last request wasn't approved: ${escapeAttr(last.note)}</p>` : ''}
     <button class="btn btn-outline" style="margin-top:10px;" onclick="openSheet('featureItem','${item.id}')">${isFeaturedNow(item)?'Extend':'Feature'} for ${st.featuredDays} days · ${money(st.featuredPrice)}</button>`}
   </div>`;
@@ -4924,10 +4976,10 @@ function sheetFeatureItem(){
     <div class="divider"></div>
     <div class="row between"><span class="muted">Price</span><strong class="price">${money(st.featuredPrice)}</strong></div>
   </div>
-  <p class="muted" style="font-size:.86em; margin:12px 0;">Pay Maldexpress, then we check the payment and put your item on the Featured list. It starts when approved.</p>
+  <p class="muted" style="font-size:.86em; margin:12px 0;">Pay Maarukeytu, then we check the payment and put your item on the Featured list. It starts when approved.</p>
   <div class="stack">
-    <div class="pay-option selected" aria-label="Bank transfer"><div class="ic">🏦</div><div class="txt"><h3>Bank transfer to Maldexpress</h3><small>Upload your slip. We check it and approve</small></div></div>
-    <div class="pay-option" style="opacity:.55;" aria-disabled="true"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Coming soon: Maldexpress's Swipe payments aren't set up yet</small></div></div>
+    <div class="pay-option selected" aria-label="Bank transfer"><div class="ic">🏦</div><div class="txt"><h3>Bank transfer to Maarukeytu</h3><small>Upload your slip. We check it and approve</small></div></div>
+    <div class="pay-option" style="opacity:.55;" aria-disabled="true"><div class="ic swipe-ic">S</div><div class="txt"><h3>Swipe</h3><small>Coming soon: Maarukeytu's Swipe payments aren't set up yet</small></div></div>
   </div>
   ${hasBank ? `
   <div class="acct-box" style="margin-top:12px;"><div class="lbl">Transfer ${money(st.featuredPrice)} to</div><div class="val">${acctValHTML(st.bankAccountName, st.bankAccountNumber)}</div></div>
@@ -4941,18 +4993,18 @@ function sheetFeatureItem(){
     </div>
   </div>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitFeaturedRequest('${item.id}')">Send for approval</button>`
-  : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">Maldexpress hasn't added its bank account yet, so featured payments can't be made right now. Please try again later.</p></div>`}`;
+  : `<div class="card tight notice-warn" style="margin-top:12px;"><p style="font-size:.88em;">Maarukeytu hasn't added its bank account yet, so featured payments can't be made right now. Please try again later.</p></div>`}`;
 }
 async function submitFeaturedRequest(itemId){
   const item = DB.items.find(i=>i.id===itemId); if(!item) return;
   if(!_slipData){ toast('Choose your transfer slip first','bad'); return; }
   const req = { id:uid('feat'), item_id:item.id, business_id:item.businessId, amount:DB.settings.featuredPrice, days:DB.settings.featuredDays, payment_method:'bank_transfer', slip_url:_slipData };
-  if(!sb){ DB.featuredRequests.unshift(featReqFromRow({ ...req, status:'pending', created_at:new Date().toISOString() })); _slipData=null; closeSheet(); toast('Sent. Maldexpress will check your payment'); render(); return; }
+  if(!sb){ DB.featuredRequests.unshift(featReqFromRow({ ...req, status:'pending', created_at:new Date().toISOString() })); _slipData=null; closeSheet(); toast('Sent. Maarukeytu will check your payment'); render(); return; }
   if(!requireOnline()) return;
   const { data, error } = await sb.from('featured_requests').insert(req).select().single();
   if(error){ toast(/featured_request_pending/.test(error.message) ? 'This item already has a request waiting' : 'Could not send: '+error.message,'bad'); return; }
   DB.featuredRequests.unshift(featReqFromRow(data)); _slipData = null;
-  closeSheet(); toast('Sent. Maldexpress will check your payment and feature it'); render();
+  closeSheet(); toast('Sent. Maarukeytu will check your payment and feature it'); render();
 }
 
 // ---------- Admin: item approvals, featured, settings ----------
@@ -5110,9 +5162,9 @@ function adminSettingsTab(){
     <h3 style="margin-top:8px;">Swipe payments</h3>
     <label class="chk-row" style="margin:8px 0 6px;"><input type="checkbox" id="set_swipe" ${st.swipeEnabled?'checked':''}><span class="chk-circle">${'<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6l3 3 5-6"/></svg>'}</span><span>Swipe is set up. Offer Swipe at checkout for stores that connected it</span></label>
     <p class="muted" style="font-size:.84em; margin-bottom:12px;">Turn this on only after the Swipe server keys (SWIPE_TOKEN_URL and SWIPE_API_BASE_URL) are added in Supabase. While it's off, customers pay by bank transfer.</p>
-    <h3 style="margin-top:8px;">Maldexpress bank account</h3>
-    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maldexpress by bank transfer (featured items, Pro upgrade).</p>
-    <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maldexpress Pvt Ltd"></div>
+    <h3 style="margin-top:8px;">Maarukeytu bank account</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">Shown to stores paying Maarukeytu by bank transfer (featured items, Pro upgrade).</p>
+    <div class="field"><label for="set_bank_name">Account name</label><input id="set_bank_name" value="${escapeAttr(st.bankAccountName||'')}" placeholder="e.g. Maarukeytu Pvt Ltd"></div>
     <div class="field"><label for="set_bank_no">Account number</label><input id="set_bank_no" inputmode="numeric" value="${escapeAttr(st.bankAccountNumber||'')}" placeholder="e.g. 7730000000000"></div>
     <h3 style="margin-top:18px;">Main header picture</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">The picture at the top of the app's Home. Leave it empty to use the island drawing. A wide photo works best (for example 1600×900).</p>
@@ -5439,7 +5491,7 @@ function bottomNav(role, active){
   const tabs = cfg[role].map(([scr,ic,label])=>`
     <button class="navbtn ${active===scr?'active':''}" aria-label="${label}" ${active===scr?'aria-current="page"':''} onclick="go('${scr}')"><span class="ic">${NAV_ICONS[scr]||ic}${(scr==='custCart' && cartCount>0)?`<span class="nav-badge">${cartCount>99?'99+':cartCount}</span>`:''}${(scr==='delHome' && jobCount>0)?`<span class="nav-badge">${jobCount>99?'99+':jobCount}</span>`:''}${(scr==='bizOrders' && bookingCount>0)?`<span class="nav-badge">${bookingCount>99?'99+':bookingCount}</span>`:''}</span><span class="navlbl">${label}</span></button>
   `).join('');
-  return `<div class="bottomnav ${role==='customer'?'compact':''}"><div class="glass bar"><button class="nav-brand" aria-label="Maldexpress home" onclick="goHomeFromLogo()"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maldexpress</span></button>${tabs}</div></div>`;
+  return `<div class="bottomnav ${role==='customer'?'compact':''}"><div class="glass bar"><button class="nav-brand" aria-label="Maarukeytu home" onclick="goHomeFromLogo()"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu</span></button>${tabs}</div></div>`;
 }
 
 function wrapShell(role, active, contentHTML, extra=''){
@@ -5457,7 +5509,7 @@ function wrapShell(role, active, contentHTML, extra=''){
 }
 
 function toggleDrawer(v){ state.drawerOpen = v; render(); }
-// The Maldexpress logo always goes back to Home: the shop front for
+// The Maarukeytu logo always goes back to Home: the shop front for
 // customers (search and filters cleared), the dashboard / jobs list for
 // stores and riders. Scrolls to the top.
 function goHomeFromLogo(){
@@ -5701,7 +5753,7 @@ function catChecklistHTML(idPrefix, selectedCats){
   <div class="field" id="${idPrefix}_otherWrap" style="margin-top:8px;${otherChecked?'':' display:none;'}">
     <label>What kind of business is it?</label>
     <input id="${idPrefix}_otherName" placeholder="e.g. Boat charters" maxlength="40">
-    <p class="muted" style="font-size:.78em; margin-top:5px;">We'll pass this along to the Maldexpress team to consider adding as a real category.</p>
+    <p class="muted" style="font-size:.78em; margin-top:5px;">We'll pass this along to the Maarukeytu team to consider adding as a real category.</p>
   </div>`;
 }
 function toggleCatCheck(el){
@@ -5829,7 +5881,7 @@ function ticketRefLabel(t){ return t.orderId ? `Order #${String(t.orderId).slice
 function sheetSupport(){
   const list = _support.tickets.filter(t=>isAdminView() || t.userId===state.customerId || !sb);
   return `<h2>Live support</h2>
-  <p class="muted" style="margin-bottom:12px;">Ask Maldexpress anything about an order, a payment, a delivery or your account. We reply here.</p>
+  <p class="muted" style="margin-bottom:12px;">Ask Maarukeytu anything about an order, a payment, a delivery or your account. We reply here.</p>
   <button class="btn btn-primary" onclick="openNewTicket()">＋ New ticket</button>
   <h3 style="margin:18px 0 8px;">Your tickets</h3>
   ${!_support.loaded ? `<p class="muted">Loading…</p>` : list.length ? list.map(t=>`
@@ -5892,7 +5944,7 @@ function ticketThreadHTML(id){
   const them = ({business:'Store',delivery:'Rider',customer:'Customer'}[t.role]) || 'Customer';
   if(!msgs) return `<p class="muted">Loading…</p>`;
   return msgs.map(m=>`<div class="sup-msg ${m.fromAdmin?'them':'me'}">
-      <div class="sup-who">${m.fromAdmin?'Maldexpress support':(isAdminView()?them:'You')} · ${new Date(m.createdAt).toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
+      <div class="sup-who">${m.fromAdmin?'Maarukeytu support':(isAdminView()?them:'You')} · ${new Date(m.createdAt).toLocaleString([], { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</div>
       ${m.body ? `<div class="sup-body">${escapeAttr(m.body).replace(/\n/g,'<br>')}</div>` : ''}
       ${m.attachment ? `<div class="sup-att" data-att="${m.id}"><p class="muted" style="font-size:.8em;">Opening slip…</p></div>` : ''}
     </div>`).join('') || `<p class="muted">No messages yet.</p>`;
@@ -5955,7 +6007,7 @@ function isAdminView(){ return !!(typeof isAdminMode === 'function' ? isAdminMod
 /* =================== BANK ACCOUNTS (stores + riders) =================== */
 // Stores and riders must give a bank account before doing anything on the app,
 // so payments to each other go straight to an account: the store pays riders'
-// delivery fees to the rider's account and Maldexpress's fees to Maldexpress.
+// delivery fees to the rider's account and Maarukeytu's fees to Maarukeytu.
 // Riders never collect cash, so they never owe a store anything.
 // Riders' accounts are in rider_bank_accounts (readable by the rider, admins,
 // and stores the rider has delivered for), not on the public rider row.
@@ -6067,7 +6119,7 @@ function applyDeepLink(){
   if(storeId){
     const b = DB.businesses.find(x=>x.id===storeId);
     if(b){ state.role = 'customer'; go('custStore', { browseBizId:b.id, storeTab:'buyNow' }); return; }
-    toast('That store is no longer on Maldexpress','bad');
+    toast('That store is no longer on Maarukeytu','bad');
   }
 }
 function shareData(kind, id){
@@ -6075,11 +6127,11 @@ function shareData(kind, id){
     const it = DB.items.find(i=>i.id===id); if(!it) return null;
     const biz = DB.businesses.find(b=>b.id===it.businessId);
     const price = it.listingType==='auction' ? 'Auction' : it.listingType==='rental' ? itemPriceLine(it) : money(effectivePrice(it));
-    return { title: it.name, text: `${it.name} · ${price}${biz?` at ${biz.name}`:''} on Maldexpress`, url: shareLink('item', id), image: itemImages(it)[0] || '' };
+    return { title: it.name, text: `${it.name} · ${price}${biz?` at ${biz.name}`:''} on Maarukeytu`, url: shareLink('item', id), image: itemImages(it)[0] || '' };
   }
   const b = DB.businesses.find(x=>x.id===id); if(!b) return null;
   const n = DB.items.filter(i=>i.businessId===b.id && isApprovedItem(i)).length;
-  return { title: b.name, text: `Shop ${b.name} on Maldexpress${n?` · ${n} item${n===1?'':'s'}`:''}${b.island?` · ${bizIsland(b)}`:''}`, url: shareLink('store', id), image: '' };
+  return { title: b.name, text: `Shop ${b.name} on Maarukeytu${n?` · ${n} item${n===1?'':'s'}`:''}${b.island?` · ${bizIsland(b)}`:''}`, url: shareLink('store', id), image: '' };
 }
 let _shareTarget = null;
 function openShare(kind, id){ _shareTarget = { kind, id }; openSheet('share'); }
@@ -6265,28 +6317,28 @@ function renderBizHome(biz,t){
         <button class="bq" onclick="go('bizStorefront')"><span class="bq-ic" aria-hidden="true">🎨</span><span class="bq-t"><strong>Store page</strong><small>${storefrontOf(biz).length || sfSlidesOf(biz).length ? `${sfSlidesOf(biz).length} slide${sfSlidesOf(biz).length===1?'':'s'} · ${storefrontOf(biz).length} section${storefrontOf(biz).length===1?'':'s'}` : 'Slides, banners and rows'}</small></span></button>
       </div>
       <div class="row" style="gap:10px; margin:14px 0 18px;">
-        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
-        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
-        <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em; color:${pendingApproval?'var(--warn)':'inherit'};">${pendingApproval}</h1><div class="muted" style="font-size:.78em;">Awaiting approval</div></div>
+        <div class="glass card tight stat-tile" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
+        <div class="glass card tight stat-tile" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
+        <div class="glass card tight stat-tile" style="flex:1; text-align:center;"><h1 style="font-size:1.5em; color:${pendingApproval?'var(--warn)':'inherit'};">${pendingApproval}</h1><div class="muted" style="font-size:.78em;">Awaiting approval</div></div>
       </div>
 
       <div class="dash-2">
       <div class="section">
-        ${biz.swipeConnected && !swipeLive() ? `<div class="card tight notice-info" style="margin-bottom:10px;"><p style="font-size:.86em;">Your Swipe account is saved. Customers will see Swipe once Maldexpress switches Swipe payments on; until then they pay you by bank transfer.</p></div>` : ''}
+        ${biz.swipeConnected && !swipeLive() ? `<div class="card tight notice-info" style="margin-bottom:10px;"><p style="font-size:.86em;">Your Swipe account is saved. Customers will see Swipe once Maarukeytu switches Swipe payments on; until then they pay you by bank transfer.</p></div>` : ''}
         <div class="section-head"><h2>Payments</h2>${biz.swipeConnected?`<button class="link-btn" onclick="openSheet('connectSwipe')">Update</button>`:''}</div>
         ${biz.swipeConnected ? `
         <div class="glass card">
           <div class="row between"><span class="muted">Status</span><span class="status-pill ok">Connected</span></div>
           <div class="divider"></div>
-          <div class="row between"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>
-          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you by bank transfer or Swipe. Maldexpress keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
+          <div class="row between"><span class="muted">Fees due to Maarukeytu</span><strong>${money(feesDue)}</strong></div>
+          <p class="muted" style="font-size:.8em; margin-top:10px;">Customers pay you by bank transfer or Swipe. Maarukeytu keeps 5% of each order, and Swipe's 1% charge is split equally, so you keep 94.5%.</p>
         </div>` : `
         <div class="card ${bizHasBankAccount(biz)?'notice-info':'notice-warn'}">
           <h3>${bizHasBankAccount(biz) ? 'Taking orders by bank transfer' : 'Add your bank account to take orders'}</h3>
           <p style="font-size:.88em; margin-top:4px;">${bizHasBankAccount(biz)
-            ? 'Customers transfer to your account below and upload the slip; you check it and approve. Maldexpress keeps 5% of each order. Connect Swipe too if you want customers to be able to pay in the Swipe app.'
+            ? 'Customers transfer to your account below and upload the slip; you check it and approve. Maarukeytu keeps 5% of each order. Connect Swipe too if you want customers to be able to pay in the Swipe app.'
             : 'Customers can order once you add a bank account (Settings) or connect Swipe.'}</p>
-          ${feesDue>0 ? `<div class="row between" style="margin-top:10px;"><span class="muted">Fees due to Maldexpress</span><strong>${money(feesDue)}</strong></div>` : ''}
+          ${feesDue>0 ? `<div class="row between" style="margin-top:10px;"><span class="muted">Fees due to Maarukeytu</span><strong>${money(feesDue)}</strong></div>` : ''}
           <div class="row" style="gap:8px; margin-top:12px; flex-wrap:wrap;">
             ${bizHasBankAccount(biz) ? '' : `<button class="btn btn-primary btn-sm" onclick="openSheet('bizSettings')">Add bank account</button>`}
             <button class="btn ${bizHasBankAccount(biz)?'btn-outline':'btn-ghost'} btn-sm" onclick="openSheet('connectSwipe')">Connect Swipe (optional)</button>
@@ -6824,7 +6876,7 @@ function itemCatFieldHTML(idPrefix, selectedCat, otherNameVal){
   <div class="field" id="${idPrefix}_catOtherWrap" style="${isOther?'':'display:none;'}">
     <label>What kind of item is it?</label>
     <input id="${idPrefix}_cat_other" placeholder="e.g. Boat charters" maxlength="40" value="${escapeAttr(otherNameVal||'')}">
-    <p class="muted" style="font-size:.78em; margin-top:5px;">Shown to buyers as "Other" until the Maldexpress team approves it as a real category.</p>
+    <p class="muted" style="font-size:.78em; margin-top:5px;">Shown to buyers as "Other" until the Maarukeytu team approves it as a real category.</p>
   </div>`;
 }
 function toggleItemCatOther(sel){
@@ -7066,7 +7118,7 @@ async function submitAddItem(){
     }
   }
   _itemPhotoFile = null;
-  closeSheet(); toast(sb ? 'Item added. It shows to customers once Maldexpress approves it' : (listingType==='auction' ? 'Auction listed!' : 'Item added')); render();
+  closeSheet(); toast(sb ? 'Item added. It shows to customers once Maarukeytu approves it' : (listingType==='auction' ? 'Auction listed!' : 'Item added')); render();
 }
 
 // ---------- Upload a list of items (CSV template) ----------
@@ -7317,7 +7369,7 @@ async function onBulkFile(ev){
   const rows = parseCSV(text);
   if(rows.length<2){ _bulk = { fileName:f.name, rows:[], fatal:'The file has no item rows under the header.' }; render(); return; }
   const header = rows[0].map(h=>String(h).trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z_]/g,''));
-  if(!header.includes('name')){ _bulk = { fileName:f.name, rows:[], fatal:'This doesn’t look like the Maldexpress template: there’s no "name" column. Download the template and copy your items into it.' }; render(); return; }
+  if(!header.includes('name')){ _bulk = { fileName:f.name, rows:[], fatal:'This doesn’t look like the Maarukeytu template: there’s no "name" column. Download the template and copy your items into it.' }; render(); return; }
   const biz = currentBiz();
   const out = rows.slice(1).map((r,i)=>{ const data={}; header.forEach((h,j)=>{ if(h) data[h]=r[j]; }); return bulkBuildRow(data, i+2, biz.id); });
   bulkMarkDuplicates(out, biz.id);
@@ -7456,7 +7508,7 @@ async function submitBulkItems(){
   const others = [...new Set(items.map(i=>i.categoryOtherName).filter(Boolean))];
   for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
   _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
-  toast(`${items.length} item${items.length===1?'':'s'} added${replaced.length?` · ${replaced.length} replaced`:''}${sb?'. They show to customers once Maldexpress approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
+  toast(`${items.length} item${items.length===1?'':'s'} added${replaced.length?` · ${replaced.length} replaced`:''}${sb?'. They show to customers once Maarukeytu approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
 }
 function sheetEditItem(){
   const item = DB.items.find(i=>i.id===state.sheetData);
@@ -8275,7 +8327,7 @@ async function approveOrderPayment(id){
 // Cash orders (rider owes the store) and bank-transfer orders (the store now
 // owes the rider, once delivered) are opposite directions of the same "settle
 // up with the delivery partner" job, so both sections live on this one screen.
-// Payouts: what the store owes. Maldexpress's fee on each paid order
+// Payouts: what the store owes. Maarukeytu's fee on each paid order
 // (platform_fee_due until an admin marks it settled in Admin -> Fees) and each
 // rider's delivery fee after delivery (payout_status 'pending' until the store
 // marks it paid). Riders never collect cash, so there's no cash section.
@@ -8292,24 +8344,24 @@ function renderBizPayouts(biz){
   const st = DB.settings || {};
   const hasBank = !!String(st.bankAccountNumber||'').trim();
   document.getElementById('app').innerHTML = wrapShell('business','bizPayouts', `
-    ${topbar('Payouts', 'What you owe Maldexpress and riders')}
+    ${topbar('Payouts', 'What you owe Maarukeytu and riders')}
     <div style="padding:4px 0 0;">
       <div class="owe-sum">
-        <div class="owe-tile ${feeTotal>0?'due':''}"><span>You owe Maldexpress</span><strong>${money(feeTotal)}</strong><small>${feeDue.length} order${feeDue.length===1?'':'s'}</small></div>
+        <div class="owe-tile ${feeTotal>0?'due':''}"><span>You owe Maarukeytu</span><strong>${money(feeTotal)}</strong><small>${feeDue.length} order${feeDue.length===1?'':'s'}</small></div>
         <div class="owe-tile ${riderTotal>0?'due':''}"><span>You owe riders</span><strong>${money(riderTotal)}</strong><small>${riderDue.length} deliver${riderDue.length===1?'y':'ies'}</small></div>
       </div>
 
       <div class="section" style="margin-top:18px;">
-        <div class="section-head"><h2>Pay Maldexpress</h2></div>
+        <div class="section-head"><h2>Pay Maarukeytu</h2></div>
         ${feeTotal>0 ? `
         <div class="glass card">
-          <p class="muted" style="font-size:.86em;">Maldexpress's fee on your paid orders. Transfer the total, then tell us so we can mark it paid.</p>
-          ${hasBank ? `<div class="acct-box" style="margin-top:10px;"><div class="lbl">Transfer ${money(feeTotal)} to</div><div class="val">${acctValHTML(st.bankAccountName, st.bankAccountNumber)}</div></div>` : `<p class="muted" style="font-size:.84em; margin-top:8px;">Maldexpress's bank account isn't set yet. Ask Live support how to pay.</p>`}
-          <button class="btn btn-primary" style="margin-top:12px;" onclick="openNewTicket(${escapeAttr(JSON.stringify({ topic:'payment', subject:'Fee payment '+money(feeTotal), body:'I transferred '+money(feeTotal)+' for the Maldexpress fees on '+feeDue.length+' order'+(feeDue.length===1?'':'s')+'. Store: '+biz.name }))})">I've paid. Tell Maldexpress</button>
+          <p class="muted" style="font-size:.86em;">Maarukeytu's fee on your paid orders. Transfer the total, then tell us so we can mark it paid.</p>
+          ${hasBank ? `<div class="acct-box" style="margin-top:10px;"><div class="lbl">Transfer ${money(feeTotal)} to</div><div class="val">${acctValHTML(st.bankAccountName, st.bankAccountNumber)}</div></div>` : `<p class="muted" style="font-size:.84em; margin-top:8px;">Maarukeytu's bank account isn't set yet. Ask Live support how to pay.</p>`}
+          <button class="btn btn-primary" style="margin-top:12px;" onclick="openNewTicket(${escapeAttr(JSON.stringify({ topic:'payment', subject:'Fee payment '+money(feeTotal), body:'I transferred '+money(feeTotal)+' for the Maarukeytu fees on '+feeDue.length+' order'+(feeDue.length===1?'':'s')+'. Store: '+biz.name }))})">I've paid. Tell Maarukeytu</button>
           <details class="owe-list"><summary>Fees by order (${feeDue.length})</summary>
             ${feeDue.map(o=>`<button class="owe-row" onclick="openOrderDetailBiz('${o.id}')"><span>#${o.id.slice(-5).toUpperCase()} · ${fmtDateShort(new Date(o.createdAt).toISOString().slice(0,10))}</span><span>${money(o.platformFeeDue)}</span></button>`).join('')}
           </details>
-        </div>` : `<div class="empty"><span class="ic">✅</span>Nothing owed to Maldexpress${feePaid.length?` · ${feePaid.length} fee${feePaid.length===1?'':'s'} paid`:''}</div>`}
+        </div>` : `<div class="empty"><span class="ic">✅</span>Nothing owed to Maarukeytu${feePaid.length?` · ${feePaid.length} fee${feePaid.length===1?'':'s'} paid`:''}</div>`}
       </div>
 
       <div class="section" style="margin-top:22px;">
@@ -8378,7 +8430,7 @@ async function markPayoutPaid(id){
 // account fields from before, so this is the one place to manage the store.
 // Shown at the very top of every role's settings sheet - one shared constant
 // so it only ever needs bumping in one place.
-const APP_VERSION = 'Maldexpress v1.0';
+const APP_VERSION = 'Maarukeytu v1.0';
 function settingsSectionLabel(text){
   return `<p class="muted" style="font-size:.78em; font-weight:700; text-transform:uppercase; letter-spacing:.4px; margin:18px 0 8px;">${text}</p>`;
 }
@@ -9342,7 +9394,7 @@ function renderCustProfile(){
       <section class="pf-hero">
         <div class="pf-av">${escapeAttr((name||'?').trim().charAt(0).toUpperCase())}</div>
         <div style="flex:1; min-width:0;">
-          <h2 class="pf-name">${escapeAttr(signedIn ? name : 'Welcome to Maldexpress')}</h2>
+          <h2 class="pf-name">${escapeAttr(signedIn ? name : 'Welcome to Maarukeytu')}</h2>
           <p class="pf-mail">${signedIn ? escapeAttr(email || 'Signed in') : 'Sign in to see your orders, favourites and reviews'}</p>
           ${def ? `<p class="pf-mail">📍 ${escapeAttr(def.island || def.zone || '')}${def.address?' · '+escapeAttr(def.address):''}</p>` : ''}
         </div>
@@ -9385,7 +9437,7 @@ function renderCustProfile(){
       <section class="pf-card">
         <h3>🤝 Join the Crew</h3>
         <div class="pf-earn">
-          <button class="pf-earn-b sell" onclick="${myBiz.length ? 'goToOwnedBusiness()' : "enterRole('business')"}"><span aria-hidden="true">🏪</span><strong>${myBiz.length ? 'Your store' : 'Sell on Maldexpress'}</strong><small>${myBiz.length ? escapeAttr(myBiz[0].name) : 'Open a store and list items'}</small></button>
+          <button class="pf-earn-b sell" onclick="${myBiz.length ? 'goToOwnedBusiness()' : "enterRole('business')"}"><span aria-hidden="true">🏪</span><strong>${myBiz.length ? 'Your store' : 'Sell on Maarukeytu'}</strong><small>${myBiz.length ? escapeAttr(myBiz[0].name) : 'Open a store and list items'}</small></button>
           <button class="pf-earn-b ride" onclick="${myDel.length ? 'goToOwnedDelivery()' : "enterRole('delivery')"}"><span aria-hidden="true">🛵</span><strong>${myDel.length ? 'Your deliveries' : 'Deliver with us'}</strong><small>${myDel.length ? 'Jobs and payouts' : 'Earn per delivery'}</small></button>
         </div>
       </section>
@@ -9813,11 +9865,11 @@ function homeHeaderHTML(){
         <button class="iconbtn" aria-label="Notifications" style="position:relative;" onclick="event.stopPropagation(); toggleNotifDropdown()">${ICON_BELL}${hasUnread?`<span class="notif-dot"></span>`:''}</button>
         ${state.notifOpen ? notifDropdownHTML(notifs) : ''}
       </div>
-      <button class="brand-mark" aria-label="Maldexpress home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
+      <button class="brand-mark" aria-label="Maarukeytu home" onclick="goHomeFromLogo()">${BRAND_MARK_SVG}</button>
     </div>
   </div>`;
 }
-// The "Maldexpress" wordmark slides up and fades out as the Home screen is
+// The "Maarukeytu" wordmark slides up and fades out as the Home screen is
 // scrolled (the hamburger/bell either side stay put, since the header itself is
 // sticky) - a direct style update on scroll rather than a render(), both because
 // scroll fires far too often to re-render on and because a render would wipe
@@ -10455,13 +10507,13 @@ function itemGalleryHTML(item){
   if(!n) return `<div class="ip-photo">${itemThumbHTML(item)}${favBtnHTML(item.id)}${oosStickerHTML(item)}<button class="share-fab" aria-label="Share this item" onclick="openShare('item','${item.id}')">${ICON_SHARE}</button></div>`;
   return `<div class="ip-photo gal" id="gal_${item.id}" onpointerdown="galWake('${item.id}')" onpointermove="galWake('${item.id}')" onmouseleave="this.classList.add('idle')">
       <div class="gal-track" id="galTrack_${item.id}" onscroll="galScrolled('${item.id}')" aria-label="${escapeAttr(item.name)} photos" tabindex="0" onkeydown="if(event.key==='ArrowRight'){event.preventDefault(); galStep('${item.id}',1);} if(event.key==='ArrowLeft'){event.preventDefault(); galStep('${item.id}',-1);}">
-        ${imgs.map((u,i)=>`<div class="gal-slide"><img src="${u}" alt="${escapeAttr(item.name)} photo ${i+1} of ${n}" ${i?'loading="lazy"':''} draggable="false"></div>`).join('')}
+        ${imgs.map((u,i)=>`<div class="gal-slide"><img src="${u}" data-art-id="${escapeAttr(String(item.id))}" alt="${escapeAttr(item.name)} photo ${i+1} of ${n}" ${i?'loading="lazy"':''} draggable="false"></div>`).join('')}
       </div>
       ${favBtnHTML(item.id)}${oosStickerHTML(item)}
       <button class="share-fab" aria-label="Share this item" onclick="event.stopPropagation(); openShare('item','${item.id}')">${ICON_SHARE}</button>
       ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galStep('${item.id}',-1)">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galStep('${item.id}',1)">›</button><span class="gal-count" id="galCount_${item.id}">${idx+1} / ${n}</span>` : ''}
     </div>
-    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" alt=""></button>`).join('')}</div>` : ''}`;
+    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" data-art-id="${escapeAttr(String(item.id))}" alt=""></button>`).join('')}</div>` : ''}`;
 }
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);
@@ -10728,7 +10780,7 @@ function siteHeaderHTML(active){
           : `<span>Hi! <button class="ulink" onclick="openSheet('signIn')">Sign in</button> or <button class="ulink" onclick="openSheet('signIn')">register</button></span>`}
         <button class="utext" onclick="deskListing('auction')">Auctions</button>
         <button class="utext" onclick="deskListing('rental')">Rentals</button>
-        ${myStores().length ? `<button class="utext strong" onclick="switchToStoreMode()">🏪 My store</button>` : `<button class="utext" onclick="enterRole('business')">Sell on Maldexpress</button>`}
+        ${myStores().length ? `<button class="utext strong" onclick="switchToStoreMode()">🏪 My store</button>` : `<button class="utext" onclick="enterRole('business')">Sell on Maarukeytu</button>`}
         ${myRiderProfiles().length ? `<button class="utext strong" onclick="switchToRiderMode()">🛵 Deliveries</button>` : `<button class="utext" onclick="enterRole('delivery')">Deliver with us</button>`}
       </div>
       <div class="site-util-right">
@@ -10740,7 +10792,7 @@ function siteHeaderHTML(active){
       </div>
     </div></div>
     <div class="site-main"><div class="site-wrap">
-      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maldexpress home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu</span></button>
+      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maarukeytu home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu</span></button>
       <div class="site-search">
         <span class="ss-ic" aria-hidden="true">${ICON_SEARCH}</span>
         <input id="homeSearchInput" placeholder="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="deskSearch(this.value)" aria-label="Search">
@@ -10819,7 +10871,7 @@ function renderDeskHome(){
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
-        <div class="desk-promo p-sell"><div><h3>Sell on Maldexpress</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-sell"><div><h3>Sell on Maarukeytu</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
         <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
       </section>`}
       ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `
@@ -10848,7 +10900,7 @@ function siteFooterHTML(){
       <div><h4>Deliver</h4><button onclick="enterRole('delivery')">Become a rider</button><button onclick="enterRole('delivery')">Jobs on your island</button></div>
       <div><h4>Your account</h4>${state.authed?`<button onclick="go('custOrders')">My orders</button>`:`<button onclick="openSheet('signIn')">Sign in or register</button>`}<button onclick="go('custCart')">Cart</button><button onclick="openSheet('custSettings')">Settings</button></div>
     </div>
-    <div class="sf-base"><span class="site-logo-mark small">${BRAND_MARK_SVG}</span><span>© ${new Date().getFullYear()} Maldexpress · Malé, Maldives</span></div>
+    <div class="sf-base"><span class="site-logo-mark small">${BRAND_MARK_SVG}</span><span>© ${new Date().getFullYear()} Maarukeytu · Malé, Maldives</span></div>
   </div></footer>`;
 }
 // The category dropdown under a store's listing-type tabs (see
@@ -12817,17 +12869,17 @@ const POLICY_CONTENT = {
     <h3>Pro seller upgrade</h3>
     <p>A one-time MVR 500 fee, paid by bank transfer (with slip upload) or card, permanently raises a store's item limit. This fee covers platform access and is refundable only as described in our Return &amp; Refund Policy.</p>
     <h3>Payment disputes</h3>
-    <p>If a payment looks wrong, contact the store first. If it isn't resolved, contact Maldexpress support (see Contact us below).</p>
+    <p>If a payment looks wrong, contact the store first. If it isn't resolved, contact Maarukeytu support (see Contact us below).</p>
   `},
   delivery: { title:'Delivery Policy', html:`
     <h3>Zones &amp; fees</h3>
     <p>Delivery is a flat fee by zone, not a percentage of your order: Malé MVR 15, Hulhumalé Phase 1 MVR 20, Hulhumalé Phase 2 MVR 25. You pick your zone at checkout. Some items are listed with free delivery by the store - you won't pay a delivery fee on those.</p>
     <h3>Who delivers</h3>
-    <p>An independent delivery partner registered on Maldexpress accepts and carries out each job. Maldexpress connects buyers, stores, and delivery partners, but the delivery itself is carried out by the partner, not by Maldexpress directly.</p>
+    <p>An independent delivery partner registered on Maarukeytu accepts and carries out each job. Maarukeytu connects buyers, stores, and delivery partners, but the delivery itself is carried out by the partner, not by Maarukeytu directly.</p>
     <h3>Delivery timing</h3>
     <p>Most orders are delivered the same day to the following day, depending on the store's preparation time and delivery-partner availability. This is a typical timeframe, not a guaranteed delivery window.</p>
     <h3>If something goes wrong</h3>
-    <p>If a delivery is delayed, missed, or arrives damaged, contact the store you ordered from first - they're best placed to arrange a replacement, refund, or re-delivery. See our Return &amp; Refund Policy for what qualifies. Issues with a specific delivery partner's conduct can also be reported to Maldexpress support.</p>
+    <p>If a delivery is delayed, missed, or arrives damaged, contact the store you ordered from first - they're best placed to arrange a replacement, refund, or re-delivery. See our Return &amp; Refund Policy for what qualifies. Issues with a specific delivery partner's conduct can also be reported to Maarukeytu support.</p>
   `},
   refund: { title:'Return & Refund Policy', html:`
     <h3>Eligibility</h3>
@@ -12839,7 +12891,7 @@ const POLICY_CONTENT = {
     <h3>Refund method</h3>
     <p>Refunds are issued by the store using the same method you paid with (bank transfer back to your account, or cash). The delivery fee is refunded only if the order was never delivered.</p>
     <h3>Escalation</h3>
-    <p>If a store doesn't respond or you can't reach a fair resolution, contact Maldexpress support and we'll review the order to help mediate.</p>
+    <p>If a store doesn't respond or you can't reach a fair resolution, contact Maarukeytu support and we'll review the order to help mediate.</p>
     <h3>Pro upgrade refunds</h3>
     <p>The one-time Pro seller fee is refundable within 7 days of payment if you haven't yet listed beyond the free tier's 10-item limit; otherwise it is non-refundable.</p>
   `}
@@ -12853,7 +12905,7 @@ function sheetPolicy(){
     <div class="draft-note">⚠ Draft policy, pending final legal review before launch.</div>
     ${copy.html}
     <h3>Contact us</h3>
-    <p>For order-specific issues, message the store you ordered from via My Orders. For account or platform-level issues, a dedicated Maldexpress support channel will be published here before launch.</p>
+    <p>For order-specific issues, message the store you ordered from via My Orders. For account or platform-level issues, a dedicated Maarukeytu support channel will be published here before launch.</p>
   </div>
   <button class="btn btn-primary" style="margin-top:18px;" onclick="openSheet('signUp', {intent:'${_signupIntent||''}'})">Back to sign up</button>`;
 }
@@ -13553,7 +13605,7 @@ function startupErrorHTML(e){
   const msg = (e && (e.message || String(e))) || 'Unknown error';
   return `<div class="empty" style="padding-top:30vh;">
     <span class="ic">⚠️</span>
-    <h2>Maldexpress couldn't start</h2>
+    <h2>Maarukeytu couldn't start</h2>
     <p style="margin:6px auto 16px; max-width:32ch;">Check your connection and try again. If it keeps happening, send this to support: <code style="word-break:break-word;">${escapeAttr(msg)}</code></p>
     <button class="btn btn-primary btn-sm" onclick="location.reload()">Reload</button>
   </div>`;
@@ -13573,7 +13625,7 @@ window.addEventListener('unhandledrejection', e=>{
   // oninput - without this, the default state.fontSize never actually reaches the
   // page until the user drags the slider once.
   setFont(state.fontSize);
-  // Draw the "Loading Maldexpress…" screen straight away. Before, nothing was
+  // Draw the "Loading Maarukeytu…" screen straight away. Before, nothing was
   // drawn until every table had downloaded and the sign-in check finished, so
   // a slow connection showed an empty screen.
   render();

@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         type: "LINK",
         amount,
         currency: "MVR",
-        description: `Maldexpress order #${String(order.id).slice(-5).toUpperCase()}`,
+        description: `Maarukeytu order #${String(order.id).slice(-5).toUpperCase()}`,
       }),
     });
     if (!paymentRes.ok) {

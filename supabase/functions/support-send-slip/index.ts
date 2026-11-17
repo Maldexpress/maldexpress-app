@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   if (!uid) return json({ error: "Sign in again" }, 401);
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const { data: adm } = await db.from("admins").select("user_id").eq("user_id", uid).maybeSingle();
-  if (!adm) return json({ error: "Only Maldexpress support can send slips" }, 403);
+  if (!adm) return json({ error: "Only Maarukeytu support can send slips" }, 403);
 
   const { ticket_id } = await req.json().catch(() => ({}));
   const { data: t } = await db.from("support_tickets").select("*").eq("id", ticket_id ?? "").maybeSingle();

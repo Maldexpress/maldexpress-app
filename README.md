@@ -1,4 +1,4 @@
-# Maldexpress
+# Maarukeytu (formerly Maldexpress)
 
 A local marketplace + delivery app for the Maldives. One app, three portals:
 

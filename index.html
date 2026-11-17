@@ -1444,6 +1444,48 @@
     .util-ship{display:none;}
   }
 
+  /* ---------- Store page sections (storefront) ---------- */
+  .sf-page{display:flex; flex-direction:column; gap:16px; margin:4px 0 6px;}
+  .sf-page .section{margin:0;}
+  .sf-cover, .sf-banner{position:relative; border-radius:22px; overflow:hidden; color:#fff; display:flex; align-items:flex-end;
+    background:linear-gradient(135deg, var(--lagoon-500), #2F6FD1); box-shadow:0 8px 22px rgba(15,60,80,.14);}
+  .sf-cover.has-photo, .sf-banner.has-photo{background:linear-gradient(180deg, rgba(5,25,40,0) 30%, rgba(5,25,40,.62)), var(--sf-img) center/cover no-repeat, #1B4F6B;}
+  .sf-cover{min-height:clamp(150px, 42vw, 300px);}
+  .sf-banner{min-height:clamp(170px, 48vw, 340px);}
+  .sf-banner.has-photo{background:linear-gradient(90deg, rgba(5,25,40,.66), rgba(5,25,40,.12) 70%), var(--sf-img) center/cover no-repeat, #1B4F6B;}
+  .sf-banner:not(.has-photo){background:linear-gradient(135deg, #FFE8D6, #FFD2BF 45%, #CFEFF0); color:var(--ink);}
+  .sf-txt{padding:18px 18px 18px; max-width:min(560px, 92%);}
+  .sf-txt h2{font-family:var(--display); font-size:clamp(1.5em, 6vw, 2.4em); line-height:1.05; letter-spacing:-.01em; text-shadow:0 2px 10px rgba(0,0,0,.25);}
+  .sf-banner:not(.has-photo) .sf-txt h2{text-shadow:none;}
+  .sf-txt p{font-size:.95em; margin-top:6px; opacity:.95; text-shadow:0 1px 6px rgba(0,0,0,.3);}
+  .sf-banner:not(.has-photo) .sf-txt p{text-shadow:none; color:#33424D;}
+  .sf-btn{margin-top:12px; background:#fff; color:#0E2A3A; border:0; border-radius:999px; padding:10px 18px; font-weight:700; font-size:.9em; letter-spacing:.02em; box-shadow:0 4px 12px rgba(0,0,0,.18); cursor:pointer;}
+  .sf-banner:not(.has-photo) .sf-btn{background:var(--sunset); color:#fff;}
+  .sf-btn:active{transform:scale(.97);}
+  .sf-preview-wrap{pointer-events:none; border:1.5px dashed var(--edge); border-radius:24px; padding:12px; background:var(--sand-bg);}
+  .sf-ed-list{gap:10px;}
+  .sf-ed-card{display:flex; align-items:center; gap:12px; padding:12px; border-radius:18px;}
+  .sf-ed-ic{width:42px; height:42px; flex:0 0 42px; border-radius:12px; display:grid; place-items:center; font-size:1.2em; background:linear-gradient(150deg,#E8F8F6,#DCEBFF);}
+  .sf-ed-main{flex:1; min-width:0; cursor:pointer; display:flex; flex-direction:column; gap:2px;}
+  .sf-ed-main strong{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sf-ed-main .muted{font-size:.8em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sf-ed-acts{display:flex; gap:4px; flex-shrink:0;}
+  .sf-mini{min-width:34px; height:34px; padding:0 8px; border-radius:10px; border:1px solid var(--edge); background:#fff; color:var(--ink); font-size:.92em; cursor:pointer;}
+  .sf-mini:disabled{opacity:.35; cursor:default;}
+  .sf-mini.danger{background:var(--sunset); color:#fff; border-color:var(--sunset); font-weight:700;}
+  .sf-types{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;}
+  .sf-type{display:flex; align-items:center; gap:8px; padding:12px; border-radius:14px; border:1.5px solid var(--edge); background:#fff; color:var(--ink); font-weight:600; font-size:.9em; text-align:left; cursor:pointer;}
+  .sf-type.active{border-color:var(--lagoon-500); background:#E8F8F6; box-shadow:0 0 0 3px rgba(20,170,160,.15);}
+  .sf-photo{display:block; border-radius:16px; aspect-ratio:3/1; background:var(--sf-img) center/cover no-repeat, var(--sand-2);}
+  .sf-photo.empty{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:1.5px dashed var(--edge); background:var(--sand-bg); color:var(--lagoon-700, #0E6F69); font-weight:700;}
+  .sf-pick{display:grid; grid-template-columns:repeat(auto-fill, minmax(88px,1fr)); gap:8px; max-height:300px; overflow:auto; padding:2px;}
+  .sf-pick-it{position:relative; display:flex; flex-direction:column; gap:4px; padding:4px; border-radius:12px; border:1.5px solid var(--edge); background:#fff; cursor:pointer; text-align:left; color:var(--ink);}
+  .sf-pick-it .item-thumb, .sf-pick-it img{width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover;}
+  .sf-pick-it.on{border-color:var(--lagoon-500); box-shadow:0 0 0 3px rgba(20,170,160,.18);}
+  .sf-pick-n{position:absolute; top:6px; left:6px; min-width:22px; height:22px; border-radius:999px; background:var(--lagoon-500); color:#fff; font-size:.75em; font-weight:800; display:grid; place-items:center;}
+  .sf-pick-name{font-size:.72em; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .sf-empty{padding:16px;}
+  @media (min-width:768px){ .sf-txt{padding:28px 32px;} .sf-cover{min-height:260px;} .sf-banner{min-height:300px;} .sf-banner:not(.has-photo){min-height:220px;} }
   /* ---------- Every screen size uses its room ----------
      Tablets (640-1023px) get the full width instead of a phone column: more
      product columns, a two-column item page, wider sheets. Store and rider
@@ -3208,7 +3250,7 @@ async function decryptOrderRow(order, dbRow){
 }
 
 function toDbRow(part, o){
-  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null };
+  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, ...(o.storefront?{storefront:o.storefront}:{}) };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
@@ -3220,7 +3262,7 @@ function toDbRow(part, o){
   if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, island:o.island||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
-  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null };
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
@@ -5208,6 +5250,7 @@ function drawerHTML(role){
     items = `
       <button class="drawer-item" onclick="go('bizHome')"><span class="ic">🏠</span> Dashboard</button>
       <button class="drawer-item" onclick="go('bizItems')"><span class="ic">📦</span> My items</button>
+      <button class="drawer-item" onclick="go('bizStorefront')"><span class="ic">🎨</span> Store page</button>
       <button class="drawer-item" onclick="go('bizOrders')"><span class="ic">🧾</span> Orders & payments</button>
       <button class="drawer-item" onclick="go('bizPayouts')"><span class="ic">💸</span> Payouts</button>
       <button class="drawer-item" onclick="toggleDrawer(false); openSheet('bizSettings')"><span class="ic">⚙️</span> Settings</button>
@@ -5379,6 +5422,7 @@ function sheetHTML(){
   if(state.sheet==='bizSignup') body = sheetBizSignup();
   else if(state.sheet==='delSignup') body = sheetDelSignup();
   else if(state.sheet==='bizSettings') body = sheetBizSettings();
+  else if(state.sheet==='sfSection') body = sheetSfSection();
   else if(state.sheet==='connectSwipe') body = sheetConnectSwipe();
   else if(state.sheet==='bizBulkImport') body = sheetBizBulkImport();
   else if(state.sheet==='bizUploadPhotos') body = sheetBizUploadPhotos();
@@ -6107,6 +6151,7 @@ function renderBusiness(){
   if(state.screen==='bizItems') return renderBizItems(biz,t);
   if(state.screen==='bizOrders') return renderBizOrders(biz);
   if(state.screen==='bizPayouts') return renderBizPayouts(biz);
+  if(state.screen==='bizStorefront') return renderBizStorefront(biz);
 }
 
 function renderBizHome(biz,t){
@@ -6129,6 +6174,7 @@ function renderBizHome(biz,t){
       ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
       <div class="card share-store"><div style="flex:1; min-width:0;"><strong>Share your store</strong><p class="muted" style="font-size:.84em;">Send your store link on WhatsApp, Viber, Instagram, Facebook… Buyers open it straight to your items.</p></div><button class="btn btn-primary btn-sm" onclick="openShare('store','${biz.id}')">${ICON_SHARE} Share</button></div>
+      <div class="card share-store sf-promo"><div style="flex:1; min-width:0;"><strong>${storefrontOf(biz).length ? 'Your store page' : 'Design your store page'}</strong><p class="muted" style="font-size:.84em;">${storefrontOf(biz).length ? `${storefrontOf(biz).length} section${storefrontOf(biz).length===1?'':'s'} at the top of your store. Change banners, rows and grids any time.` : 'Add a banner, promo banners and rows of items by category, like a shop window.'}</p></div><button class="btn btn-ghost btn-sm" onclick="go('bizStorefront')">🎨 ${storefrontOf(biz).length ? 'Edit' : 'Start'}</button></div>
       <div class="row" style="gap:10px; margin:14px 0 18px;">
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${myItems.length}</h1><div class="muted" style="font-size:.78em;">Items listed</div></div>
         <div class="glass card tight" style="flex:1; text-align:center;"><h1 style="font-size:1.5em;">${activeOrders}</h1><div class="muted" style="font-size:.78em;">Active orders</div></div>
@@ -10753,15 +10799,19 @@ function renderCustStore(){
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
   }).join('') || `<div class="empty"><span class="ic">🔨</span>No auctions ${catFilter==='All'?'right now':'in this category'}</div>`;
+  const sfCover = sfTopCover(biz);
+  const showSf = state.storeTab==='buyNow' && catFilter==='All' && storefrontOf(biz).length > (sfCover?1:0);
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${topbar(biz.name, biz.category, { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
     <div style="padding:4px 0 0;">
+      ${sfCover ? `<div class="sf-page" style="margin-bottom:14px;">${sfSectionHTML(biz, sfCover, buyNowItems, false)}</div>` : ''}
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
         <button class="tab ${state.storeTab==='auction'?'active':''}" onclick="setStoreTab('auction')">Auction</button>
         <button class="tab ${state.storeTab==='rental'?'active':''}" onclick="setStoreTab('rental')">Rental</button>
       </div>
+      ${showSf ? storefrontHTML(biz, buyNowItems, false, true) + `<div class="section-head" id="storeAll" style="margin-top:8px;"><h2>All items</h2></div>` : '<div id="storeAll"></div>'}
       ${storeCategoryDropdownHTML(categoriesForTab, catFilter)}
       <div class="${catFilter!=='All'?'store-grid-expanded':''}">
         ${state.storeTab==='buyNow' ? buyNowHTML : state.storeTab==='auction' ? auctionHTML : rentalHTML}
@@ -10769,6 +10819,246 @@ function renderCustStore(){
     </div>
   `);
   ensureCountdownTimer();
+}
+// ===== Store page sections (storefront) =====
+// A store owner arranges their own store page from sections (Store page in the
+// store menu, renderBizStorefront()): a wide store banner, promo banners with a
+// button, swipe rows and product grids. Saved on the store's own row as
+// businesses.storefront = { sections:[...] }. Customers see them on the Buy Now
+// tab above All items (renderCustStore()).
+const SF_MAX_SECTIONS = 12;
+const SF_TYPES = {
+  cover:  { icon:'🖼️', label:'Store banner', hint:'A wide photo across the top of your store, with your name on it' },
+  banner: { icon:'📣', label:'Promo banner', hint:'A photo with a headline and a button, e.g. "New arrivals · Shop now"' },
+  row:    { icon:'↔️', label:'Swipe row',    hint:'A row of items customers swipe sideways' },
+  grid:   { icon:'▦',  label:'Product grid', hint:'Items in a grid, 2 across on phones' },
+};
+function storefrontOf(biz){ const s = biz && biz.storefront; return (s && Array.isArray(s.sections)) ? s.sections : []; }
+function sfStoreItems(biz){ return DB.items.filter(i=>i.businessId===biz.id && isApprovedItem(i) && (i.listingType||'buy_now')==='buy_now'); }
+function sfSourceLabel(src){
+  if(!src || src==='all') return 'Bestsellers first';
+  if(src==='sale') return 'Items on sale';
+  if(src==='picked') return 'Items you picked';
+  if(src.startsWith('cat:')) return src.slice(4);
+  return src;
+}
+function sfItemsFor(sec, items){
+  const src = sec.source || 'all';
+  let list;
+  if(src==='picked') list = (sec.items||[]).map(id=>items.find(i=>i.id===id)).filter(Boolean);
+  else if(src==='sale') list = sortByAppSales(items.filter(i=>i.discountPercent>0));
+  else if(src.startsWith('cat:')) list = sortByAppSales(items.filter(i=>(i.category||'General')===src.slice(4)));
+  else list = sortByAppSales(items);
+  const max = sec.type==='grid' ? (Number(sec.limit)||4) : (Number(sec.limit)||12);
+  return list.slice(0, max);
+}
+function sfLinkTarget(link){ return link && link.startsWith('cat:') ? link.slice(4) : 'All'; }
+// A banner's button / a section's "See all": show that category under All items.
+function sfGo(link){
+  state.storeTab = 'buyNow';
+  state.storeCategoryFilter = sfLinkTarget(link);
+  render();
+  setTimeout(()=>{ const el = document.getElementById('storeAll'); if(el) el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start' }); }, 30);
+}
+function sfSectionHTML(biz, sec, items, preview){
+  const t = escapeAttr;
+  if(sec.type==='cover'){
+    const title = sec.title || biz.name;
+    return `<div class="sf-cover ${sec.image?'has-photo':''}" ${sec.image?`style="--sf-img:url('${t(sec.image)}')"`:''}>
+      <div class="sf-txt"><h2>${t(title)}</h2>${sec.subtitle?`<p>${t(sec.subtitle)}</p>`:''}</div></div>`;
+  }
+  if(sec.type==='banner'){
+    const go = preview ? '' : `onclick="sfGo('${t(sec.link||'all')}')"`;
+    return `<div class="sf-banner ${sec.image?'has-photo':''}" ${sec.image?`style="--sf-img:url('${t(sec.image)}')"`:''}>
+      <div class="sf-txt">${sec.title?`<h2>${t(sec.title)}</h2>`:''}${sec.subtitle?`<p>${t(sec.subtitle)}</p>`:''}
+      <button class="sf-btn" ${go}>${t(sec.button||'Shop now')} ›</button></div></div>`;
+  }
+  const list = sfItemsFor(sec, items);
+  if(!list.length) return preview ? `<div class="sf-sec"><div class="section-head"><h2>${t(sec.title||sfSourceLabel(sec.source))}</h2></div><p class="muted" style="font-size:.84em;">No live items here yet, so customers won't see this section.</p></div>` : '';
+  const seeAll = !preview && sec.source && (sec.source.startsWith('cat:')) ? `<button class="link-btn" onclick="sfGo('${t(sec.source)}')">See all ›</button>` : '';
+  const head = `<div class="section-head rail-head"><h2>${t(sec.title||sfSourceLabel(sec.source))}</h2>${seeAll}</div>`;
+  if(sec.type==='row') return `<div class="sf-sec section">${head}<div class="rail">${list.map(i=>topSellingCardHTML(i)).join('')}</div></div>`;
+  return `<div class="sf-sec section">${head}<div class="top-grid">${list.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div></div>`;
+}
+// The first section, when it's the store banner, sits above the Buy Now /
+// Auction / Rental tabs (like a shop sign); renderCustStore() passes skipCover.
+function sfTopCover(biz){ const s = storefrontOf(biz)[0]; return s && s.type==='cover' ? s : null; }
+function storefrontHTML(biz, items, preview, skipCover){
+  let secs = storefrontOf(biz);
+  if(skipCover && sfTopCover(biz)) secs = secs.slice(1);
+  if(!secs.length) return '';
+  return `<div class="sf-page ${preview?'preview':''}">${secs.map(sec=>sfSectionHTML(biz, sec, items, preview)).join('')}</div>`;
+}
+
+// --- Owner side ---
+function openStorefrontEditor(){ toggleDrawer(false); go('bizStorefront'); }
+async function saveStorefront(biz, sections){
+  const before = biz.storefront;
+  biz.storefront = { sections };
+  if(!sb){ render(); return true; }
+  const ok = await saveDB('businesses', [biz]);
+  if(!ok){ biz.storefront = before; render(); return false; }
+  render(); return true;
+}
+function renderBizStorefront(biz){
+  const secs = storefrontOf(biz);
+  const live = sfStoreItems(biz);
+  const cats = storeCategoriesForItems(live);
+  const card = (sec, i) => {
+    const ty = SF_TYPES[sec.type] || SF_TYPES.row;
+    const sub = sec.type==='cover' ? (sec.image ? 'With photo' : 'No photo yet')
+      : sec.type==='banner' ? `Button: ${sec.button||'Shop now'} → ${sfLinkTarget(sec.link)==='All'?'All items':sfLinkTarget(sec.link)}`
+      : `${sfSourceLabel(sec.source)} · ${sfItemsFor(sec, live).length} item${sfItemsFor(sec, live).length===1?'':'s'}`;
+    const asking = state.sfDelAsk===sec.id;
+    return `<div class="glass sf-ed-card">
+      <div class="sf-ed-ic" aria-hidden="true">${ty.icon}</div>
+      <div class="sf-ed-main" onclick="sfEditSection('${sec.id}')"><strong>${escapeAttr(sec.title || (sec.type==='cover'?biz.name:ty.label))}</strong><span class="muted">${ty.label} · ${escapeAttr(sub)}</span></div>
+      <div class="sf-ed-acts">
+        <button class="sf-mini" aria-label="Move up" ${i===0?'disabled':''} onclick="sfMove('${sec.id}',-1)">↑</button>
+        <button class="sf-mini" aria-label="Move down" ${i===secs.length-1?'disabled':''} onclick="sfMove('${sec.id}',1)">↓</button>
+        <button class="sf-mini" aria-label="Edit section" onclick="sfEditSection('${sec.id}')">✎</button>
+        <button class="sf-mini ${asking?'danger':''}" aria-label="${asking?'Tap again to delete':'Delete section'}" onclick="sfDelete('${sec.id}')">${asking?'Delete?':'🗑'}</button>
+      </div></div>`;
+  };
+  document.getElementById('app').innerHTML = wrapShell('business','bizStorefront', `
+    ${topbar('Store page', 'Arrange what customers see in your store')}
+    <div style="padding:4px 0 0;">
+      <div class="row" style="gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" ${secs.length>=SF_MAX_SECTIONS?'disabled':''} onclick="sfNewSection()">+ Add section</button>
+        ${cats.length && !secs.length ? `<button class="btn btn-ghost btn-sm" onclick="sfQuickStart()">✨ Make rows from my categories</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="sfViewAsCustomer()">👁 View my store</button>
+      </div>
+      ${secs.length ? `<div class="card-list one sf-ed-list">${secs.map(card).join('')}</div>
+        <p class="muted" style="font-size:.8em; margin:6px 2px 0;">${secs.length} of ${SF_MAX_SECTIONS} sections. All your items still show under them, under All items.</p>`
+      : `<div class="glass card sf-empty"><strong>Make your store look like a shop window</strong>
+          <p class="muted" style="font-size:.86em; margin-top:4px;">Add a banner with your store photo, promo banners with a button, and rows of items by category. Customers see them at the top of your store, above all your items.</p></div>`}
+      ${secs.length ? `<div class="section-head" style="margin-top:22px;"><h2>Preview</h2></div>
+        <div class="sf-preview-wrap">${storefrontHTML(biz, live, true)}</div>` : ''}
+    </div>
+  `);
+}
+function sfViewAsCustomer(){
+  const biz = currentBiz(); if(!biz) return;
+  state._lastStoreBizId = biz.id;
+  go('custStore', { role:'customer', browseBizId:biz.id, storeTab:'buyNow', storeCategoryFilter:'All' });
+}
+async function sfMove(id, dir){
+  const biz = currentBiz(); const secs = storefrontOf(biz).slice();
+  const i = secs.findIndex(s=>s.id===id); const j = i+dir;
+  if(i<0 || j<0 || j>=secs.length) return;
+  [secs[i], secs[j]] = [secs[j], secs[i]];
+  await saveStorefront(biz, secs);
+}
+async function sfDelete(id){
+  if(state.sfDelAsk!==id){ state.sfDelAsk = id; render(); clearTimeout(sfDelete._t); sfDelete._t = setTimeout(()=>{ if(state.sfDelAsk===id){ state.sfDelAsk=null; render(); } }, 4000); return; }
+  state.sfDelAsk = null;
+  const biz = currentBiz();
+  if(await saveStorefront(biz, storefrontOf(biz).filter(s=>s.id!==id))) toast('Section removed');
+}
+async function sfQuickStart(){
+  const biz = currentBiz(); const live = sfStoreItems(biz);
+  const cats = storeCategoriesForItems(live).sort((a,b)=>live.filter(i=>i.category===b).length - live.filter(i=>i.category===a).length);
+  const secs = [{ id:uid('sf'), type:'cover', title:biz.name, subtitle:'', image:'' }];
+  if(live.some(i=>i.discountPercent>0)) secs.push({ id:uid('sf'), type:'row', title:'On sale', source:'sale' });
+  cats.slice(0, SF_MAX_SECTIONS - secs.length).forEach(c=>secs.push({ id:uid('sf'), type:'row', title:c, source:'cat:'+c }));
+  if(await saveStorefront(biz, secs)) toast('Sections added. Tap one to change it');
+}
+let _sfDraft = null;
+function sfNewSection(){ _sfDraft = { id:uid('sf'), type:'banner', title:'', subtitle:'', image:'', button:'Shop now', link:'all', source:'all', limit:4, items:[], isNew:true }; openSheet('sfSection'); }
+function sfEditSection(id){
+  const sec = storefrontOf(currentBiz()).find(s=>s.id===id); if(!sec) return;
+  _sfDraft = Object.assign({ title:'', subtitle:'', image:'', button:'Shop now', link:'all', source:'all', limit:sec.type==='grid'?4:12, items:[] }, JSON.parse(JSON.stringify(sec)), { isNew:false });
+  openSheet('sfSection');
+}
+function sfReadForm(){
+  if(!_sfDraft) return;
+  const v = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  ['title','subtitle','button','link','source','limit'].forEach(k=>{ const x = v('sf_'+k); if(x!=null) _sfDraft[k] = k==='limit' ? Number(x) : x; });
+}
+function sfSetType(t){ sfReadForm(); _sfDraft.type = t; if(t==='grid' && (!_sfDraft.limit || _sfDraft.limit>8)) _sfDraft.limit = 4; if(t==='row' && (!_sfDraft.limit || _sfDraft.limit<10)) _sfDraft.limit = 12; render(); }
+function sfFormChanged(){ sfReadForm(); render(); }
+function sfTogglePick(id){
+  sfReadForm();
+  const arr = _sfDraft.items || (_sfDraft.items = []);
+  const k = arr.indexOf(id);
+  if(k>=0) arr.splice(k,1); else { if(arr.length >= 12){ toast('Up to 12 items in one section','bad'); return; } arr.push(id); }
+  render();
+}
+async function onSfPhoto(e){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  if(!/^image\//.test(f.type)){ toast('Choose a picture (JPG, PNG or WebP)','bad'); return; }
+  if(f.size > 20*1024*1024){ toast('The picture is over 20 MB','bad'); return; }
+  sfReadForm();
+  toast('Uploading picture…');
+  const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+  if(!url || !_sfDraft) return;
+  _sfDraft.image = url; render();
+}
+function sfRemovePhoto(){ sfReadForm(); _sfDraft.image = ''; render(); }
+function sheetSfSection(){
+  const biz = currentBiz(); const d = _sfDraft;
+  if(!biz || !d) return '';
+  const live = sfStoreItems(biz);
+  const cats = storeCategoriesForItems(live);
+  const t = escapeAttr;
+  const typeChips = Object.entries(SF_TYPES).map(([k,ty])=>`<button type="button" class="sf-type ${d.type===k?'active':''}" aria-pressed="${d.type===k}" onclick="sfSetType('${k}')"><span aria-hidden="true">${ty.icon}</span>${ty.label}</button>`).join('');
+  const photo = `<div class="field"><label>Photo${d.type==='cover'?'':' (optional)'}</label>
+      ${d.image ? `<div class="sf-photo" style="--sf-img:url('${t(d.image)}')"></div>
+        <div class="row" style="gap:8px; margin-top:8px;"><label class="btn btn-ghost btn-sm" style="cursor:pointer;">Change photo<input type="file" accept="image/*" hidden onchange="onSfPhoto(event)"></label><button type="button" class="btn btn-ghost btn-sm" onclick="sfRemovePhoto()">Remove</button></div>`
+      : `<label class="sf-photo empty" style="cursor:pointer;"><span>＋ Add a photo</span><small class="muted">Wide photos look best (about 3 : 1)</small><input type="file" accept="image/*" hidden onchange="onSfPhoto(event)"></label>`}
+    </div>`;
+  const catOpts = cats.map(c=>`<option value="cat:${t(c)}" ${d.source==='cat:'+c?'selected':''}>Category: ${t(c)}</option>`).join('');
+  let fields = '';
+  if(d.type==='cover'){
+    fields = `${photo}
+      <div class="field"><label>Name on the banner</label><input id="sf_title" maxlength="40" placeholder="${t(biz.name)}" value="${t(d.title)}"></div>
+      <div class="field"><label>Line under it (optional)</label><input id="sf_subtitle" maxlength="80" placeholder="e.g. Free delivery in Malé on every order" value="${t(d.subtitle)}"></div>`;
+  } else if(d.type==='banner'){
+    fields = `${photo}
+      <div class="field"><label>Headline</label><input id="sf_title" maxlength="40" placeholder="e.g. New arrivals" value="${t(d.title)}"></div>
+      <div class="field"><label>Text (optional)</label><input id="sf_subtitle" maxlength="90" placeholder="e.g. Fresh styles for the season" value="${t(d.subtitle)}"></div>
+      <div class="row" style="gap:10px;">
+        <div class="field" style="flex:1;"><label>Button</label><input id="sf_button" maxlength="20" placeholder="Shop now" value="${t(d.button)}"></div>
+        <div class="field" style="flex:1.3;"><label>Button opens</label><select id="sf_link"><option value="all">All items</option>${cats.map(c=>`<option value="cat:${t(c)}" ${d.link==='cat:'+c?'selected':''}>${t(c)}</option>`).join('')}</select></div>
+      </div>`;
+  } else {
+    const picked = d.source==='picked';
+    fields = `
+      <div class="field"><label>Heading</label><input id="sf_title" maxlength="40" placeholder="e.g. You might also like" value="${t(d.title)}"></div>
+      <div class="row" style="gap:10px;">
+        <div class="field" style="flex:1.5;"><label>Which items</label><select id="sf_source" onchange="sfFormChanged()">
+          <option value="all" ${d.source==='all'?'selected':''}>Bestsellers first</option>
+          <option value="sale" ${d.source==='sale'?'selected':''}>Items on sale</option>
+          ${catOpts}
+          <option value="picked" ${picked?'selected':''}>Let me pick items</option>
+        </select></div>
+        ${picked ? '' : `<div class="field" style="flex:1;"><label>How many</label><select id="sf_limit">${(d.type==='grid'?[2,4,6,8]:[6,8,10,12]).map(n=>`<option value="${n}" ${Number(d.limit)===n?'selected':''}>${n}</option>`).join('')}</select></div>`}
+      </div>
+      ${picked ? `<p class="muted" style="font-size:.82em; margin:-4px 0 8px;">Tap items to add them, in the order you want (${(d.items||[]).length} picked, up to 12).</p>
+        <div class="sf-pick">${live.map(i=>{ const n = (d.items||[]).indexOf(i.id); return `<button type="button" class="sf-pick-it ${n>=0?'on':''}" aria-pressed="${n>=0}" onclick="sfTogglePick('${i.id}')">${itemThumbHTML(i)}${n>=0?`<span class="sf-pick-n">${n+1}</span>`:''}<span class="sf-pick-name">${t(i.name)}</span></button>`; }).join('') || `<p class="muted">You have no live items yet.</p>`}</div>` : ''}`;
+  }
+  return `
+    <h2>${d.isNew ? 'Add a section' : 'Edit section'}</h2>
+    ${d.isNew ? `<div class="sf-types">${typeChips}</div><p class="muted" style="font-size:.82em; margin:-2px 0 12px;">${SF_TYPES[d.type].hint}</p>` : `<p class="muted" style="font-size:.84em; margin-bottom:12px;">${SF_TYPES[d.type].icon} ${SF_TYPES[d.type].label}</p>`}
+    ${fields}
+    <button class="btn btn-primary btn-block" style="margin-top:6px;" onclick="sfSaveSection()">${d.isNew ? 'Add section' : 'Save section'}</button>`;
+}
+async function sfSaveSection(){
+  sfReadForm();
+  const biz = currentBiz(); const d = _sfDraft; if(!biz || !d) return;
+  const title = (d.title||'').trim(), subtitle = (d.subtitle||'').trim();
+  if(d.type==='cover' && !d.image){ toast('Add a photo for the store banner','bad'); return; }
+  if(d.type==='banner' && !title && !d.image){ toast('Add a headline or a photo','bad'); return; }
+  if((d.type==='row'||d.type==='grid') && d.source==='picked' && !(d.items||[]).length){ toast('Pick at least one item','bad'); return; }
+  const sec = { id:d.id, type:d.type };
+  if(title) sec.title = title;
+  if(d.type==='cover' || d.type==='banner'){ if(subtitle) sec.subtitle = subtitle; if(d.image) sec.image = d.image; }
+  if(d.type==='banner'){ sec.button = (d.button||'').trim() || 'Shop now'; sec.link = d.link || 'all'; }
+  if(d.type==='row' || d.type==='grid'){ sec.source = d.source || 'all'; if(sec.source==='picked') sec.items = (d.items||[]).slice(0,12); else sec.limit = Number(d.limit) || (d.type==='grid'?4:12); }
+  const secs = storefrontOf(biz).slice();
+  const k = secs.findIndex(s=>s.id===sec.id);
+  if(k>=0) secs[k] = sec; else { if(secs.length>=SF_MAX_SECTIONS){ toast(`Up to ${SF_MAX_SECTIONS} sections`,'bad'); return; } secs.push(sec); }
+  if(await saveStorefront(biz, secs)){ _sfDraft = null; closeSheet(); toast(k>=0 ? 'Section saved' : 'Section added'); }
 }
 function auctionCard(item, auction){
   const now = Date.now();

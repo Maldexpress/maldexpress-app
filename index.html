@@ -11037,13 +11037,22 @@ function flySettleSoon(){
 function flySettle(){
   if(_flyTouching || state.screen !== 'custHome' || state.role !== 'customer' || state.adminMode || isDesktop()) return;
   if(document.activeElement && document.activeElement.id === 'homeSearchMini') return;
-  const { f, past, range } = _fly; if(!(f > 0.001 && f < 0.999)) return;
-  const down = _flyDir > 0 ? true : _flyDir < 0 ? false : f >= .5;
-  const delta = down ? -past : (-range - past);          // scroll px to reach f = 1 (down) or f = 0 (up)
-  const top = Math.max(0, pageScrollY() + delta);
+  if(state.catDropOpen || state.sheet || state.drawerOpen) return;
+  // The header never rests half-way: anywhere between fully open (top of the
+  // page) and fully closed (the big header, tabs included, gone under the small
+  // header) it finishes the move: closed if you were scrolling down, open if up
+  // (the nearer end if unclear).
+  const hero = document.querySelector('.home-hero'), mini = document.getElementById('homeMini');
+  if(!hero || !mini) return;
+  const y = pageScrollY();
+  const miniH = mini.getBoundingClientRect().height || 72;
+  const closedAt = Math.round(hero.getBoundingClientRect().bottom + y - miniH);   // scroll where the big header is fully under the small one
+  if(!(y > 2 && y < closedAt - 2)) return;
+  const down = _flyDir > 0 ? true : _flyDir < 0 ? false : y >= closedAt / 2;
+  const top = down ? closedAt : 0;
   _flySettling = true;
   [document.body, document.documentElement].forEach(el=>{ try{ el.scrollTo({ top, behavior:'smooth' }); }catch(e){ el.scrollTop = top; } });
-  setTimeout(()=>{ _flySettling = false; _flyLastY = pageScrollY(); }, 700);
+  setTimeout(()=>{ _flySettling = false; _flyLastY = pageScrollY(); }, 750);
 }
 document.addEventListener('touchstart', ()=>{ _flyTouching = true; clearTimeout(_flySettleT); }, { passive:true });
 document.addEventListener('touchend', ()=>{ _flyTouching = false; flySettleSoon(); }, { passive:true });

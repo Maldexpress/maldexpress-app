@@ -1056,7 +1056,14 @@
   .feat-panel .muted{color:#6B5A2E;}
   @media (min-width:1024px){
     .desk-sec.feat-panel{margin-left:0; margin-right:0; padding:30px 32px 32px; border-radius:30px;}
-    .feat-panel .desk-row-feat{display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:calc((100% - 5*18px) / 6); gap:18px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:thin; padding-bottom:10px;}
+    .feat-panel .desk-row-feat{display:grid; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:calc((100% - 5*18px) / 6); gap:18px; overflow-x:auto; scroll-snap-type:x mandatory; padding-bottom:12px;}
+    /* a faint, slim scrollbar under the Sponsored row (no arrows, no track) */
+    .feat-panel .desk-row-feat::-webkit-scrollbar{height:5px;}
+    .feat-panel .desk-row-feat::-webkit-scrollbar-track{background:transparent;}
+    .feat-panel .desk-row-feat::-webkit-scrollbar-thumb{background:rgba(160,120,30,.16); border-radius:99px;}
+    .feat-panel .desk-row-feat:hover::-webkit-scrollbar-thumb{background:rgba(160,120,30,.28);}
+    .feat-panel .desk-row-feat::-webkit-scrollbar-button{display:none; width:0; height:0;}
+    @supports (-moz-appearance:none){ .feat-panel .desk-row-feat{scrollbar-width:thin; scrollbar-color:rgba(160,120,30,.2) transparent;} }
     .feat-panel .desk-row-feat > .top-card{scroll-snap-align:start;}
     .feat-panel .desk-row-feat > .top-card:nth-child(n+5){display:block;}
     .feat-panel .top-card .img-wrap > div:first-child{font-size:4.6em;}

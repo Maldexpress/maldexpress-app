@@ -1864,6 +1864,31 @@
     .home-mini .cat-open-btn.on{background:#fff; color:var(--lagoon-700, #0B6E6E); border-color:#fff;}
     .mode-group .mode-pill{-webkit-tap-highlight-color:transparent; -webkit-backdrop-filter:none !important; backdrop-filter:none !important;}
   }
+  /* ===== "Shore" phone header (2026-11-19, the owner's pick) — on top of the redesign above:
+     the photo on top, a light sheet curving up over its bottom, search and tabs on the sheet. */
+@media (max-width:1023px){
+  .home-hero{border-radius:0 !important; padding-bottom:14px !important; box-shadow:none !important; margin-bottom:10px;}
+  .home-hero::before{display:none;}
+  .home-hero::after{content:""; position:absolute; left:0; right:0; bottom:0; height:134px; z-index:0;
+    background:var(--sand-bg, #F3F7F6); border-radius:30px 30px 0 0; box-shadow:0 -10px 30px -12px rgba(4,30,42,.35);}
+  .home-hero.has-photo{background:
+    linear-gradient(180deg, rgba(4,30,42,.55) 0%, rgba(4,30,42,.1) 34%, rgba(4,30,42,.05) 60%, rgba(4,30,42,.35) 100%),
+    var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat !important;}
+  .home-hero .hero-wordmark{margin:10px 0 34px !important; font-size:clamp(32px, 10vw, 40px) !important;}
+  .home-hero > .row.search-row, .home-hero > .hero-tabs{position:relative; z-index:2;}
+  .word-fly{transition:color .18s, -webkit-text-fill-color .18s;}
+  .word-fly.on-sheet, .word-fly.glass-word.on-sheet{color:var(--lagoon-700, #0B6E6E) !important; -webkit-text-fill-color:var(--lagoon-700, #0B6E6E) !important;
+    background:none !important; -webkit-text-stroke:.5px var(--lagoon-700, #0B6E6E) !important; text-shadow:none !important; filter:none !important;}
+  /* search on the light sheet */
+  .search-row.hero .home-search-wrap{background:#fff; box-shadow:0 8px 24px -10px rgba(8,60,80,.3), inset 0 0 0 1px rgba(13,43,51,.06) !important;}
+  .search-row.hero .cat-open-btn{background:var(--lagoon-700, #0B6E6E) !important; border-color:transparent !important; color:#fff !important;
+    -webkit-backdrop-filter:none !important; backdrop-filter:none !important; box-shadow:0 8px 20px -8px rgba(11,110,110,.6);}
+  /* tabs as an underline row on the sheet */
+  .hero-tabs{background:none !important; border:none !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; padding:0 !important; margin-top:14px !important; gap:6px !important;}
+  .hero-tabs .ht{height:40px; border-radius:14px !important; color:var(--ink-dim, #4A6470) !important; background:#fff !important;
+    box-shadow:inset 0 0 0 1px rgba(13,43,51,.08); font-weight:700;}
+  .hero-tabs .ht.on{background:var(--lagoon-700, #0B6E6E) !important; color:#fff !important; box-shadow:0 8px 18px -8px rgba(11,110,110,.7) !important;}
+}
   @media (max-width:359px){ .mode-group .mode-pill span{display:none;} .mode-group .mode-pill{padding:0 9px;} .hero-tabs .ht span{display:none;} }
 </style>
 </head>
@@ -10832,6 +10857,10 @@ function flyWordmark(mini, row, past){
   const y = eB > 0 ? above + (ty - above) * eB : b.top + (above - b.top) * eA;
   fly.style.fontSize = bigSize + 'px';
   fly.style.transform = `translate3d(${b.left + (tx - b.left) * eA}px, ${y}px, 0) scale(${sc})`;
+  // Shore header: while the name crosses the light sheet it turns lagoon, or white would vanish on it
+  const hero = document.querySelector('.home-hero');
+  const sheetH = hero ? parseFloat(getComputedStyle(hero, '::after').height) || 0 : 0;
+  fly.classList.toggle('on-sheet', !!sheetH && y + bigSize * sc * .55 > hero.getBoundingClientRect().bottom - sheetH);
 }
 // The big header's photo is drawn with background-size:cover, centred. Show
 // the small header the same picture at the same size and offset, as if the

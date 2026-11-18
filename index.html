@@ -1235,6 +1235,8 @@
   .rail, .featured-scroll, .feat-grid, .desk-row-feat, .gal-track, .gal-thumbs{overflow-y:hidden !important; overscroll-behavior-y:auto; touch-action:pan-x pan-y;}
   .feat-loop{scroll-snap-type:none !important; scroll-behavior:auto !important;}
   .feat-loop .top-card{scroll-snap-align:none !important;}
+  .feat-loop > .top-card{transform:translate3d(var(--fx, 0px), 0, 0); will-change:transform;}
+  .feat-loop{padding-top:8px !important; margin-top:-8px !important;}   /* room for the gold outline and the hover lift */
   /* the nonstop row fades out at both ends instead of chopping cards off */
   .feat-loop{-webkit-mask-image:linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);}
   /* Sponsored cards keep their gold edge when hovered, and the lift has room */
@@ -4746,7 +4748,7 @@ function applyReveal(){
   if(!same) _rvSeen = new Set();
   const vh = window.innerHeight;
   document.querySelectorAll('#app ' + REVEAL_SEL.split(', ').join(', #app ')).forEach((el, i)=>{
-    if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar') || el._rvOn) return;
+    if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar, .feat-loop') || el._rvOn) return;   // a nonstop row's cards never fade in / out
     el._rvOn = true; el._rvKey = rvKey(el);
     const r = el.getBoundingClientRect();
     // A card taller than the screen (e.g. a store's long list of items to
@@ -11159,15 +11161,17 @@ function featLoopTick(t){
   els.forEach(el=>{
     const id = el.id, copy = el.querySelector('[data-copy]'), first = el.firstElementChild;
     if(!id || !copy || !first) return;
-    const span = copy.offsetLeft - first.offsetLeft; if(span <= 0) return;
+    const span = copy.getBoundingClientRect().left - first.getBoundingClientRect().left; if(span <= 0) return;
     let pos = _featLoop.pos[id] || 0;
-    if(_featLoop.el[id] !== el){ _featLoop.el[id] = el; featLoopBind(el); el.scrollLeft = pos; }   // a fresh render: carry on from the same spot
-    else if(Math.abs(el.scrollLeft - pos) > 3) pos = el.scrollLeft;                              // moved by hand
+    if(_featLoop.el[id] !== el){ _featLoop.el[id] = el; featLoopBind(el); el.scrollLeft = Math.floor(pos); }   // a fresh render: carry on from the same spot
+    else if(Math.abs(el.scrollLeft - Math.floor(pos)) > 2){ pos = el.scrollLeft; el.style.setProperty('--fx', '0px'); }   // moved by hand
     const moving = !el._featHold && t >= (_featLoop.pauseUntil[id] || 0) && !document.hidden;
     if(moving) pos += FEAT_LOOP_SPEED * dt / 1000;
     const wrapped = pos >= span ? (pos -= span, true) : pos < 1 && !moving && el.scrollLeft < 1 ? (pos += span, true) : false;
     _featLoop.pos[id] = pos;
-    if(moving || wrapped) el.scrollLeft = pos;
+    // Whole pixels go to scrollLeft (screens snap it to pixels, which made the
+    // glide step), the fraction to a transform on the cards, so it moves smoothly.
+    if(moving || wrapped){ const whole = Math.floor(pos); el.scrollLeft = whole; el.style.setProperty('--fx', (whole - pos).toFixed(3) + 'px'); }
   });
   _featLoop.raf = requestAnimationFrame(featLoopTick);
 }

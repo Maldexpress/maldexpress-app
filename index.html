@@ -1802,6 +1802,65 @@
     .aa-name{font-size:52px;}
     .auth-sheet .sheet-close{top:16px; right:16px; background:var(--sand-2); color:var(--ink); border:none;}
   }
+
+  /* ===== Phone header redesign (2026-11-19) — wins over the earlier header rules =====
+     One calm top row (menu, one work capsule, bell), the name, a full-width search
+     with a round Categories button, then Buy now / Auctions / Rentals tabs, all on
+     a header with a rounded bottom edge. */
+  @media (max-width:1023px){
+    .home-hero{border-radius:0 0 30px 30px !important; padding-bottom:16px !important; margin-bottom:18px; overflow:visible;
+      box-shadow:0 18px 34px -22px rgba(6,50,70,.55) !important;}
+    .home-hero::before{border-radius:0 0 30px 30px;}
+    .home-hero.has-photo{background:
+      linear-gradient(180deg, rgba(4,30,42,.55) 0%, rgba(4,30,42,.12) 30%, rgba(4,30,42,0) 52%, rgba(4,30,42,.46) 100%),
+      linear-gradient(90deg, rgba(4,30,42,.42) 0%, rgba(4,30,42,0) 62%),
+      var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat !important;}
+    .home-hero > .home-header{padding-top:calc(12px + env(safe-area-inset-top)) !important; padding-bottom:2px !important; align-items:center;}
+    .home-header .row{gap:8px !important;}
+    .home-header .brand-mark{display:none !important;}           /* the name below is the brand */
+    .home-header .iconbtn, .home-header .avatar-btn{width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.16) !important; border:1px solid rgba(255,255,255,.32) !important;
+      color:#fff !important; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); box-shadow:0 4px 14px rgba(0,0,0,.12) !important;}
+    .home-header .avatar-btn .av-letter{color:#fff;}
+    .home-header .notif-dot{top:7px; right:8px; box-shadow:0 0 0 2px rgba(10,60,80,.9);}
+    /* My store / Deliveries share one slim glass capsule */
+    .mode-group{display:inline-flex; align-items:center; height:40px; padding:3px; border-radius:999px; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.32);
+      -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); box-shadow:0 4px 14px rgba(0,0,0,.12);}
+    .mode-group .mode-pill{height:32px; padding:0 11px; gap:5px; border:none !important; background:none !important; box-shadow:none !important; font-size:.86em; font-weight:700; letter-spacing:-.01em;}
+    .mode-group.two .mode-pill + .mode-pill{border-left:1px solid rgba(255,255,255,.3) !important; border-radius:0 999px 999px 0;}
+    .mode-group .mode-pill:active{background:rgba(255,255,255,.18) !important;}
+    /* the name */
+    .home-hero .hero-wordmark{margin:6px 0 12px !important; font-size:clamp(30px, 9.2vw, 38px) !important;}
+    .home-hero .hero-scene{height:64px !important; margin:-6px -4px 0 !important;}
+    /* search takes the width; Categories becomes a round button beside it */
+    .search-row.hero{gap:8px !important;}
+    .search-row.hero .home-search-wrap{height:48px; border-radius:999px; box-shadow:0 10px 26px -10px rgba(0,0,0,.35);}
+    .search-row.hero .cat-open-btn{width:48px; height:48px; max-width:none; padding:0 !important; justify-content:center; border-radius:50%;
+      background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);}
+    .search-row.hero .cat-open-btn .cob-txt, .search-row.hero .cat-open-btn .switcher-caret{display:none !important;}
+    .search-row.hero .cat-open-btn .sw-ic{display:flex; font-size:1.2em;}
+    .search-row.hero .cat-open-btn .sw-ic svg{width:20px; height:20px;}
+    .search-row.hero .cat-open-btn.on{background:#fff; color:var(--lagoon-700, #0B6E6E); border-color:#fff;}
+    /* Buy now / Auctions / Rentals */
+    .hero-tabs{display:flex; gap:4px; margin-top:12px; padding:4px; border-radius:999px; background:rgba(4,30,42,.28); border:1px solid rgba(255,255,255,.18);
+      -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); position:relative; z-index:2;}
+    .hero-tabs .ht{flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:36px; border-radius:999px; border:none; background:none;
+      color:rgba(255,255,255,.9); font-weight:700; font-size:.92em; letter-spacing:-.01em; transition:background .2s, color .2s;}
+    .hero-tabs .ht span{font-size:1.05em;}
+    .hero-tabs .ht.on{background:#fff; color:var(--ink); box-shadow:0 4px 12px rgba(0,0,0,.16);}
+    .hero-tabs .ht:active{transform:scale(.97);}
+    /* the row under the header only holds the picked-category chip now */
+    .cat-bar.empty{display:none;}
+    .cat-bar{margin:0 0 14px !important;}
+  }
+  @media (max-width:1023px){
+    /* the small sticky header matches: round Categories button, rounded bottom */
+    .home-mini{border-radius:0 0 22px 22px; box-shadow:0 12px 26px -16px rgba(6,50,70,.6);}
+    .home-mini .cat-open-btn{width:44px; height:44px; padding:0 !important; justify-content:center; border-radius:50%; flex:0 0 44px;}
+    .home-mini .cat-open-btn .cob-txt, .home-mini .cat-open-btn .switcher-caret{display:none !important;}
+    .home-mini .cat-open-btn.on{background:#fff; color:var(--lagoon-700, #0B6E6E); border-color:#fff;}
+    .mode-group .mode-pill{-webkit-tap-highlight-color:transparent; -webkit-backdrop-filter:none !important; backdrop-filter:none !important;}
+  }
+  @media (max-width:359px){ .mode-group .mode-pill span{display:none;} .mode-group .mode-pill{padding:0 9px;} .hero-tabs .ht span{display:none;} }
 </style>
 </head>
 <body>
@@ -5648,7 +5707,7 @@ function openWorkModeOnStart(){
 function workModeButtonsHTML(){
   const st = myStores().length, rd = myRiderProfiles().length;
   if(!st && !rd) return '';
-  return `${st ? `<button class="mode-pill" onclick="switchToStoreMode()" aria-label="Switch to my store">${'🏪'}<span>My store</span></button>` : ''}${rd ? `<button class="mode-pill" onclick="switchToRiderMode()" aria-label="Switch to my deliveries">${'🛵'}<span>Deliveries</span></button>` : ''}`;
+  return `<div class="mode-group${st && rd ? ' two' : ''}">${st ? `<button class="mode-pill" onclick="switchToStoreMode()" aria-label="Switch to my store">${'🏪'}<span>My store</span></button>` : ''}${rd ? `<button class="mode-pill" onclick="switchToRiderMode()" aria-label="Switch to my deliveries">${'🛵'}<span>Deliveries</span></button>` : ''}</div>`;
 }
 
 /* =================== BUSINESS / DELIVERY PICKER (scoped to the signed-in account) === */
@@ -10681,6 +10740,12 @@ function closeDropdownsOnScroll(e){
 document.addEventListener('scroll', closeDropdownsOnScroll, { passive:true, capture:true });
 // remember where the page was when a drop-down opened
 document.addEventListener('click', ()=>{ setTimeout(()=>{ _ddScrollY = openDropdown() ? pageScrollY() : null; }, 0); }, true);
+// Buy now / Auctions / Rentals as tabs along the bottom of the phone header
+// (they used to be a lone "Buy now ▾" menu under it).
+function heroTabsHTML(){
+  const cur = state.homeListingType || 'buy_now';
+  return `<div class="hero-tabs" role="tablist" aria-label="What to browse">${Object.keys(LISTING_TYPE_META).map(k=>`<button role="tab" aria-selected="${k===cur}" class="ht${k===cur?' on':''}" onclick="setHomeListingType('${k}')"><span aria-hidden="true">${LISTING_TYPE_META[k].icon}</span>${LISTING_TYPE_META[k].label}</button>`).join('')}</div>`;
+}
 function listingSwitcherHTML(where='bar'){
   const cur = LISTING_TYPE_META[state.homeListingType] || LISTING_TYPE_META.buy_now;
   const others = Object.keys(LISTING_TYPE_META).filter(k=>k!==state.homeListingType);
@@ -11308,11 +11373,11 @@ function renderCustHome(){
       ${DB.settings.heroImageUrl ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       <h1 class="hero-wordmark" aria-label="Maarukeytu">Maarukeytu</h1>
       ${homeSearchRowHTML('hero')}
+      ${heroTabsHTML()}
     </div>
     <div style="padding:0 4px;">
       ${addressPromptHTML()}
-      <div class="cat-bar">
-        ${listingSwitcherHTML('bar')}
+      <div class="cat-bar${state.homeCategory!=='All' ? '' : ' empty'}">
         ${state.homeCategory!=='All' ? `<button class="cat-chip" onclick="setHomeCategory('All')" aria-label="Clear ${escapeAttr(state.homeCategory)} filter">${categoryIcon(state.homeCategory)} ${escapeAttr(state.homeCategory)} <span aria-hidden="true">✕</span></button>` : ''}
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `

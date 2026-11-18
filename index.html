@@ -1016,7 +1016,7 @@
     background:radial-gradient(120% 90% at 0% 0%, #FFE8A3 0%, rgba(255,232,163,0) 55%), radial-gradient(120% 100% at 100% 100%, #CDEBFF 0%, rgba(205,235,255,0) 60%), linear-gradient(135deg, #FFF4D1 0%, #EAF6FF 100%);
     border:1px solid #F1D58A; box-shadow:0 10px 30px rgba(200,150,30,.12);}
   .feat-title{color:#7A5200;}
-  /* Phones: the Sunlit Picks band runs edge to edge */
+  /* Phones: the Sponsored band runs edge to edge */
   @media (max-width:1023px){
     .feat-panel{margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-radius:0; border-left:none; border-right:none; padding:20px 20px 14px;}
     .feat-panel .featured-scroll.feat-grid{margin:0 -20px; padding:4px 20px 8px; scroll-padding:0 20px; grid-auto-columns:calc((100% - 40px - 3*8px) / 4);}
@@ -1070,7 +1070,7 @@
   .cat-open-btn{height:44px; padding:0 12px; gap:5px; border-radius:999px; font-size:.8em; max-width:42%;}
   .cat-open-btn .cob-txt{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .cat-open-btn.on{background:rgba(255,255,255,.3); border-color:#fff;}
-  .cat-bar{position:relative; z-index:4;}   /* above Sunlit Picks so the Buy now menu shows; below the hero (z 5) so the categories drop-down covers it. Not in REVEAL_SEL: a transform here would trap the menu under the next section */
+  .cat-bar{position:relative; z-index:4;}   /* above Sponsored so the Buy now menu shows; below the hero (z 5) so the categories drop-down covers it. Not in REVEAL_SEL: a transform here would trap the menu under the next section */
   .cat-bar .switcher-wrap{z-index:4;}
   .cat-bar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-6px 0 22px;}
   .cat-bar-btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:999px; border:1px solid var(--edge); background:var(--surface); color:var(--ink); font-weight:700; font-size:.92em; box-shadow:var(--shadow);}
@@ -6286,7 +6286,7 @@ function itemReviewsHTML(item){
   const can = canReviewItem(item);
   const list = state.revShowAll === item.id ? st.list : st.list.slice(0,3);
   return `<div class="ip-reviews" id="ipReviews">
-    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>💬 Island Voices</h3>
+    <div class="row between" style="gap:10px; align-items:flex-end;"><h3>Reviews</h3>
       ${mine ? `<button class="link-btn" onclick="openSheet('writeReview','${item.id}')">Edit your review</button>` : can ? `<button class="btn btn-primary btn-sm" onclick="openSheet('writeReview','${item.id}')">★ Write a review</button>` : ''}
     </div>
     ${!c || !c.loaded ? `<p class="muted" style="font-size:.86em;">Loading reviews…</p>` : st.n ? `
@@ -9472,7 +9472,7 @@ function renderCustProfile(){
       </div>
 
       <section class="pf-card">
-        <div class="row between"><h3>🧭 My Voyages</h3><button class="link-btn" onclick="state.ordersStatus=null; go('custOrders')">See all ›</button></div>
+        <div class="row between"><h3>My orders</h3><button class="link-btn" onclick="state.ordersStatus=null; go('custOrders')">See all ›</button></div>
         <div class="pf-stages">
           ${Object.entries(ORDER_STAGES).map(([k,v])=>`<button class="pf-stage" onclick="state.ordersStatus='${k}'; state.ordersTab='all'; go('custOrders')"><span class="pf-sic" aria-hidden="true">${v.icon}${counts[k]?`<b>${counts[k]}</b>`:''}</span><span>${v.label}</span></button>`).join('')}
         </div>
@@ -9480,12 +9480,12 @@ function renderCustProfile(){
 
       ${toReview.length ? `
       <section class="pf-card">
-        <div class="row between"><h3>⭐ Rate your Haul</h3><span class="muted" style="font-size:.8em;">${toReview.length}</span></div>
+        <div class="row between"><h3>Waiting for your review</h3><span class="muted" style="font-size:.8em;">${toReview.length}</span></div>
         <div class="rail pf-rev">${toReview.slice(0,12).map(it=>`<button class="pf-rev-item" onclick="openItemDetail('${it.id}'); setTimeout(()=>{ const r=document.getElementById('ipReviews'); if(r) r.scrollIntoView({block:'start'}); }, 350);"><span class="pf-rev-img">${itemThumbHTML(it)}</span><span class="pf-rev-name">${escapeAttr(it.name)}</span><span class="pf-rev-cta">★ Rate it</span></button>`).join('')}</div>
       </section>` : ''}
 
       <section class="pf-card">
-        <h3>⚡ Quick Sails</h3>
+        <h3>Shortcuts</h3>
         <div class="pf-grid">
           ${tile('❤️','Favourites', favs||null, "go('custFavourites')")}
           ${tile('📍','My addresses', addrs||null, 'openMyAddresses()')}
@@ -9497,7 +9497,7 @@ function renderCustProfile(){
       </section>
 
       <section class="pf-card">
-        <h3>🤝 Join the Crew</h3>
+        <h3>Earn with Maarukeytu</h3>
         <div class="pf-earn">
           <button class="pf-earn-b sell" onclick="${myBiz.length ? 'goToOwnedBusiness()' : "enterRole('business')"}"><span aria-hidden="true">🏪</span><strong>${myBiz.length ? 'Your store' : 'Sell on Maarukeytu'}</strong><small>${myBiz.length ? escapeAttr(myBiz[0].name) : 'Open a store and list items'}</small></button>
           <button class="pf-earn-b ride" onclick="${myDel.length ? 'goToOwnedDelivery()' : "enterRole('delivery')"}"><span aria-hidden="true">🛵</span><strong>${myDel.length ? 'Your deliveries' : 'Deliver with us'}</strong><small>${myDel.length ? 'Jobs and payouts' : 'Earn per delivery'}</small></button>
@@ -9542,7 +9542,7 @@ function signInGateHTML(label){
 function renderCustFavourites(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custFavourites', `
-      ${topbar('Treasure Chest')}
+      ${topbar('Favourites')}
       ${signInGateHTML('view your favourites')}
     `);
     return;
@@ -9553,7 +9553,7 @@ function renderCustFavourites(){
     items: items.filter(i=>(i.listingType||'buy_now')===key)
   })).filter(g=>g.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custFavourites', `
-    ${topbar('Treasure Chest')}
+    ${topbar('Favourites')}
     <div style="padding:4px 0 0;">
       ${groups.length ? groups.map(g=>`
         <div class="section" style="margin-bottom:22px;">
@@ -9574,7 +9574,7 @@ function renderCustStoresList(){
     .map(b=>({ biz:b, items: DB.items.filter(i=>i.businessId===b.id && isApprovedItem(i)) }))
     .filter(s=>s.items.length);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${topbar('Island Stores', `${stores.length} store${stores.length===1?'':'s'}`)}
+    ${topbar('Stores', `${stores.length} store${stores.length===1?'':'s'}`)}
     <div style="padding:4px 0 0;">
       ${stores.length ? stores.map(s=>`
         <div class="section">
@@ -10072,7 +10072,7 @@ function handleEdgeSwipeEnd(){
   _edgeSwipeDx = 0;
 }
 // Swipe between tabs: on any screen with a row of .tab buttons (cart stores,
-// My Voyages, a store's Buy Now / Auction / Rental, My items categories,
+// My orders, a store's Buy Now / Auction / Rental, My items categories,
 // admin lists), a sideways swipe on the screen presses the next / previous
 // tab and the content slides in from that side. Swipes that start on the
 // left edge (Back), in sheets, in side-scrolling rows or on form fields are
@@ -10616,11 +10616,11 @@ function renderCustItem(){
       </div>
       <div class="ip-lower">
         <section class="ip-card">
-          <h2>📦 Cargo Details</h2>
+          <h2>Item details</h2>
           <div class="idr-list">${itemDetailRowsHTML(item)}</div>
         </section>
         <section class="ip-card">
-          <h2>📝 Captain’s Notes</h2>
+          <h2>About this item</h2>
           ${item.description ? `<p class="ip-desc">${escapeAttr(item.description).replace(/\n/g,'<br>')}</p>` : `<p class="muted">The store hasn't added a description.</p>`}
           ${itemReviewsHTML(item)}
           ${biz ? `
@@ -10633,12 +10633,12 @@ function renderCustItem(){
       </div>
       ${related.length ? `
       <section class="ip-related">
-        <h2>🌊 On the Same Tide</h2>
+        <h2>Related products</h2>
         <div class="top-grid ip-grid">${related.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       ${moreFromStore.length ? `
       <section class="ip-related">
-        <h2>⚓ Docked at ${escapeAttr(biz?biz.name:'this store')}</h2>
+        <h2>More from ${escapeAttr(biz?biz.name:'this store')}</h2>
         <div class="top-grid ip-grid">${moreFromStore.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
     </div>
@@ -10749,7 +10749,7 @@ function sheetItemDetail(){
 // goes into side-scrolling rows below, one per category (or one "More to
 // explore" row when it's all one category).
 const TOP_GRID_ROWS = 5;
-// Columns of .top-grid / Sunlit Picks cards at this width (phones 2-3, tablets 4-5 / 6).
+// Columns of .top-grid / Sponsored cards at this width (phones 2-3, tablets 4-5 / 6).
 function topGridCols(){ const w = window.innerWidth; return w >= 860 ? 5 : w >= 640 ? 4 : w >= 440 ? 3 : 2; }
 function featPerView(){ return window.innerWidth >= 640 && window.innerWidth < 1024 ? 6 : 4; }
 function topGridMax(){ return TOP_GRID_ROWS * topGridCols(); }   // matches .top-grid's columns
@@ -10758,7 +10758,7 @@ function moreRailsHTML(rest){
   const groups = {};
   rest.forEach(i=>{ const c = i.category || 'Other'; (groups[c] = groups[c] || []).push(i); });
   const keys = Object.keys(groups);
-  const rails = keys.length === 1 ? [['🌊 Drift & Discover', groups[keys[0]], null]] : viewShuffle(keys, 11).map(k=>[k, groups[k], k]);
+  const rails = keys.length === 1 ? [['More to explore', groups[keys[0]], null]] : viewShuffle(keys, 11).map(k=>[k, groups[k], k]);
   return rails.map(([title, list, cat])=>`
       <div class="section">
         <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
@@ -10794,14 +10794,14 @@ function renderCustHome(){
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
       ${featured.length ? `
       <div class="section feat-panel">
-        <h2 class="feat-title">☀️ Sunlit Picks <span class="spon-tag">Sponsored</span></h2>
+        <h2 class="feat-title">Sponsored</h2>
           <div class="featured-scroll feat-grid" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
           </div>
           ${featured.length > featPerView() ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/featPerView())},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
       </div>` : ''}
       <div class="section">
-        <h2 style="margin-bottom:12px;">${(state.homeListingType||'buy_now')==='buy_now' && filtered.some(i=>unitsSold(i.id)) ? '🏝️ Atoll Bestsellers' : '🐚 Fresh off the Boat'}</h2>
+        <h2 style="margin-bottom:12px;">${(state.homeListingType||'buy_now')==='buy_now' && filtered.some(i=>unitsSold(i.id)) ? 'Bestsellers' : 'New arrivals'}</h2>
         <div class="top-grid">
           ${filtered.length? filtered.slice(0, topGridMax()).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>No items match</div>`}
         </div>
@@ -10920,7 +10920,7 @@ function renderDeskHome(){
   const picks = featNow.length ? featNow.slice(0, featShow) : viewShuffle(allOfType.filter(i=>isApprovedItem(i)).filter(i=>i.discountPercent>0), 3).concat(viewShuffle(allOfType.filter(i=>isApprovedItem(i) && !(i.discountPercent>0)), 5)).slice(0, 6);
   const tiles = viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 13).slice(0, 14);
   const typeLabel = (LISTING_TYPE_META[state.homeListingType]||LISTING_TYPE_META.buy_now).label;
-  const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? '🐚 Fresh off the Boat' : typeLabel;
+  const gridTitle = state.homeSearch ? `Results for “${escapeAttr(state.homeSearch)}”` : state.homeCategory!=='All' ? state.homeCategory : state.homeListingType==='buy_now' ? 'New arrivals' : typeLabel;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     <div class="desk-home">
       ${state.homeSearch || state.homeCategory!=='All' ? '' : deskBannerHTML()}
@@ -10929,7 +10929,7 @@ function renderDeskHome(){
 
       ${picks.length ? `
       <section class="desk-sec${featNow.length?' feat-panel':''}">
-        <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'☀️ Sunlit Picks <span class="spon-tag">Sponsored</span>':'🎣 Today’s Catch'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
+        <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'Sponsored':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
         <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
       </section>` : ''}
       <section class="desk-promos">
@@ -10944,7 +10944,7 @@ function renderDeskHome(){
         </div>
       </section>`}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `      <section class="desk-sec">
-        <h2>🧭 Every Island Aisle</h2>
+        <h2>Shop by category</h2>
         <div class="desk-tiles">
           ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
         </div>
@@ -11206,7 +11206,7 @@ function sfTopStripHTML(items, preview){
   if(list.length<2) return '';
   const sold = list.some(i=>unitsSold(i.id)>0);
   const t = escapeAttr;
-  return `<div class="sf-sec section"><div class="section-head rail-head"><h2>${sold ? '🏝️ Bestsellers here' : '🐚 Fresh off the Boat'}</h2></div>
+  return `<div class="sf-sec section"><div class="section-head rail-head"><h2>${sold ? 'Bestsellers' : 'New arrivals'}</h2></div>
     <div class="rail sf-top-strip">${list.map((it,k)=>`
       <div class="sf-top-card" role="button" tabindex="0" ${preview?'':`onclick="openItemDetail('${it.id}')"`}>
         <div class="sf-top-img">${itemThumbHTML(it)}</div>
@@ -11761,7 +11761,7 @@ function setCartActiveStore(bizId){ state.cartActiveStore = bizId; render(); }
 function renderCustCart(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
-      ${topbar('Your Dhoni')}
+      ${topbar('Cart')}
       ${signInGateHTML('view your cart')}
     `);
     return;
@@ -11800,7 +11800,7 @@ function renderCustCart(){
         : `<button class="btn btn-primary" style="margin-top:10px; opacity:.5;" disabled>Select an item to checkout</button>`}
     </div>` : '';
   document.getElementById('app').innerHTML = wrapShell('customer','custCart', `
-    ${topbar('Your Dhoni')}
+    ${topbar('Cart')}
     <div style="padding:4px 0 ${lines.length?'190px':'0'};">
       ${lines.length ? unpaidBlockHTML(unpaidDeliveredOrder()) : ''}
       ${lines.length? `
@@ -13229,7 +13229,7 @@ async function placeStoreOrder(bizId){
 function renderCustOrders(){
   if(sb && !state.authed){
     document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
-      ${topbar('My Voyages')}
+      ${topbar('My orders')}
       <div style="padding:4px 0 0;">
         <div class="empty">
           <span class="ic">🔒</span>Sign in with your email to see your orders
@@ -13278,7 +13278,7 @@ function renderCustOrders(){
   const ongoing = tabFiltered.filter(o=>!isOrderCompleted(o));
   const completed = tabFiltered.filter(o=>isOrderCompleted(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
-    ${topbar('My Voyages')}
+    ${topbar('My orders')}
     <div style="padding:4px 0 0;">
       ${myBookings.length? `
       <div class="section" style="margin-bottom:22px;">
@@ -13294,8 +13294,8 @@ function renderCustOrders(){
       ${sorted.length? `<div class="tabs">${ORDERS_TABS.map(t=>`<button class="tab ${activeTab===t.id?'active':''}" onclick="setOrdersTab('${t.id}')">${t.label}</button>`).join('')}</div>` : ''}
       ${state.ordersStatus ? `<div style="margin:-4px 0 12px;"><button class="cat-chip" onclick="state.ordersStatus=null; render();" aria-label="Show all orders">${ORDER_STAGES[state.ordersStatus].icon} ${ORDER_STAGES[state.ordersStatus].label} <span aria-hidden="true">✕</span></button></div>` : ''}
       ${tabFiltered.length ? `
-        ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>🌊 On the Water</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
-        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>🏝️ Safely Ashore</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
+        ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>In progress</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
+        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
       ` : `<div class="empty"><span class="ic">🧾</span>${sorted.length?`No ${ORDERS_TABS.find(t=>t.id===activeTab).label.toLowerCase()} orders`:'No orders yet — go browse a store!'}</div>`}
     </div>
   `);

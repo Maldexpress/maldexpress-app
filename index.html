@@ -1630,6 +1630,17 @@
   .adm-limit label{font-weight:700;}
   .adm-limit input{width:96px; height:36px; padding:0 10px; border-radius:10px; border:1px solid var(--edge-2); background:#fff;}
   .adm-limit .muted{font-size:.9em;}
+  .bulk-flag{margin-top:8px; padding:10px 12px; border-radius:12px; background:#FDECEA; border:1px solid #F3C2BC;}
+  .bulk-flag p{font-size:.88em; margin-top:6px; color:var(--ink);}
+  .bulk-flag-badge{display:inline-block; font-size:.74em; font-weight:800; color:#fff; background:var(--red); padding:2px 8px; border-radius:999px;}
+  .bulk-flag-acts{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .bulk-row.flagged{box-shadow:inset 3px 0 0 var(--red);}
+  .bulk-row.removed{opacity:.7;}
+  .bulk-prog{margin-top:12px;}
+  .bulk-prog .bp-text{font-weight:700;}
+  .bp-bar{height:8px; border-radius:99px; background:var(--lagoon-50); margin-top:8px; overflow:hidden;}
+  .bp-bar span{display:block; height:100%; background:var(--lagoon-500); transition:width .3s ease;}
+  .bulk-failed ul{margin:6px 0 6px 18px; font-size:.86em;}
   /* ---------- Shallows refresh (2026-11-17) ----------
      One idea carried through every screen: the page is the shallow lagoon.
      Screen headers are a band of shallow water (tinted, no hard line) with big
@@ -3454,7 +3465,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, ...(o.storefront?{storefront:o.storefront}:{}) };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null, ...(o.photoHashes && o.photoHashes.some(Boolean) ? { photo_hashes: o.photoHashes.map(x=>x||null) } : {}) };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -3466,7 +3477,7 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null, itemLimit:r.item_limit!=null?Number(r.item_limit):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null, photoHashes: Array.isArray(r.photo_hashes) ? r.photo_hashes : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -3490,18 +3501,18 @@ async function loadDB(){
   }
   try{
     const [b,i,o,d,pr,au,bk,bd,cr,cc,ad,fr,ps] = await Promise.all([
-      sb.from('businesses').select('*'),
-      sb.from('items').select('*'),
-      sb.from('orders').select('*'),
-      sb.from('delivery_persons').select('*'),
-      sb.from('pro_upgrade_requests').select('*'),
-      sb.from('auction_listings').select('*'),
-      sb.from('rental_bookings').select('*'),
-      sb.from('auction_bids').select('*'),
-      sb.from('category_requests').select('*'),
-      sb.from('custom_categories').select('*'),
-      sb.from('customer_addresses').select('*'),
-      sb.from('featured_requests').select('*'),
+      selectAll('businesses'),
+      selectAll('items'),
+      selectAll('orders'),
+      selectAll('delivery_persons'),
+      selectAll('pro_upgrade_requests'),
+      selectAll('auction_listings'),
+      selectAll('rental_bookings'),
+      selectAll('auction_bids'),
+      selectAll('category_requests'),
+      selectAll('custom_categories', 'name'),
+      selectAll('customer_addresses'),
+      selectAll('featured_requests'),
       sb.from('platform_settings').select('*').eq('id',1).maybeSingle()
     ]);
     // Promise.all only rejects on a thrown/network-level failure - a query that
@@ -3540,6 +3551,23 @@ DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.businesses.forEach(b=>{ b.swipeConnected = connected.has(b.id); });
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
+}
+// The database's web API returns at most 1000 rows per request (PostgREST
+// max_rows), so a plain select('*') quietly drops every row after the
+// 1000th. That hid items from customers and from their own store once the
+// app passed 1000 items, and made Upload a list treat items the store
+// already had as new ones (then refused as "photo already used" by their own
+// copy). selectAll() reads a table page by page, in a stable order, until a
+// short page comes back. Same { data, error } shape as a normal query.
+const PAGE_ROWS = 1000;
+async function selectAll(table, orderCol = 'id'){
+  const out = [];
+  for(let from = 0; ; from += PAGE_ROWS){
+    const { data, error } = await sb.from(table).select('*').order(orderCol, { ascending:true }).range(from, from + PAGE_ROWS - 1);
+    if(error) return { data: out.length ? out : null, error };
+    out.push(...(data || []));
+    if(!data || data.length < PAGE_ROWS) return { data: out, error: null };
+  }
 }
 async function saveDB(part, only){
   if(!sb) return;
@@ -4117,10 +4145,10 @@ async function refreshLiveListings(){
     // (their own orders, their own store's, and/or open + assigned delivery
     // jobs), same as every other fetch in this app.
     const [i, b, au, o] = await Promise.all([
-      sb.from('items').select('*'),
-      sb.from('businesses').select('*'),
-      sb.from('auction_listings').select('*'),
-      sb.from('orders').select('*')
+      selectAll('items'),
+      selectAll('businesses'),
+      selectAll('auction_listings'),
+      selectAll('orders')
     ]);
     if(i.error || b.error || au.error || o.error) return; // silent - background refresh, not a user action
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
@@ -5637,7 +5665,7 @@ function confirmSwitchOverlayHTML(){
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
 function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _revDraft = 0; _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
-function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
+function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; if(state.sheet==='bulkItems' && _bulkSaving){ toast('Still saving your items. Keep this open until it finishes','bad'); return; } const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
   if(!state.sheet) return '';
@@ -6760,6 +6788,20 @@ function storeItemByName(bizId, name, exceptId){ const k = nameKey(name); return
 // product's width : height must agree within ~6%.
 // Old fingerprints (64-bit hash + corner colours) are still compared with
 // each other, and a store's items get the new kind in ensureBizPrints().
+// SHA-256 of a photo file's bytes (hex). The server refuses a photo whose file
+// is byte-for-byte the same as one on a different item (items.photo_hashes).
+const _hashCache = new WeakMap();
+async function fileHash(f){
+  if(!f || !(f instanceof Blob) || !(window.crypto && crypto.subtle)) return null;
+  if(_hashCache.has(f)) return _hashCache.get(f);
+  const p = f.arrayBuffer().then(b=>crypto.subtle.digest('SHA-256', b)).then(d=>[...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,'0')).join('')).catch(()=>null);
+  _hashCache.set(f, p); return p;
+}
+function itemUsingFile(hash, bizId, exceptIds, name){
+  if(!hash) return null;
+  const k = nameKey(name||'');
+  return DB.items.find(i=>i.businessId===bizId && !(exceptIds||[]).includes(i.id) && (i.photoHashes||[]).includes(hash) && (!k || nameKey(i.name)!==k)) || null;
+}
 const PRINT_V = 'v2:';
 let PRINT_MAX_DIFF = 0.45;   // average brightness-level difference per cell (0-15 scale)
 const _printCache = new Map();
@@ -6909,6 +6951,16 @@ async function slotPrintsOrBlock(bizId, exceptIds){
 }
 function removePhotoSlot(i){ _photoSlots.splice(i,1); redrawPhotoSlots(); }
 function coverPhotoSlot(i){ const [ph] = _photoSlots.splice(i,1); _photoSlots.unshift(ph); redrawPhotoSlots(); }
+// File fingerprints for the photo tiles, in tile order: new files are hashed,
+// photos the item already had keep the hash saved with them.
+async function slotHashes(existing){
+  const out = [];
+  for(const s of _photoSlots){
+    if(s.file) out.push(await fileHash(s.file));
+    else { const k = existing ? itemImages(existing).indexOf(s.url) : -1; out.push(k >= 0 && existing.photoHashes ? (existing.photoHashes[k] || null) : null); }
+  }
+  return out;
+}
 async function uploadPhotoSlots(){
   const out = [];
   for(const ph of _photoSlots){
@@ -7230,17 +7282,18 @@ async function submitAddItem(){
   const prints = await slotPrintsOrBlock(biz.id, replacing ? [replacing.id] : []);
   if(!prints) return;
   toast('Saving item…');
+  const hashes = await slotHashes(replacing);
   const images = await uploadPhotoSlots();
   const imageUrl = images[0] || null;
   if(replacing){
     const before = { ...replacing };
     Object.assign(replacing, { name, price, stock, category:cat, categoryOtherName:catOtherName, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, options: readOptionsEditor('i') });
-    if(images.length){ replacing.images = images; replacing.imageUrl = imageUrl; replacing.photoPrints = prints.slice(0, images.length); }
+    if(images.length){ replacing.images = images; replacing.imageUrl = imageUrl; replacing.photoPrints = prints.slice(0, images.length); replacing.photoHashes = hashes.slice(0, images.length); }
     if(await saveDB('items', [replacing]) === false){ Object.assign(replacing, before); render(); return; }
     _dupReplaceId = null; _itemPhotoFile = null;
     closeSheet(); toast(`Replaced “${replacing.name}”`); render(); return;
   }
-  const item = {id:uid('it'), images, photoPrints: prints.slice(0, images.length), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
+  const item = {id:uid('it'), images, photoPrints: prints.slice(0, images.length), photoHashes: hashes.slice(0, images.length), businessId:biz.id, name, price, stock, category:cat, categoryOtherName:catOtherName, imageUrl, listingType, freeDelivery, extraDeliveryFee, discountPercent, rentalDeposit, rentalRatePeriod, rentalFulfillment, pickupLocation, rentalAvailability, availableFrom, description, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now(), options: readOptionsEditor('i')};
   DB.items.push(item);
   if(await saveDB('items', [item]) === false){ DB.items = DB.items.filter(i=>i.id!==item.id); render(); return; }
   if(catOtherName) await submitCategoryRequest(biz, catOtherName);
@@ -7455,37 +7508,64 @@ function bulkMarkDuplicates(rows, bizId){
     else { r.replaceId = dup.id; r.replaceName = dup.name; }
   });
 }
-function bulkRowErrs(r){ return [...r.errors, ...(r.photoErrs||[])]; }
-function bulkRowOK(r){ return !bulkRowErrs(r).length && !r.skip; }
-// Photos: a photo already on another item, or used by an earlier row, stops the row.
-let _bulkCheckGen = 0;
+function bulkRowErrs(r){ return [...r.errors]; }
+// A row still in this upload: not removed by the store, not skipped, not saved yet.
+function bulkRowActive(r){ return !r.errors.length && !r.skip && !r.removed && !r.saved; }
+// Flagged = its photo is the same file as, or looks the same as, another row's
+// or an item already in the store, and the store hasn't decided what to do.
+// "Keep anyway" is only offered for look-alikes: an identical file on a
+// different item is refused by the server (items_photo_unique).
+function bulkRowFlagged(r){ return !!(r.photoFlag && !(r.photoFlag.kind==='looks' && r.flagChoice==='keep')); }
+function bulkRowOK(r){ return bulkRowActive(r) && !bulkRowFlagged(r); }
+// Runs when the sheet and photos are loaded (and after every change), before
+// anything uploads: every row's photos are fingerprinted twice - the file's
+// bytes (SHA-256, "same file") and the picture (photoPrint, "looks the same")
+// - and compared with earlier rows in the file and with the store's items.
+// Items with the same name are the same product uploaded again, not a clash.
+let _bulkCheckGen = 0, _bulkChecking = false;
 async function bulkCheckPhotos(){
   if(!_bulk || _bulk.fatal) return;
   const gen = ++_bulkCheckGen, biz = currentBiz(); if(!biz) return;
-  await ensureBizPrints(biz.id);
-  const taken = [];   // {print, line}
-  for(const r of _bulk.rows){
-    const errs = [];
-    if(!r.errors.length && !r.skip){
-      const ph = bulkPhotoFor(r);
-      const files = [ph.kind==='file' ? ph.file : null, ...bulkExtraPhotos(r).map(x=>x.kind==='file' ? x.file : null)].filter(Boolean);
-      const mine = [];
-      for(const f of files){
-        const pr = await photoPrint(f); if(!pr) continue;
-        if(gen !== _bulkCheckGen) return;
-        const other = itemUsingPhoto(pr, biz.id, r.replaceId ? [r.replaceId] : []);
-        const earlier = taken.find(t=>printsMatch(t.print, pr));
-        if(other) errs.push(photoInUseMsg(other));
-        else if(earlier) errs.push(`Same photo as row ${earlier.line}. Each item needs its own photo`);
-        else if(mine.some(m=>printsMatch(m, pr))) errs.push(`The same photo is in this row twice (${f.name})`);
-        mine.push(pr);
-      }
-      if(!errs.length) mine.forEach(pr=>taken.push({ print:pr, line:r.line }));
+  _bulkChecking = true;
+  try{
+    await ensureBizPrints(biz.id);
+    const taken = [];   // {hash, print, line}
+    for(const r of _bulk.rows){
+      if(gen !== _bulkCheckGen) return;
+      let flag = null;
+      if(bulkRowActive(r)){
+        const ph = bulkPhotoFor(r);
+        const files = [ph.kind==='file' ? ph.file : null, ...bulkExtraPhotos(r).map(x=>x.kind==='file' ? x.file : null)].filter(Boolean);
+        const except = r.replaceId ? [r.replaceId] : [];
+        const k = nameKey(r.item.name);
+        const mine = [];
+        for(const f of files){
+          const [hash, pr] = await Promise.all([fileHash(f), photoPrint(f)]);
+          if(gen !== _bulkCheckGen) return;
+          if(flag) continue;
+          const sameFileItem = itemUsingFile(hash, biz.id, except, r.item.name);
+          const sameFileRow = hash && taken.find(t=>t.hash===hash);
+          const looksItem = pr && (()=>{ const o = itemUsingPhoto(pr, biz.id, except); return o && nameKey(o.name)!==k ? o : null; })();
+          const looksRow = pr && taken.find(t=>t.print && printsMatch(t.print, pr));
+          if(mine.some(m=>(hash && m.hash===hash) || (pr && m.print && printsMatch(m.print, pr)))) flag = { kind:'file', text:`The same photo is in this row twice (${f.name})` };
+          else if(sameFileItem) flag = { kind:'file', text:`Same photo file as “${sameFileItem.name}”, already in your store` };
+          else if(sameFileRow) flag = { kind:'file', text:`Same photo file as row ${sameFileRow.line}` };
+          else if(looksItem) flag = { kind:'looks', text:`Looks like the photo of “${looksItem.name}”, already in your store` };
+          else if(looksRow) flag = { kind:'looks', text:`Looks like the photo of row ${looksRow.line}` };
+          mine.push({ hash, print:pr });
+        }
+        r.photoFlag = flag;
+        if(!flag || flag.kind!=='looks') delete r.flagChoice;
+        if(!bulkRowFlagged(r)) mine.forEach(m=>taken.push({ ...m, line:r.line }));
+      } else r.photoFlag = null;
     }
-    r.photoErrs = [...new Set(errs)];
-  }
-  if(gen === _bulkCheckGen && state.sheet==='bulkItems') render();
+  } finally { if(gen === _bulkCheckGen) _bulkChecking = false; }
+  if(gen === _bulkCheckGen && state.sheet==='bulkItems' && !_bulkSaving) render();
 }
+function bulkRemoveItem(idx){ const r = _bulk && _bulk.rows[idx]; if(!r) return; r.removed = true; render(); bulkCheckPhotos(); }
+function bulkUndoRemove(idx){ const r = _bulk && _bulk.rows[idx]; if(!r) return; delete r.removed; render(); bulkCheckPhotos(); }
+function bulkKeepPhoto(idx){ const r = _bulk && _bulk.rows[idx]; if(!r || !r.photoFlag || r.photoFlag.kind!=='looks') return; r.flagChoice = 'keep'; render(); bulkCheckPhotos(); }
+function bulkSkipFlagged(){ if(!_bulk) return; _bulk.rows.forEach(r=>{ if(bulkRowActive(r) && bulkRowFlagged(r)) r.removed = true; }); render(); bulkCheckPhotos(); }
 function bulkToggleSkip(idx){ const r = _bulk && _bulk.rows[idx]; if(!r) return; r.skip = !r.skip; render(); bulkCheckPhotos(); }
 let _bulkPickRow = null;
 function bulkChangePhoto(idx){ _bulkPickRow = idx; const el = document.getElementById('bulkRowPhoto'); if(el){ el.value=''; el.click(); } }
@@ -7509,7 +7589,7 @@ async function onBulkFile(ev){
   const biz = currentBiz();
   const out = rows.slice(1).map((r,i)=>{ const data={}; header.forEach((h,j)=>{ if(h) data[h]=r[j]; }); return bulkBuildRow(data, i+2, biz.id); });
   bulkMarkDuplicates(out, biz.id);
-  _bulk = { fileName:f.name, rows:out };
+  _bulk = { fileName:f.name, rows:out }; _bulkResult = null;
   render(); bulkCheckPhotos();
 }
 function sheetBulkItems(){
@@ -7519,6 +7599,10 @@ function sheetBulkItems(){
   const bad = _bulk ? _bulk.rows.filter(r=>bulkRowErrs(r).length) : [];
   const okNew = ok.filter(r=>!r.replaceId), okRep = ok.filter(r=>r.replaceId);
   const willAdd = Math.min(okNew.length, room) + okRep.length;
+  const flagged = _bulk ? _bulk.rows.filter(r=>bulkRowActive(r) && bulkRowFlagged(r)) : [];
+  const failed = _bulk ? _bulk.rows.filter(r=>!r.saved && r.saveError) : [];
+  const savedN = _bulk ? _bulk.rows.filter(r=>r.saved).length : 0;
+  const busy = _bulkSaving;
   const typeLbl = {buy_now:'Buy now', auction:'Auction', rental:'Rental'};
   const audit = _bulk && !_bulk.fatal ? bulkPhotoAudit(_bulk.rows) : { unused:[], shared:[] };
   return `
@@ -7535,7 +7619,7 @@ function sheetBulkItems(){
   </details>
   <div class="field file" style="margin-top:14px;">
     <input type="file" accept=".csv,text/csv" id="bulkFile" style="display:none;" onchange="onBulkFile(event)">
-    <label for="bulkFile" class="filebtn">📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
+    <label for="bulkFile" class="filebtn" ${_bulkSaving?'style="pointer-events:none; opacity:.5;"':''}>📄 ${_bulk ? `Choose a different file (${escapeAttr(_bulk.fileName)})` : 'Choose your CSV file'}</label>
   </div>
   <div class="field file">
     <input type="file" accept=".zip,application/zip,application/x-zip-compressed" id="bulkZipFile" style="display:none;" onchange="onBulkPhotos(event)">
@@ -7546,9 +7630,17 @@ function sheetBulkItems(){
   </div>
 
   ${_bulk && _bulk.fatal ? `<div class="card notice-warn" style="margin-top:12px;">${_bulk.fatal}</div>` : ''}
+  ${busy && _bulkProgress ? `<div class="card bulk-prog" id="bulkProg" role="status" aria-live="polite"><p class="bp-text">${_bulkProgress.phase==='photos' ? `Uploading photos… ${_bulkProgress.done} of ${_bulkProgress.total}` : `Saving items… ${_bulkProgress.done} of ${_bulkProgress.total}`}</p><div class="bp-bar"><span style="width:${_bulkProgress.total ? Math.round(_bulkProgress.done/_bulkProgress.total*100) : 0}%"></span></div><p class="muted" style="font-size:.82em; margin-top:6px;">Keep this open until it finishes.</p></div>` : ''}
+  ${_bulk && !_bulk.fatal && !busy && failed.length ? `<div class="card notice-warn bulk-failed" style="margin-top:12px;">
+    <p style="font-size:.92em;"><strong>${_bulkResult ? `${_bulkResult.added + _bulkResult.replaced} saved. ` : ''}${failed.length} item${failed.length===1?'':'s'} couldn't be saved:</strong></p>
+    <ul>${failed.slice(0, 30).map(r=>`<li>Row ${r.line} · ${escapeAttr(r.item.name||'')}: ${escapeAttr(r.saveError)}</li>`).join('')}${failed.length>30?`<li>…and ${failed.length-30} more, marked below</li>`:''}</ul>
+    <p class="muted" style="font-size:.84em;">Fix them below if needed, then press Retry. Items already saved aren't saved twice.</p>
+  </div>` : ''}
   ${_bulk && !_bulk.fatal ? `
   <div class="bulk-summary">
+    ${savedN?`<span class="status-pill ok">${savedN} saved</span>`:''}
     <span class="status-pill ok">${ok.length} ready</span>
+    ${flagged.length?`<span class="status-pill bad">${flagged.length} share${flagged.length===1?'s':''} a photo</span>`:''}
     ${bad.length?`<span class="status-pill bad">${bad.length} with problems</span>`:''}
     ${okRep.length?`<span class="status-pill mid">${okRep.length} replace${okRep.length===1?'s':''} an item you have</span>`:''}
     ${okNew.length>room?`<span class="status-pill wait">${okNew.length-room} over your limit</span>`:''}
@@ -7556,11 +7648,16 @@ function sheetBulkItems(){
   </div>
   ${okNew.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} new item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.</p></div>` : ''}
   ${audit.unused.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.unused.length} photo${audit.unused.length===1?' isn\u2019t':'s aren\u2019t'} matched to any item:</strong> ${audit.unused.slice(0,12).map(f=>escapeAttr(f.name)).join(', ')}${audit.unused.length>12?'…':''}. Put the file name in that item's photo column, or use Choose photo on the item.</p></div>` : ''}
-  ${_bulk.rows.some(r=>(r.photoErrs||[]).length) ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>Each item needs its own photo.</strong> Rows whose photo is already used are marked below and won't be added until you change the photo.</p></div>` : ''}
+  ${flagged.length ? `<div class="card notice-warn bulk-flag-card" style="margin-top:10px;">
+    <p style="font-size:.92em;"><strong>${flagged.length} item${flagged.length===1?' shares':'s share'} a photo</strong> with another row or with an item already in your store. Each is marked below: remove the item, remove its photo, or keep it if it only looks similar.</p>
+    <button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="bulkSkipFlagged()" ${busy?'disabled':''}>Skip all ${flagged.length} flagged item${flagged.length===1?'':'s'}</button>
+  </div>` : ''}
+  ${_bulkChecking && !busy ? `<p class="muted" style="font-size:.84em; margin-top:8px;">Checking photos for duplicates…</p>` : ''}
   <input type="file" accept="image/*" id="bulkRowPhoto" style="display:none;" onchange="onBulkRowPhoto(event)">
   <div class="bulk-list">
-    ${_bulk.rows.map((r,idx)=>`
-      <div class="bulk-row ${bulkRowErrs(r).length?'has-err':''}">
+    ${_bulk.rows.map((r,idx)=>r.saved ? '' : r.removed ? `
+      <div class="bulk-row removed"><p class="bulk-note">Row ${r.line} · ${escapeAttr(r.item.name||'')} is removed from this upload. <button class="link-btn" onclick="bulkUndoRemove(${idx})" ${busy?'disabled':''}>Undo</button></p></div>` : `
+      <div class="bulk-row ${bulkRowErrs(r).length||r.saveError?'has-err':''} ${bulkRowActive(r) && bulkRowFlagged(r)?'flagged':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
           <span class="bulk-thumb-wrap">${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more" aria-label="${ex} more photo${ex===1?'':'s'}">+${ex}</span>` : ''; })()}
           ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}</span>
@@ -7568,6 +7665,10 @@ function sheetBulkItems(){
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>
         ${bulkRowErrs(r).map(e=>`<p class="bulk-err">✕ ${escapeAttr(e)}</p>`).join('')}
+        ${r.saveError ? `<p class="bulk-err">✕ Not saved: ${escapeAttr(r.saveError)}</p>` : ''}
+        ${bulkRowActive(r) && r.photoFlag ? (bulkRowFlagged(r) ? `<div class="bulk-flag"><span class="bulk-flag-badge">Shared photo</span><p>${escapeAttr(r.photoFlag.text)}${r.photoFlag.kind==='file'?'. The same file can\u2019t be on two different items':''}.</p>
+          <div class="bulk-flag-acts"><button class="btn btn-ghost btn-sm" onclick="bulkRemoveItem(${idx})" ${busy?'disabled':''}>Remove item</button><button class="btn btn-ghost btn-sm" onclick="bulkRemovePhoto(${idx})" ${busy?'disabled':''}>Remove photo</button>${r.photoFlag.kind==='looks'?`<button class="btn btn-ghost btn-sm" onclick="bulkKeepPhoto(${idx})" ${busy?'disabled':''}>Keep anyway</button>`:''}</div></div>`
+          : `<p class="bulk-note">Kept: ${escapeAttr(r.photoFlag.text)}. <button class="link-btn" onclick="delete _bulk.rows[${idx}].flagChoice; render(); bulkCheckPhotos();">Undo</button></p>`) : ''}
         ${r.replaceId ? (r.skip ? `<p class="bulk-note">Skipped: you already have “${escapeAttr(r.replaceName)}”. <button class="link-btn" onclick="bulkToggleSkip(${idx})">Replace it instead</button></p>` : `<p class="bulk-warn">! You already have “${escapeAttr(r.replaceName)}”. This row replaces it (photos, price and details). <button class="link-btn" onclick="bulkToggleSkip(${idx})">Skip this row</button></p>`) : ''}
         ${r.warnings.map(w=>`<p class="bulk-warn">! ${escapeAttr(w)}</p>`).join('')}
         ${(()=>{ const ph = bulkPhotoFor(r); const shared = audit.shared.find(([f])=>ph.file===f);
@@ -7580,71 +7681,138 @@ function sheetBulkItems(){
       </div>`).join('')}
   </div>
   ${bad.length ? `<p class="muted" style="font-size:.84em; margin-top:10px;">Rows with problems are skipped. Fix them in the sheet and upload again, or add them one by one.</p>` : ''}
-  <button class="btn btn-primary" style="margin-top:14px;" ${willAdd?'':'disabled'} onclick="submitBulkItems()">${willAdd?(okRep.length && !Math.min(okNew.length, room) ? `Replace ${okRep.length} item${okRep.length===1?'':'s'}` : `Add ${willAdd} item${willAdd===1?'':'s'} to store`):'Nothing to add yet'}</button>` : ''}`;
+  ${flagged.length && !busy ? `<p class="muted" style="font-size:.84em; margin-top:10px;">Choose what to do with the ${flagged.length} flagged item${flagged.length===1?'':'s'} first, or skip them all.</p>` : ''}
+  <button class="btn btn-primary" style="margin-top:14px;" ${willAdd && !flagged.length && !busy && !_bulkChecking?'':'disabled'} onclick="submitBulkItems()">${busy ? 'Saving…' : _bulkChecking ? 'Checking photos…' : !willAdd ? 'Nothing to add yet' : failed.length ? `Retry ${willAdd} item${willAdd===1?'':'s'}` : (okRep.length && !Math.min(okNew.length, room) ? `Replace ${okRep.length} item${okRep.length===1?'':'s'}` : `Add ${willAdd} item${willAdd===1?'':'s'} to store`)}</button>` : ''}`;
+}
+// Saving a list. Photos upload first (4 at a time); each row's uploads are
+// kept on the row (r._up), so a retry doesn't upload them again. Items are
+// then saved 50 at a time; if a batch is refused, its rows are saved one by
+// one, so one bad row can't stop the others. Rows that fail stay in the
+// sheet with the reason, and pressing the button again retries only those.
+let _bulkSaving = false, _bulkProgress = null, _bulkResult = null;
+const BULK_SAVE_BATCH = 50;
+function bulkBeforeUnload(e){ if(_bulkSaving){ e.preventDefault(); e.returnValue = ''; return ''; } }
+function bulkPhotoKey(r){ const ph = bulkPhotoFor(r); const one = x=>x.kind==='file' ? 'f:'+x.file.name+'|'+x.file.size : x.kind==='url' ? 'u:'+x.url : '-'; return [one(ph), ...bulkExtraPhotos(r).map(one)].join(';'); }
+function bulkProgressRedraw(){
+  const el = document.getElementById('bulkProg'); if(!el || !_bulkProgress) return;
+  const p = _bulkProgress, pct = p.total ? Math.round(p.done / p.total * 100) : 0;
+  el.querySelector('.bp-text').textContent = p.phase==='photos' ? `Uploading photos… ${p.done} of ${p.total}` : `Saving items… ${p.done} of ${p.total}`;
+  el.querySelector('.bp-bar span').style.width = pct + '%';
+}
+function itemSaveErrText(msg){
+  msg = String(msg||'');
+  if(/photo_in_use/.test(msg)) return `Its photo file is already used for “${(msg.split('photo_in_use:')[1]||'another item').trim()}”`;
+  if(/item_limit_reached/.test(msg)) return `Your store has reached its ${storeItemLimit(currentBiz())}-item limit`;
+  if(/store_bank_required/.test(msg)) return 'Add your store bank account in Settings first';
+  if(/Failed to fetch|NetworkError|network/i.test(msg)) return 'No connection. Try again';
+  return msg || 'Could not save';
 }
 async function submitBulkItems(){
-  if(!_bulk) return;
-  const biz = currentBiz(); const t = tierInfo(biz);
-  const room = Math.max(0, t.limit - DB.items.filter(i=>i.businessId===biz.id).length);
-  await bulkCheckPhotos();
+  if(!_bulk || _bulkSaving) return;          // a second press while saving does nothing
+  const biz = currentBiz(); if(!biz) return;
+  _bulkSaving = true;                          // set before the first await, so a quick second press is ignored
+  _bulkResult = null;
+  const stop = msg=>{ _bulkSaving = false; if(msg) toast(msg,'bad'); render(); };
+  try{ await bulkCheckPhotos(); }catch(e){ console.error(e); }
+  if(!_bulk) return stop();
+  if(_bulk.rows.some(r=>bulkRowActive(r) && bulkRowFlagged(r))) return stop('Some items share a photo. Choose what to do with each one, or press Skip all flagged items');
+  const room = Math.max(0, tierInfo(biz).limit - DB.items.filter(i=>i.businessId===biz.id).length);
   const okRows = _bulk.rows.filter(bulkRowOK);
   const rows = [...okRows.filter(r=>r.replaceId), ...okRows.filter(r=>!r.replaceId).slice(0, room)];
-  if(!rows.length){ toast('Nothing to add','bad'); return; }
-  toast(`Adding ${rows.length} item${rows.length===1?'':'s'}…`);
-  // Every photo for every row (cover + extras from the photo column), uploaded
-  // a few at a time with one running count.
-  let photoFails = 0, done = 0;
-  const jobs = [];   // {r, slot, file|url}
-  rows.forEach(r=>{
-    const ph = bulkPhotoFor(r);
-    r._imgs = new Array(PHOTO_MAX).fill(null); r._prt = new Array(PHOTO_MAX).fill(null);
-    if(ph.kind==='url') r._imgs[0] = ph.url;
-    else if(ph.kind==='file') jobs.push({ r, slot:0, file:ph.file });
-    bulkExtraPhotos(r).forEach((x,k)=>{ if(x.kind==='url') r._imgs[k+1] = x.url; else if(x.kind==='file') jobs.push({ r, slot:k+1, file:x.file }); });
-  });
-  let next = 0;
-  async function worker(){
-    while(next < jobs.length){
-      const j = jobs[next++];
-      const url = sb ? await uploadItemPhoto(j.file) : bulkThumbURL(j.file);   // no server: local preview
-      if(url){ j.r._imgs[j.slot] = url; j.r._prt[j.slot] = await photoPrint(j.file); } else photoFails++;
-      done++; if(sb && (done % 3 === 0 || done === jobs.length)) toast(`Uploading photos… ${done} of ${jobs.length}`);
+  if(!rows.length) return stop('Nothing to add');
+  rows.forEach(r=>{ delete r.saveError; });
+  window.addEventListener('beforeunload', bulkBeforeUnload);
+  let photoFails = 0;
+  const savedRows = [], failedRows = [];
+  try{
+    // 1. Photos. Each job writes into its own row's r._up, created here before
+    //    any worker starts, so a worker never finds it missing.
+    const jobs = [];
+    rows.forEach(r=>{
+      const key = bulkPhotoKey(r);
+      if(r._up && r._upKey === key && !r._up.fails) return;          // uploaded on an earlier try
+      r._upKey = key;
+      r._up = { imgs:new Array(PHOTO_MAX).fill(null), prt:new Array(PHOTO_MAX).fill(null), hsh:new Array(PHOTO_MAX).fill(null), fails:0 };
+      const ph = bulkPhotoFor(r);
+      if(ph.kind==='url') r._up.imgs[0] = ph.url;
+      else if(ph.kind==='file') jobs.push({ up:r._up, slot:0, file:ph.file });
+      bulkExtraPhotos(r).forEach((x,k)=>{ if(x.kind==='url') r._up.imgs[k+1] = x.url; else if(x.kind==='file') jobs.push({ up:r._up, slot:k+1, file:x.file }); });
+    });
+    _bulkProgress = { phase:'photos', done:0, total:jobs.length }; render();
+    let next = 0;
+    const worker = async ()=>{
+      while(next < jobs.length){
+        const j = jobs[next++];
+        try{
+          const url = sb ? await uploadItemPhoto(j.file) : bulkThumbURL(j.file);   // no server: local preview
+          if(url){ j.up.imgs[j.slot] = url; j.up.prt[j.slot] = await photoPrint(j.file); j.up.hsh[j.slot] = await fileHash(j.file); }
+          else { j.up.fails++; photoFails++; }
+        }catch(e){ console.error('photo upload', e); j.up.fails++; photoFails++; }
+        _bulkProgress.done++; bulkProgressRedraw();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
+    // 2. What each row saves. Nothing in DB.items changes until its save succeeds.
+    const plan = rows.map(r=>{
+      const up = r._up || { imgs:[], prt:[], hsh:[] };
+      const keep = up.imgs.map((u,k)=>u?k:-1).filter(k=>k>=0).slice(0, PHOTO_MAX);
+      const photos = { images: keep.map(k=>up.imgs[k]), photoPrints: keep.map(k=>up.prt[k]||null), photoHashes: keep.map(k=>up.hsh[k]||null) };
+      if(r.replaceId){
+        const ex = DB.items.find(i=>i.id===r.replaceId);
+        if(!ex) return { r, error:'The item it replaces was not found. Upload the sheet again' };
+        const { id, businessId, approvalStatus, submittedAt, images, imageUrl, photoPrints, photoHashes, ...fields } = r.item;
+        const obj = { ...ex, ...fields };
+        if(photos.images.length) Object.assign(obj, photos, { imageUrl: photos.images[0] });
+        return { r, obj, replace:ex };
+      }
+      const obj = { ...r.item, ...photos, imageUrl: photos.images[0] || r.item.imageUrl || null, approvalStatus: sb ? 'pending' : 'approved', submittedAt: Date.now() };
+      return { r, obj };
+    });
+    plan.filter(x=>x.error).forEach(x=>{ x.r.saveError = x.error; failedRows.push(x.r); });
+    const todo = plan.filter(x=>!x.error);
+    // 3. Save in batches; a refused batch is saved row by row.
+    const done = x=>{
+      if(x.replace) Object.assign(x.replace, x.obj); else if(!DB.items.some(i=>i.id===x.obj.id)) DB.items.push(x.obj);
+      x.r.saved = true; delete x.r.saveError; savedRows.push(x.r);
+    };
+    const upsert = async list=>{ if(!sb) return null; const { error } = await sb.from('items').upsert(list.map(x=>toDbRow('items', x.obj))); return error; };
+    _bulkProgress = { phase:'save', done:0, total:todo.length }; bulkProgressRedraw();
+    for(let i = 0; i < todo.length; i += BULK_SAVE_BATCH){
+      const batch = todo.slice(i, i + BULK_SAVE_BATCH);
+      let err = null; try{ err = await upsert(batch); }catch(e){ err = e; }
+      if(!err) batch.forEach(done);
+      else for(const x of batch){
+        let e1 = null; try{ e1 = await upsert([x]); }catch(e){ e1 = e; }
+        if(!e1) done(x); else { console.error('bulk save', x.obj.name, e1); x.r.saveError = itemSaveErrText(e1.message); failedRows.push(x.r); }
+      }
+      _bulkProgress.done = Math.min(todo.length, i + batch.length); bulkProgressRedraw();
     }
+    // 4. Auctions and category requests for the rows that were saved.
+    const now = Date.now();
+    const auctions = savedRows.filter(r=>r.auction && !r.replaceId).map(r=>({ id:uid('auc'), itemId:r.item.id, businessId:biz.id, startingPrice:r.auction.startingPrice, bidIncrement:r.auction.bidIncrement, startTime:now, endTime:now + r.auction.days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null }));
+    if(auctions.length){
+      DB.auctions.push(...auctions);
+      if(sb){ const { error } = await sb.from('auction_listings').insert(auctions.map(a=>toDbRow('auctions', a))); if(error) toast('Items saved but auction setup failed: '+error.message,'bad'); }
+    }
+    const others = [...new Set(savedRows.filter(r=>!r.replaceId).map(r=>r.item.categoryOtherName).filter(Boolean))];
+    for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
+  } catch(e){
+    console.error('submitBulkItems', e);
+    rows.filter(r=>!r.saved && !r.saveError).forEach(r=>{ r.saveError = 'Not saved: ' + (e && e.message || 'something went wrong'); failedRows.push(r); });
+  } finally {
+    _bulkSaving = false; _bulkProgress = null; window.removeEventListener('beforeunload', bulkBeforeUnload);
   }
-  await Promise.all(Array.from({ length: Math.min(4, jobs.length) }, worker));
-  rows.forEach(r=>{ const keep = r._imgs.map((u,k)=>u?k:-1).filter(k=>k>=0).slice(0, PHOTO_MAX); const imgs = keep.map(k=>r._imgs[k]); r.item.images = imgs; r.item.photoPrints = keep.map(k=>r._prt[k]); r.item.imageUrl = imgs[0] || r.item.imageUrl || null; delete r._imgs; delete r._prt; });
-  // Rows that replace an item the store already has update that item (same id, reviews and sales kept).
-  const replaced = [], backups = [];
-  rows.filter(r=>r.replaceId).forEach(r=>{
-    const ex = DB.items.find(i=>i.id===r.replaceId); if(!ex) return;
-    backups.push({ ...ex });
-    const { id, businessId, approvalStatus, submittedAt, images, imageUrl, photoPrints, ...fields } = r.item;
-    Object.assign(ex, fields);
-    if(images && images.length){ ex.images = images; ex.imageUrl = imageUrl; ex.photoPrints = photoPrints; }
-    replaced.push(ex);
-  });
-  const items = rows.filter(r=>!r.replaceId).map(r=>r.item);
-  items.forEach(it=>{ it.approvalStatus = sb ? 'pending' : 'approved'; it.submittedAt = Date.now(); });
-  DB.items.push(...items);
-  const saved = await saveDB('items', [...items, ...replaced]);
-  if(saved === false){
-    // Nothing was stored, so don't show the items as if they were.
-    const ids = new Set(items.map(i=>i.id));
-    DB.items = DB.items.filter(i=>!ids.has(i.id));
-    backups.forEach(b=>{ const ex = DB.items.find(i=>i.id===b.id); if(ex) Object.assign(ex, b); });
-    render();
+  const added = savedRows.filter(r=>!r.replaceId).length, replaced = savedRows.length - added;
+  const extra = `${replaced?` · ${replaced} replaced`:''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`;
+  if(!failedRows.length){
+    _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
+    toast(`${added} item${added===1?'':'s'} added${extra}${sb?'. They show to customers once Maarukeytu approves them':''}`, photoFails?'bad':undefined); render();
     return;
   }
-  const now = Date.now();
-  const auctions = rows.filter(r=>r.auction).map(r=>({ id:uid('auc'), itemId:r.item.id, businessId:biz.id, startingPrice:r.auction.startingPrice, bidIncrement:r.auction.bidIncrement, startTime:now, endTime:now + r.auction.days*86400000, currentHighestBid:null, currentHighestBidder:null, status:'active', orderId:null }));
-  if(auctions.length){
-    DB.auctions.push(...auctions);
-    if(sb){ const { error } = await sb.from('auction_listings').insert(auctions.map(a=>toDbRow('auctions', a))); if(error) toast('Items saved but auction setup failed: '+error.message,'bad'); }
-  }
-  const others = [...new Set(items.map(i=>i.categoryOtherName).filter(Boolean))];
-  for(const name of others){ try{ await submitCategoryRequest(biz, name); }catch(e){} }
-  _bulk = null; _bulkPhotos = {}; if(sb){ _bulkThumbs.forEach(u=>URL.revokeObjectURL(u)); _bulkThumbs = new Map(); } closeSheet();
-  toast(`${items.length} item${items.length===1?'':'s'} added${replaced.length?` · ${replaced.length} replaced`:''}${sb?'. They show to customers once Maarukeytu approves them':''}${photoFails?` · ${photoFails} photo${photoFails===1?'':'s'} didn't upload, add ${photoFails===1?'it':'them'} in Edit item`:''}`, photoFails?'bad':undefined); render();
+  _bulkResult = { added, replaced, failed: failedRows.length };
+  toast(`${added + replaced} saved · ${failedRows.length} couldn't be saved. They're listed at the top`, 'bad');
+  render();
+  const top = document.querySelector('.sheet'); if(top) top.scrollTop = 0;
 }
 function sheetEditItem(){
   const item = DB.items.find(i=>i.id===state.sheetData);
@@ -7767,8 +7935,9 @@ async function submitEditItem(itemId){
   if(freeDeliveryEl) item.freeDelivery = freeDeliveryEl.checked;
   item.extraDeliveryFee = Math.max(0, Number(val('e_extra_fee')||0));
   if(_photoSlots.some(ph=>ph.file)) toast('Saving photos…');
+  const hashesE = await slotHashes(item);
   const imgs = await uploadPhotoSlots();
-  item.images = imgs; item.imageUrl = imgs[0] || null; item.photoPrints = printsE.slice(0, imgs.length);
+  item.images = imgs; item.imageUrl = imgs[0] || null; item.photoPrints = printsE.slice(0, imgs.length); item.photoHashes = hashesE.slice(0, imgs.length);
   if(await saveDB('items', [item]) === false) return;
   _itemPhotoFile = null;
   closeSheet(); toast('Item updated'); render();

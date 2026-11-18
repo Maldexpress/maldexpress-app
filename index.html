@@ -4968,10 +4968,19 @@ function photoFocusFromFile(file){
     im.onload = ()=>{ let f = null; try{ f = photoFocusFromImage(im); }catch(e){} URL.revokeObjectURL(u); res(f); };
     im.onerror = ()=>{ URL.revokeObjectURL(u); res(null); }; im.src = u; });
 }
+// The phone header's photo follows the tab: Buy now uses the Main header
+// picture, Auctions / Rentals the PC slide 2 / 3 pictures (Admin -> Settings ->
+// Home pictures), falling back to the main one when those aren't set.
+function phoneHeroPhoto(){
+  const t = state.homeListingType || 'buy_now';
+  const alt = t === 'auction' ? siteImg('banner_auction') : t === 'rental' ? siteImg('banner_rental') : '';
+  return alt || (DB.settings && DB.settings.heroImageUrl) || '';
+}
 function heroFitInfo(url){
   const have = _heroFit[url]; if(have) return have;
   _heroFit[url] = 'loading';
-  const saved = DB.settings && DB.settings.siteImages && DB.settings.siteImages.hero_focus;
+  const si = (DB.settings && DB.settings.siteImages) || {};   // a subject point saved with this photo at upload
+  const saved = Object.values(si).find(v=>v && typeof v === 'object' && v.url === url) || null;
   const im = new Image(); im.crossOrigin = 'anonymous';
   im.onload = ()=>{
     let f = saved && saved.url===url && typeof saved.x==='number' ? saved : null;
@@ -4994,7 +5003,7 @@ function heroPhotoBox(W, H, fit, sheetH){
 }
 function fitHeroPhoto(){
   const hero = document.querySelector('.home-hero.has-photo'); if(!hero) return;
-  const url = DB.settings && DB.settings.heroImageUrl;
+  const url = phoneHeroPhoto();
   if(!url || isDesktop()){ ['--hero-x','--hero-y','--hero-size'].forEach(v=>hero.style.removeProperty(v)); return; }
   const fit = heroFitInfo(url); if(!fit || typeof fit !== 'object') return;
   const r = hero.getBoundingClientRect(), sheetH = parseFloat(getComputedStyle(hero, '::after').height) || 0;
@@ -5682,7 +5691,7 @@ function heroFocusOut(){
   const old = DB.settings.siteImages && DB.settings.siteImages.hero_focus;
   return old && old.url===url ? { hero_focus: old } : {};
 }
-function siteImgDraftOut(){ const d = siteImgDraft(), out = {}; SITE_IMAGES.forEach(x=>{ if(d[x.key]) out[x.key] = d[x.key]; }); return out; }
+function siteImgDraftOut(){ const d = siteImgDraft(), out = {}; SITE_IMAGES.forEach(x=>{ if(d[x.key]){ out[x.key] = d[x.key]; const fk = d[x.key + '_focus']; if(fk && fk.url === d[x.key]) out[x.key + '_focus'] = fk; } }); return out; }
 function siteImgAdminHTML(){
   const d = siteImgDraft();
   return SITE_IMAGES.map(x=>{ const url = d[x.key]||'';
@@ -5704,7 +5713,9 @@ async function onSiteImgFile(e, key){
   toast('Uploading picture…');
   const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
   if(!url) return;
-  siteImgDraft()[key] = url; siteImgRefresh(); toast('Uploaded. Press Save settings to use it');
+  siteImgDraft()[key] = url;
+  const fc = await photoFocusFromFile(f); if(fc) siteImgDraft()[key + '_focus'] = { url, x:+fc.x.toFixed(4), y:+fc.y.toFixed(4) };   // for the phone header
+  siteImgRefresh(); toast('Uploaded. Press Save settings to use it');
 }
 function heroAdminPreviewHTML(){
   const st = DB.settings;
@@ -10906,7 +10917,7 @@ let _miniP = -1;   // -1 hidden, 0..1 locked and growing; kept across render()s
 function homeMiniHeaderHTML(){
   const keep = state.catDropOpen==='mini' || document.activeElement?.id==='homeSearchMini';
   const p = keep ? Math.max(_miniP, 1) : _miniP;
-  const photo = DB.settings && DB.settings.heroImageUrl;
+  const photo = phoneHeroPhoto();
   return `<div class="home-mini ${p>=0?'show':''} ${photo?'has-photo':''}" id="homeMini" style="--p:${Math.max(0,p)};${photo?`--hero-img:url('${escapeAttr(photo)}')`:''}">
     <button class="mini-mark mini-word ${photo?'glass-word':''}" aria-label="Maarukeytu home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''} style="opacity:${p>=1?1:0}">Maarukeytu</button>
     ${homeSearchRowHTML('mini')}
@@ -11000,7 +11011,7 @@ function flyWordmark(mini, row, past){
 // big header carried on: the part that sits behind the search when it locks.
 const _heroImgSize = {};
 function alignMiniPhoto(el, row, lockAt){
-  const url = DB.settings && DB.settings.heroImageUrl; if(!url || !el.classList.contains('has-photo')) return;
+  const url = phoneHeroPhoto(); if(!url || !el.classList.contains('has-photo')) return;
   const hero = document.querySelector('.home-hero.has-photo'); if(!hero) return;
   const nat = _heroImgSize[url];
   if(!nat){ _heroImgSize[url] = 'loading'; const im = new Image(); im.onload = ()=>{ _heroImgSize[url] = { w:im.naturalWidth, h:im.naturalHeight }; updateHomeMiniHeader(); }; im.src = url; return; }
@@ -11538,9 +11549,9 @@ function renderCustHome(){
   setTimeout(updateHomeMiniHeader, 0);
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
     ${homeMiniHeaderHTML()}
-    <div class="home-hero ${DB.settings.heroImageUrl?'has-photo':''}" style="${DB.settings.heroImageUrl?`--hero-img:url('${escapeAttr(DB.settings.heroImageUrl)}')`:''}">
+    <div class="home-hero ${phoneHeroPhoto()?'has-photo':''}" style="${phoneHeroPhoto()?`--hero-img:url('${escapeAttr(phoneHeroPhoto())}')`:''}">
       ${homeHeaderHTML()}
-      ${DB.settings.heroImageUrl ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
+      ${phoneHeroPhoto() ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       <h1 class="hero-wordmark" aria-label="Maarukeytu by Worldives">Maarukeytu<span class="hw-by" aria-hidden="true">by Worldives</span></h1>
       ${homeSearchRowHTML('hero')}
       ${heroTabsHTML()}

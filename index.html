@@ -1422,6 +1422,8 @@
     .dt-label{font-weight:650; font-size:.98em; text-align:center;}
     .desk-row{display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:20px;}
     .desk-grid{grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)) !important; gap:28px 20px !important;}
+    .desk-more{display:flex; justify-content:center; margin-top:28px;}
+    .desk-more .btn{width:auto; min-width:240px; padding:0 32px; border-radius:999px;}
     .desk-promos{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:48px;}
     .desk-promo{display:flex; align-items:center; justify-content:space-between; gap:20px; padding:30px 34px; border-radius:24px; overflow:hidden;}
     .desk-promo h3{font-family:var(--display); font-size:1.5em; font-weight:800; letter-spacing:-.02em;}
@@ -3515,13 +3517,19 @@ async function loadDB(opts){
     return;
   }
   try{
+    // Requests are sent in the order written here, and a browser runs only a
+    // few at a time per server, so what the first screen needs goes first and
+    // the whole catalogue (i) after it.
     const q = {
-      b: selectAll('businesses'), i: selectItems(), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
-      cc: selectAll('custom_categories', 'name'), fr: selectAll('featured_requests'),
       // Query builders run each time something awaits them, so turn them into
       // one real promise here; otherwise the request is sent twice.
+      sample: Promise.resolve(sb.rpc('home_sample', { p_per: 20 }).select(ITEM_COLS)),
+      b: selectAll('businesses'),
       ps: Promise.resolve(sb.from('platform_settings').select('*').eq('id',1).maybeSingle()),
       sales: loadItemSales(), swipe: Promise.resolve(sb.rpc('swipe_connected_business_ids')),
+      cc: selectAll('custom_categories', 'name'), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
+      fr: selectAll('featured_requests'),
+      i: selectItems(),
       o: selectAll('orders'), pr: selectAll('pro_upgrade_requests'), bk: selectAll('rental_bookings'), bd: selectAll('auction_bids'),
       cr: selectAll('category_requests'), ad: selectAll('customer_addresses'), banks: loadRiderBanks(),
     };
@@ -3536,10 +3544,18 @@ async function loadDB(opts){
       toast(`Could not load ${failed.map(([label])=>label).join(', ')} — some data may be missing`, 'bad');
     };
     // Stage 1
-    const [b,i,au,d,cc,fr,ps,, swipeRes] = await Promise.all([q.b,q.i,q.au,q.d,q.cc,q.fr,q.ps,q.sales,q.swipe]);
+    // Items: Home is drawn from a small first batch (home_sample, ~20 per
+    // category) while the whole catalogue keeps downloading; it then tops up
+    // without moving what is already on screen (_homeLead, see viewShuffle).
+    // Without the batch (an error), stage 1 waits for every item as before.
+    const sampleRes = await q.sample.catch(()=>({ error:true }));
+    const useSample = !!(onCore && sampleRes && !sampleRes.error && Array.isArray(sampleRes.data) && sampleRes.data.length);
+    const [b,i,au,d,cc,fr,ps,, swipeRes] = await Promise.all([q.b, useSample ? sampleRes : q.i, q.au,q.d,q.cc,q.fr,q.ps,q.sales,q.swipe]);
     reportFailed([['businesses',b],['items',i],['auctions',au],['delivery',d],['custom categories',cc]]);
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
+    _itemsPartial = useSample;
+    _homeLead = useSample ? new Set(DB.items.map(x=>x.id)) : null;
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
     DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
@@ -3553,7 +3569,16 @@ async function loadDB(opts){
     DB.businesses.forEach(b=>{ b.swipeConnected = connected.has(b.id); });
     storageReady = true;
     if(onCore){ try{ onCore(); }catch(e){ console.error('loadDB onCore:', e); } }
-    // Stage 2
+    // Stage 2 (and, after a first batch, the whole catalogue)
+    if(_itemsPartial){
+      const full = await q.i;
+      if(full && !full.error){
+        DB.items = (full.data||[]).map(r=>fromDbRow('items',r));
+        _itemsPartial = false;
+        const typing = document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+        if(storageReady && state.role==='customer' && !state.adminMode && !state.sheet && !typing){ try{ render(); }catch(e){ console.error(e); } }
+      } else reportFailed([['items', full]]);
+    }
     const [o,pr,bk,bd,cr,ad] = await Promise.all([q.o,q.pr,q.bk,q.bd,q.cr,q.ad,q.banks]);
     reportFailed([['orders',o],['pro upgrade requests',pr],['rental bookings',bk],['auction bids',bd],['category requests',cr],['addresses',ad]]);
     DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
@@ -4582,7 +4607,17 @@ function toast(msg, kind='good'){
 // state - there's simply nothing further back than an empty stack, which is
 // exactly what keeps it from ever reaching past Home into a log-out.
 let _screenHistory = [];
+function rememberHomeScroll(){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeScrollY = pageScrollY(); }
+// Back to the same Home: put the page where it was (after the new render).
+function restoreHomeScroll(){
+  if(!(state.role==='customer' && state.screen==='custHome') || !_homeScrollY) return false;
+  const y = _homeScrollY;
+  const put = ()=>{ document.documentElement.scrollTop = y; document.body.scrollTop = y; window.scrollTo(0, y); };
+  put(); requestAnimationFrame(put);
+  return true;
+}
 function go(screen, extra={}){
+  rememberHomeScroll();
   if(state.screen && state.screen !== screen){
     _screenHistory.push({ role:state.role, screen:state.screen, activeBizId:state.activeBizId, activeDelId:state.activeDelId, browseBizId:state.browseBizId, storeTab:state.storeTab, homeListingType:state.homeListingType, homeCategory:state.homeCategory, homeSearch:state.homeSearch, viewItemId:state.viewItemId });
   }
@@ -4611,9 +4646,10 @@ function closeTopmostOverlay(){
 function goBackScreen(){
   if(_screenHistory.length){
     const prev = _screenHistory.pop();
+    rememberHomeScroll();
     Object.assign(state, prev);
     render();
-    window.scrollTo(0,0);
+    if(!restoreHomeScroll()) window.scrollTo(0,0);
   }
 }
 function goBack(){
@@ -4626,12 +4662,25 @@ function goBack(){
 // arriving on Home, or changing its listing type / category / search. Plain
 // re-renders (live refresh, tapping a heart) keep the same order so nothing
 // jumps while you look.
-let _homeSeed = (Math.random()*4294967296)>>>0, _lastViewKey = '';
-function viewShuffle(list, salt){ const seed = (_homeSeed ^ (salt||0))>>>0; return list.slice().sort((a,b)=>seededRank(String(a.id||a),seed)-seededRank(String(b.id||b),seed)); }
+let _homeSeed = (Math.random()*4294967296)>>>0, _lastViewKey = '', _lastHomeKey = '', _homeScrollY = 0;
+const DESK_GRID_STEP = 60; let _deskShown = DESK_GRID_STEP;
+// While Home is still showing the first batch (same _homeSeed as when it was
+// drawn), those items keep the front places, so topping up adds items after
+// them instead of reshuffling what is on screen.
+let _itemsPartial = false, _homeLead = null, _homeLeadSeed = null;
+function viewShuffle(list, salt){
+  const seed = (_homeSeed ^ (salt||0))>>>0;
+  const lead = _homeLead && _homeLeadSeed === _homeSeed ? _homeLead : null;
+  const key = x=>(lead && x && x.id && lead.has(x.id)) ? 0 : 1;
+  return list.slice().sort((a,b)=>(key(a)-key(b)) || (seededRank(String(a.id||a),seed)-seededRank(String(b.id||b),seed)));
+}
 function render(){
   const app = document.getElementById('app');
   { const vk = state.adminMode ? 'admin' : [state.role, state.screen, state.screen==='custHome' ? [state.homeListingType, state.homeCategory, state.homeSearch].join('|') : ''].join(':');
-    if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeSeed = (Math.random()*4294967296)>>>0; _lastViewKey = vk; } }
+    // A new Home view = new listing type / category / search. Coming back to the
+    // same Home (Back, the logo, closing an item) keeps its order and scroll.
+    if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode){ const hk = vk; if(hk !== _lastHomeKey){ _homeSeed = (Math.random()*4294967296)>>>0; _lastHomeKey = hk; _deskShown = DESK_GRID_STEP; _homeScrollY = 0; } } _lastViewKey = vk; }
+    if(_itemsPartial && _homeLead && _homeLeadSeed === null && storageReady) _homeLeadSeed = _homeSeed; }
   if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maarukeytu…</div>`; return; }
   if(state.adminMode) renderAdmin();
   else if(state.role==='business') renderBusiness();
@@ -11252,8 +11301,9 @@ function renderDeskHome(){
       <section class="desk-sec" id="deskGrid">
         <div class="desk-sec-head"><h2>${gridTitle}</h2>${state.homeCategory!=='All'||state.homeSearch?`<button class="link-btn" onclick="state.homeSearch=''; deskPickCategory('All')">Clear filter</button>`:''}</div>
         <div class="top-grid desk-grid">
-          ${filtered.length ? filtered.map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>Nothing here yet. Try another category or clear the search.</div>`}
+          ${filtered.length ? filtered.slice(0, _deskShown).map(i=>topSellingCardHTML(i)).join('') : `<div class="empty" style="grid-column:1/-1;"><span class="ic">📭</span>Nothing here yet. Try another category or clear the search.</div>`}
         </div>
+        ${filtered.length > _deskShown ? `<div class="desk-more"><button class="btn btn-ghost" onclick="deskShowMore()">Show more <span class="muted">(${filtered.length - _deskShown} more)</span></button></div>` : ''}
       </section>`}
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `      <section class="desk-sec">
         <h2>Shop by category</h2>
@@ -11265,6 +11315,9 @@ function renderDeskHome(){
   `);
   ensureCountdownTimer();
 }
+// The PC grid draws DESK_GRID_STEP cards at a time (building all 1,500+ at
+// once made Home slow to open and to come back to).
+function deskShowMore(){ const y = pageScrollY(); _deskShown += DESK_GRID_STEP; render(); window.scrollTo(0, y); }
 function siteFooterHTML(){
   return `
   <footer class="site-foot"><div class="site-wrap">

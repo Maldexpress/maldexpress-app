@@ -3471,7 +3471,7 @@ async function decryptOrderRow(order, dbRow){
 
 function toDbRow(part, o){
   if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, ...(o.storefront?{storefront:o.storefront}:{}) };
-  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null, ...(o.photoHashes && o.photoHashes.some(Boolean) ? { photo_hashes: o.photoHashes.map(x=>x||null) } : {}) };
+  if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , ...(o.photoPrints === undefined ? {} : { photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null }), ...(o.photoHashes && o.photoHashes.some(Boolean) ? { photo_hashes: o.photoHashes.map(x=>x||null) } : {}) };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
   if(part==='proRequests') return { id:o.id, business_id:o.businessId, payment_method:o.paymentMethod, status:o.status, amount:o.amount, slip_url:o.slipDataUrl, swipe_reference:o.swipeReference, swipe_payment_link:o.swipePaymentLink, created_at:new Date(o.createdAt).toISOString(), resolved_at:o.resolvedAt?new Date(o.resolvedAt).toISOString():null, resolved_by:o.resolvedBy||null };
@@ -3483,7 +3483,7 @@ function toDbRow(part, o){
 }
 function fromDbRow(part, r){
   if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null, itemLimit:r.item_limit!=null?Number(r.item_limit):null };
-  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null, photoHashes: Array.isArray(r.photo_hashes) ? r.photo_hashes : null };
+  if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: !('photo_prints' in r) ? undefined : Array.isArray(r.photo_prints) ? r.photo_prints : null, photoHashes: !('photo_hashes' in r) ? undefined : Array.isArray(r.photo_hashes) ? r.photo_hashes : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
     swipeReference:r.swipe_reference||null, swipePaymentLink:r.swipe_payment_link||null, paidAt:r.paid_at?new Date(r.paid_at).getTime():null,
@@ -3516,7 +3516,7 @@ async function loadDB(opts){
   }
   try{
     const q = {
-      b: selectAll('businesses'), i: selectAll('items'), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
+      b: selectAll('businesses'), i: selectItems(), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
       cc: selectAll('custom_categories', 'name'), fr: selectAll('featured_requests'),
       // Query builders run each time something awaits them, so turn them into
       // one real promise here; otherwise the request is sent twice.
@@ -3575,14 +3575,42 @@ async function loadDB(opts){
 // copy). selectAll() reads a table page by page, in a stable order, until a
 // short page comes back. Same { data, error } shape as a normal query.
 const PAGE_ROWS = 1000;
-async function selectAll(table, orderCol = 'id'){
+// opts.cols: columns to read (default '*'); opts.pages: how many pages to ask
+// for at once (pages after the end just come back empty), so a big table
+// doesn't wait for one page before asking for the next.
+async function selectAll(table, orderCol = 'id', opts = {}){
+  const cols = opts.cols || '*', burst = Math.max(1, opts.pages || 1);
+  const out = [];
+  for(let from = 0; ; from += PAGE_ROWS * burst){
+    const res = await Promise.all(Array.from({ length: burst }, (_, k)=>{
+      const a = from + k * PAGE_ROWS;
+      return sb.from(table).select(cols).order(orderCol, { ascending:true }).range(a, a + PAGE_ROWS - 1);
+    }));
+    for(const { data, error } of res){
+      if(error) return { data: out.length ? out : null, error };
+      out.push(...(data || []));
+      if(!data || data.length < PAGE_ROWS) return { data: out, error: null };
+    }
+  }
+}
+// Items without their photo fingerprints (photo_prints / photo_hashes): only
+// a store owner's duplicate-photo checks use those, and they were a fifth of
+// the download. loadBizPrints() fetches them for the owner's own store.
+const ITEM_COLS = 'id,business_id,name,price,stock,category,category_other_name,image_url,listing_type,free_delivery,extra_delivery_fee,discount_percent,rental_deposit,rental_fulfillment,pickup_location,rental_availability,available_from,description,rental_rate_period,approval_status,approval_note,submitted_at,featured_until,featured_source,options,images,paused';
+function selectItems(){ return selectAll('items', 'id', { cols: ITEM_COLS, pages: 3 }); }
+async function loadBizPrints(bizId){
+  if(!sb) return;
   const out = [];
   for(let from = 0; ; from += PAGE_ROWS){
-    const { data, error } = await sb.from(table).select('*').order(orderCol, { ascending:true }).range(from, from + PAGE_ROWS - 1);
-    if(error) return { data: out.length ? out : null, error };
+    const { data, error } = await sb.from('items').select('id,photo_prints,photo_hashes').eq('business_id', bizId).order('id', { ascending:true }).range(from, from + PAGE_ROWS - 1);
+    if(error) return;
     out.push(...(data || []));
-    if(!data || data.length < PAGE_ROWS) return { data: out, error: null };
+    if(!data || data.length < PAGE_ROWS) break;
   }
+  const byId = new Map(out.map(r=>[r.id, r]));
+  DB.items.forEach(i=>{ if(i.businessId!==bizId) return; const r = byId.get(i.id); if(!r) return;
+    if(i.photoPrints === undefined) i.photoPrints = Array.isArray(r.photo_prints) ? r.photo_prints : null;
+    if(i.photoHashes === undefined) i.photoHashes = Array.isArray(r.photo_hashes) ? r.photo_hashes : null; });
 }
 async function saveDB(part, only){
   if(!sb) return;
@@ -4167,13 +4195,18 @@ async function refreshLiveListings(){
     if(document.hidden) return;
     const listings = (_liveTick++ % LIVE_LISTINGS_EVERY) === 0;
     const [i, b, au, o] = await Promise.all([
-      listings ? selectAll('items') : null,
+      listings ? selectItems() : null,
       listings ? selectAll('businesses') : null,
       listings ? selectAll('auction_listings') : null,
       selectAll('orders')
     ]);
     if((i && i.error) || (b && b.error) || (au && au.error) || o.error) return; // silent - background refresh, not a user action
-    if(i) DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
+    if(i){
+      // keep the photo fingerprints already fetched for the owner's store
+      const old = new Map(DB.items.map(x=>[x.id, x]));
+      DB.items = (i.data||[]).map(r=>{ const x = fromDbRow('items',r); const o = old.get(x.id);
+        if(o && x.photoPrints === undefined){ x.photoPrints = o.photoPrints; x.photoHashes = o.photoHashes; } return x; });
+    }
     if(b){ const sw = new Map(DB.businesses.map(x=>[x.id, x.swipeConnected])); DB.businesses = (b.data||[]).map(r=>{ const x = fromDbRow('businesses',r); x.swipeConnected = sw.get(x.id); return x; }); }
     if(au) DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
     DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
@@ -6905,6 +6938,7 @@ const _printsReady = {};
 function ensureBizPrints(bizId){
   if(_printsReady[bizId]) return _printsReady[bizId];
   _printsReady[bizId] = (async()=>{
+    await loadBizPrints(bizId);
     const todo = DB.items.filter(i=>i.businessId===bizId && itemImages(i).length && !(i.photoPrints && i.photoPrints.length===itemImages(i).length && i.photoPrints.every(p=>p && p.startsWith(PRINT_V))));
     const changed = [];
     for(const it of todo){

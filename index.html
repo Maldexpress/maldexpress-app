@@ -1235,6 +1235,12 @@
   .rail, .featured-scroll, .feat-grid, .desk-row-feat, .gal-track, .gal-thumbs{overflow-y:hidden !important; overscroll-behavior-y:auto; touch-action:pan-x pan-y;}
   .feat-loop{scroll-snap-type:none !important; scroll-behavior:auto !important;}
   .feat-loop .top-card{scroll-snap-align:none !important;}
+  /* the nonstop row fades out at both ends instead of chopping cards off */
+  .feat-loop{-webkit-mask-image:linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);}
+  /* Sponsored cards keep their gold edge when hovered, and the lift has room */
+  .feat-panel .desk-row-feat{padding-top:8px; margin-top:-8px;}
+  .feat-panel .top-card:hover .img-wrap{box-shadow:0 0 0 2px #F3C94F, 0 14px 30px rgba(160,110,10,.22) !important;}
+  .feat-panel .feat-grid .top-card:hover .img-wrap{box-shadow:0 0 0 1.5px #F3C94F, 0 8px 18px rgba(160,110,10,.2) !important;}
   .rail .rv.rv-in{transform:none;}
   .screen-in{animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
   @keyframes screenIn{from{opacity:0;} to{opacity:1;}}   /* opacity only: a transform here would unpin the fixed header and tab bar */

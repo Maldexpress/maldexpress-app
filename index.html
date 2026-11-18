@@ -1016,6 +1016,10 @@
     background:radial-gradient(120% 90% at 0% 0%, #FFE8A3 0%, rgba(255,232,163,0) 55%), radial-gradient(120% 100% at 100% 100%, #CDEBFF 0%, rgba(205,235,255,0) 60%), linear-gradient(135deg, #FFF4D1 0%, #EAF6FF 100%);
     border:1px solid #F1D58A; box-shadow:0 10px 30px rgba(200,150,30,.12);}
   .feat-title{color:#7A5200;}
+/* Admin: an item that is featured right now shows a gold star */
+.gold-star{color:#E0A100; text-shadow:0 1px 2px rgba(150,100,0,.25);}
+.btn.is-featured{background:#FFF4D1; color:#7A5200; box-shadow:inset 0 0 0 1.5px #EDC556;}
+.btn.is-featured .gold-star{font-size:1.15em;}
   /* Phones: the Sponsored band runs edge to edge */
   @media (max-width:1023px){
     .feat-panel{margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); border-radius:0; border-left:none; border-right:none; padding:20px 20px 14px;}
@@ -4894,14 +4898,14 @@ function adminStoreView(){
   const groups = {};
   list.forEach(i=>{ const c = i.category==='Other' && i.categoryOtherName ? i.categoryOtherName : (i.category||'General'); (groups[c] = groups[c] || []).push(i); });
   const pill = i => { const st = adminItemState(i);
-    return st==='pending' ? '<span class="status-pill wait">Waiting</span>' : st==='rejected' ? '<span class="status-pill bad">Taken down</span>' : st==='paused' ? '<span class="status-pill mid">Paused</span>' : isFeaturedNow(i) ? '<span class="status-pill ok">Live · ★ Featured</span>' : '<span class="status-pill ok">Live</span>'; };
+    return st==='pending' ? '<span class="status-pill wait">Waiting</span>' : st==='rejected' ? '<span class="status-pill bad">Taken down</span>' : st==='paused' ? '<span class="status-pill mid">Paused</span>' : isFeaturedNow(i) ? '<span class="status-pill ok">Live · <span class="gold-star">★</span> Featured</span>' : '<span class="status-pill ok">Live</span>'; };
   const acts = i => { const st = adminItemState(i), id = i.id, btn = (cls,lbl,fn)=>`<button class="btn ${cls} btn-sm" onclick="${fn}">${lbl}</button>`;
     return [
       st==='pending' || st==='rejected' ? btn('btn-primary','Approve',`adminApproveItems(['${id}'])`) : '',
       st==='pending' ? btn('btn-outline','Reject',`adminRejectItems(['${id}'])`) : '',
       st==='live' || st==='paused' ? btn('btn-outline','Take down',`adminRejectItems(['${id}'])`) : '',
       st==='live' ? btn('btn-ghost','Pause',`adminPauseItems(['${id}'], true)`) : st==='paused' ? btn('btn-ghost','Resume',`adminPauseItems(['${id}'], false)`) : '',
-      st==='live' ? (isFeaturedNow(i) ? btn('btn-ghost','Unfeature',`adminFeatureItem('${id}', 0)`) : btn('btn-ghost','★ Feature',`adminFeatureItem('${id}', ${DB.settings.featuredDays||3})`)) : '',
+      st==='live' ? (isFeaturedNow(i) ? `<button class="btn btn-ghost btn-sm is-featured" title="Featured. Tap to unfeature" aria-pressed="true" onclick="adminFeatureItem('${id}', 0)"><span class="gold-star">★</span> Featured</button>` : btn('btn-ghost','★ Feature',`adminFeatureItem('${id}', ${DB.settings.featuredDays||3})`)) : '',
       btn('btn-ghost danger-txt','Delete',`openSheet('adminDeleteItems', ['${id}'])`),
     ].join(''); };
   return `

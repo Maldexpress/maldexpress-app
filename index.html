@@ -20,7 +20,7 @@
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Maarukeytu">
 <meta name="theme-color" content="#0FA3A3">
 <title>Maarukeytu.app by Worldives</title>
@@ -1904,6 +1904,27 @@
   body.tab-tinted #app .link-btn, body.tab-tinted #app .see-all{color:var(--tab-accent);}
   body.tab-tinted #app .empty .ic{background:color-mix(in srgb, var(--tab-accent) 10%, #fff) !important; box-shadow:0 0 0 14px color-mix(in srgb, var(--tab-accent) 6%, transparent) !important;}
   body.tab-tinted .home-mini:not(.has-photo){background:linear-gradient(150deg, color-mix(in srgb, var(--tab-accent) 80%, #fff), var(--tab-accent)) !important;}
+
+  /* ===== Edge to edge on phones (2026-11-19) =====
+     The installed app draws under the iPhone status bar (black-translucent): the
+     Home header photo / colour runs to the very top, while its buttons stay below
+     the time and battery (padding uses env(safe-area-inset-top)). Screens whose
+     top is light get a lagoon strip behind the status bar so its white text stays
+     readable. The strip has 0 height in the browser, where there is no inset. */
+  body::before{content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top, 0px); z-index:9999; pointer-events:none;
+    background:var(--lagoon-700, #0B6E6E);}
+  body.tab-tinted::before{background:var(--tab-accent);}
+  body:has(#app > .splash)::before,
+  body:has(.home-hero):not(:has(.overlay.show)):not(:has(.sheet-wrap.show))::before,
+  body:has(.sf-slides.hero):not(:has(.overlay.show)):not(:has(.sheet-wrap.show))::before{background:transparent;}
+  @media (max-width:1023px){
+    .home-hero > .home-header{padding-top:calc(6px + env(safe-area-inset-top)) !important;}
+    /* the tab bar sits closer to the bottom: only part of the home-indicator gap */
+    .bottomnav{padding:4px 10px max(6px, calc(env(safe-area-inset-bottom) - 16px)) !important;}
+    .navbtn{padding:6px 4px !important;}
+  }
+  /* the gliding name never shows over the menu or a popup */
+  body:has(.overlay.show) .word-fly, body:has(.sheet-wrap.show) .word-fly{display:none !important;}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}

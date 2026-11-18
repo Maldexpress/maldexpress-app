@@ -4399,6 +4399,7 @@ function ensureCountdownTimer(){
 const LIVE_REFRESH_MS = 8000;
 let _liveRefreshTimer = null;
 let _liveTick = 1;            // the first refresh after startup skips listings (they were just loaded)
+const _liveSig = {}; let _liveSeen = false;   // last data seen by the live refresh (see refreshLiveListings)
 const LIVE_LISTINGS_EVERY = 4;  // items/stores/auctions every 4th tick (~32 s)
 async function refreshLiveListings(){
   if(!sb || !state.authed) return;
@@ -4420,6 +4421,13 @@ async function refreshLiveListings(){
       selectAll('orders')
     ]);
     if((i && i.error) || (b && b.error) || (au && au.error) || o.error) return; // silent - background refresh, not a user action
+    // Redraw only if something actually changed: an unchanged screen used to be
+    // rebuilt every 8 s, which made every photo on it blink.
+    const sig = x=>{ const t = JSON.stringify(x||null); let h = 2166136261; for(let k=0;k<t.length;k++){ h ^= t.charCodeAt(k); h = Math.imul(h, 16777619); } return (h>>>0) + ':' + t.length; };
+    let changed = false;
+    [['i',i],['b',b],['au',au],['o',o]].forEach(([k,res])=>{ if(!res) return; const v = sig(res.data); if(_liveSig[k] !== v){ if(_liveSig[k] !== undefined) changed = true; _liveSig[k] = v; } });
+    if(!changed && Object.keys(_liveSig).length && _liveSeen){ checkNewRiderJobs(); return; }
+    _liveSeen = true;
     if(i){
       // keep the photo fingerprints already fetched for the owner's store
       const old = new Map(DB.items.map(x=>[x.id, x]));
@@ -4928,6 +4936,7 @@ const REDUCED_MOTION = window.matchMedia && window.matchMedia('(prefers-reduced-
 const REVEAL_SEL = '.pf-card, .pf-stats, .top-card, .ip-card, .glass.card, .item-card, .feat-panel, .section-head, .desk-tile, .ticket-card, .owe-tile, .admin-stat, .bulk-cta, .rev-item, .rev-sum, .addr-card';
 let _rvIO = null, _rvScreen = '', _rvSeen = new Set();
 function rvKey(el){ return (el.className.split(' ')[0]||'') + '|' + (el.getAttribute('onclick') || (el.textContent||'').trim().slice(0,48)); }
+const _shownImgs = new Set();   // photo URLs already on screen once (they don't fade in again)
 function applyReveal(){
   if(REDUCED_MOTION || !('IntersectionObserver' in window)) return;
   if(!_rvIO){
@@ -4965,9 +4974,10 @@ function applyReveal(){
   // Photos fade in once loaded, with a soft shimmer until then.
   document.querySelectorAll('#app .img-wrap img, #app .ip-photo img, #app .gal-thumb img').forEach(img=>{
     if(img._fd) return; img._fd = true;
-    if(img.complete && img.naturalWidth) return;
+    if(img.complete && img.naturalWidth){ _shownImgs.add(img.currentSrc || img.src); return; }
+    if(_shownImgs.has(img.getAttribute('src')) || _shownImgs.has(img.src)) return;   // shown before: no blank-and-fade on a redraw
     const wrap = img.closest('.img-wrap, .ip-photo'); img.classList.add('img-fade'); if(wrap) wrap.classList.add('img-loading');
-    const done = ()=>{ img.classList.add('ok'); if(wrap) wrap.classList.remove('img-loading'); };
+    const done = ()=>{ img.classList.add('ok'); if(wrap) wrap.classList.remove('img-loading'); _shownImgs.add(img.src); };
     img.addEventListener('load', done, { once:true }); img.addEventListener('error', done, { once:true });
   });
   heroParallax();

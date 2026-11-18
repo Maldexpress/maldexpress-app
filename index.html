@@ -1751,6 +1751,9 @@
   .auth-sheet .sheet-close{top:calc(14px + env(safe-area-inset-top)); background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.35); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
   .auth-sheet .sheet-close:hover{background:rgba(255,255,255,.3);}
   .auth-art{position:relative; flex:0 0 auto; height:clamp(260px, 44vh, 400px); overflow:hidden; background:#062B4F; color:#fff;}
+  /* admin picture instead of the drawn atoll: a dark wash at the top keeps the name readable */
+  .auth-art.has-photo{background:linear-gradient(180deg, rgba(4,26,44,.72) 0%, rgba(4,26,44,.35) 38%, rgba(4,26,44,.05) 70%, rgba(4,26,44,.25) 100%), var(--aa-img) center / cover no-repeat;}
+  .auth-art.has-photo .aa-glow{display:none;}
   .aa-sea{position:absolute; inset:0; width:100%; height:100%; display:block;}
   .aa-glow{position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,43,79,.6) 0%, rgba(6,43,79,0) 48%), radial-gradient(120% 60% at 0% 0%, rgba(255,214,150,.22), transparent 60%);}
   .aa-words{position:absolute; left:24px; right:24px; top:calc(22px + env(safe-area-inset-top));}
@@ -5764,6 +5767,7 @@ const SITE_IMAGES = [
   { key:'promo_sell',     label:'Sell on Maarukeytu card',   hint:'Wide photo; the text sits on the left' },
   { key:'promo_ride',     label:'Deliver on your island card', hint:'Wide photo; the text sits on the left' },
   { key:'sponsored_bg',   label:'Sponsored background',      hint:'Soft or light photos work best' },
+  { key:'auth_art',       label:'Sign in / sign up picture', hint:'Tall or square photo; the name sits at the top' },
 ];
 let _siteImgDraft = { imgs:{}, loadedFrom:null };
 function sponsoredBgClass(){ return siteImg('sponsored_bg') ? ' has-bg' : ''; }
@@ -10762,12 +10766,25 @@ document.addEventListener('focusin', (e)=>{
   const tag = e.target && e.target.tagName;
   if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') _lastFieldFocusAt = Date.now();
 }, true);
-function dismissKeyboardOnScroll(){
+// Only the person's own finger counts (2026-11-19): iOS also scrolls the page
+// itself while the keyboard slides up (sometimes for over a second), and that
+// used to close the keyboard straight away, e.g. on the sign-in page. Never in
+// a form popup or the menu: there people scroll between fields while typing.
+let _kbTouchY = null, _kbDragged = false;
+document.addEventListener('touchstart', e=>{ _kbTouchY = e.touches && e.touches[0] ? e.touches[0].clientY : null; _kbDragged = false; }, { passive:true, capture:true });
+document.addEventListener('touchmove', e=>{ if(_kbTouchY !== null && e.touches && e.touches[0] && Math.abs(e.touches[0].clientY - _kbTouchY) > 12) _kbDragged = true; }, { passive:true, capture:true });
+document.addEventListener('touchend', ()=>{ _kbTouchY = null; setTimeout(()=>{ _kbDragged = false; }, 400); }, { passive:true, capture:true });
+function dismissKeyboardOnScroll(e){
   if(Date.now() - _lastFieldFocusAt < 600) return;
+  if(!_kbDragged) return;                                     // not the person scrolling
   const a = document.activeElement;
   if(!a) return;
   const tag = a.tagName;
-  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') a.blur();
+  if(!(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT')) return;
+  if(a.closest && a.closest('.sheet, .sheet-wrap, .drawer')) return;   // forms: keep typing while scrolling
+  const t = e && e.target;
+  if(t && t.nodeType === 1 && t.closest && t.closest('.sheet, .sheet-wrap, .drawer')) return;
+  a.blur();
 }
 document.addEventListener('scroll', dismissKeyboardOnScroll, { passive:true, capture:true });
 // Swipe left-to-right anywhere on screen to dismiss whatever's on top (a
@@ -13646,8 +13663,9 @@ function toggleAuthPass(btn){
 // Pure SVG + CSS; the drifting parts stop with reduced motion.
 function authArtHTML(){
   const sign = state.sheet==='signUp';
-  return `<div class="auth-art" aria-hidden="true">
-    <svg class="aa-sea" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
+  const photo = siteImg('auth_art');   // Admin -> Settings -> Home pictures -> Sign in / sign up picture
+  return `<div class="auth-art${photo?' has-photo':''}" aria-hidden="true" ${photo?`style="--aa-img:url('${escapeAttr(photo)}')"`:''}>
+    ${photo ? '' : `<svg class="aa-sea" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
       <defs>
         <linearGradient id="aaOcean" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#062B4F"/><stop offset=".55" stop-color="#0A4F7E"/><stop offset="1" stop-color="#0C6F96"/></linearGradient>
         <radialGradient id="aaReef" cx=".5" cy=".5" r=".5"><stop offset=".7" stop-color="#9AF0E4"/><stop offset=".84" stop-color="#36CBC3"/><stop offset=".95" stop-color="#1590A6" stop-opacity=".85"/><stop offset="1" stop-color="#0C6F96" stop-opacity="0"/></radialGradient>
@@ -13694,7 +13712,7 @@ function authArtHTML(){
       </g>
       <!-- a cloud drifting below the seaplane -->
       <g class="aa-cloud" fill="#fff" opacity=".55" filter="url(#aaSoft)"><ellipse cx="70" cy="70" rx="46" ry="12"/><ellipse cx="96" cy="62" rx="28" ry="10"/></g>
-    </svg>
+    </svg>`}
     <div class="aa-glow"></div>
     <div class="aa-words">
       <div class="aa-mark">${BRAND_MARK_SVG}</div>

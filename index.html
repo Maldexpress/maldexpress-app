@@ -10927,7 +10927,34 @@ function updateHomeMiniHeader(){
   const mark = el.querySelector('.mini-mark'); if(mark) mark.tabIndex = _miniP < 0.5 ? -1 : 0;
   alignMiniPhoto(el, row, lockAt);
   flyWordmark(el, row, past);
+  flySettleSoon();
 }
+// Once the name starts moving it always finishes: when scrolling stops while
+// it is part-way (0 < f < 1), the page glides the rest of the way, to where
+// the name lands in the small header if you were scrolling down, or back to
+// its big spot if you were scrolling up (the nearer end if unclear). Waits
+// for the finger to lift and for momentum scrolling to end.
+let _fly = { f:0, past:0, range:0 }, _flySettleT = null, _flyLastY = 0, _flyDir = 0, _flyTouching = false, _flySettling = false;
+function flySettleSoon(){
+  const y = pageScrollY(); if(y !== _flyLastY){ _flyDir = y > _flyLastY ? 1 : -1; _flyLastY = y; }
+  clearTimeout(_flySettleT);
+  if(REDUCED_MOTION || _flySettling) return;
+  _flySettleT = setTimeout(flySettle, 140);
+}
+function flySettle(){
+  if(_flyTouching || state.screen !== 'custHome' || state.role !== 'customer' || state.adminMode || isDesktop()) return;
+  if(document.activeElement && document.activeElement.id === 'homeSearchMini') return;
+  const { f, past, range } = _fly; if(!(f > 0.001 && f < 0.999)) return;
+  const down = _flyDir > 0 ? true : _flyDir < 0 ? false : f >= .5;
+  const delta = down ? -past : (-range - past);          // scroll px to reach f = 1 (down) or f = 0 (up)
+  const top = Math.max(0, pageScrollY() + delta);
+  _flySettling = true;
+  [document.body, document.documentElement].forEach(el=>{ try{ el.scrollTo({ top, behavior:'smooth' }); }catch(e){ el.scrollTop = top; } });
+  setTimeout(()=>{ _flySettling = false; _flyLastY = pageScrollY(); }, 700);
+}
+document.addEventListener('touchstart', ()=>{ _flyTouching = true; clearTimeout(_flySettleT); }, { passive:true });
+document.addEventListener('touchend', ()=>{ _flyTouching = false; flySettleSoon(); }, { passive:true });
+document.addEventListener('touchcancel', ()=>{ _flyTouching = false; flySettleSoon(); }, { passive:true });
 // The name lands where it lives: over the last WORD_FLY px before the search
 // locks, the big search slides right to make room, and a fixed copy of the name
 // (#wordFly) moves and shrinks from the big name into that room, so when the
@@ -10942,6 +10969,7 @@ function flyWordmark(mini, row, past){
   const lockAt = parseFloat(getComputedStyle(mini).paddingTop) || 8;
   const range = hdr ? Math.max(60, row.getBoundingClientRect().top - hdr.getBoundingClientRect().bottom - lockAt) : WORD_FLY;
   const f = REDUCED_MOTION ? (past >= 0 ? 1 : 0) : Math.max(0, Math.min(1, (past + range) / range));
+  _fly = { f, past, range };
   const ease = t=>t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
   // two steps: (A) shrink and slide left while staying above the search, which
   // slides right to make room; (B) drop down into the room beside the search.

@@ -1643,6 +1643,10 @@
   .bulk-failed ul{margin:6px 0 6px 18px; font-size:.86em;}
   .rail-more{flex:0 0 auto; align-self:stretch; min-width:120px; border:none; border-radius:18px; background:var(--lagoon-50); color:var(--lagoon-700); font-weight:800; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px;}
   .rail-more span{font-size:1.6em; line-height:1;}
+  /* PC screens: text 10% larger than on phones (the owner's preferred size,
+     what the app looked like at 110% browser zoom). Scales with the Settings
+     font slider, which still sets --fs. */
+  @media (min-width:1024px){ :root{ font-size:calc(var(--fs) * 1.1); } }
   /* ---------- Shallows refresh (2026-11-17) ----------
      One idea carried through every screen: the page is the shallow lagoon.
      Screen headers are a band of shallow water (tinted, no hard line) with big

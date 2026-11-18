@@ -10208,6 +10208,7 @@ const ORDER_STAGES = {
 };
 function orderStage(o){
   if(['declined','cancelled'].includes(o.status)) return 'closed';
+  if(o.status==='delivered' && !o.rentalItemId && ['pending_transfer','awaiting_swipe','slip_uploaded','awaiting_approval'].includes(o.paymentStatus)) return 'to_pay';   // delivered but not paid
   if(o.status==='delivered') return 'delivered';
   if(o.status==='out_for_delivery') return 'on_way';
   if(['awaiting_approval','pending_transfer','awaiting_swipe','slip_uploaded','awaiting_completion','awaiting_delivery_charge'].includes(o.paymentStatus)) return 'to_pay';
@@ -14234,8 +14235,10 @@ function renderCustOrders(){
   const activeTab = state.ordersTab || 'all';
   const tabFiltered0 = activeTab==='all' ? sorted : sorted.filter(o=>orderListingType(o)===activeTab);
   const tabFiltered = state.ordersStatus ? tabFiltered0.filter(o=>orderStage(o)===state.ordersStatus) : tabFiltered0;
-  const ongoing = tabFiltered.filter(o=>!isOrderCompleted(o));
-  const completed = tabFiltered.filter(o=>isOrderCompleted(o));
+  // Finished = paid and delivered (or returned), or cancelled / declined; a
+  // delivered order that isn't paid yet is still in progress. Newest first in both.
+  const ongoing = tabFiltered.filter(o=>!custOrderFinished(o));
+  const completed = tabFiltered.filter(o=>custOrderFinished(o));
   document.getElementById('app').innerHTML = wrapShell('customer','custOrders', `
     ${topbar('My orders')}
     <div style="padding:4px 0 0;">
@@ -14254,7 +14257,7 @@ function renderCustOrders(){
       ${state.ordersStatus ? `<div style="margin:-4px 0 12px;"><button class="cat-chip" onclick="state.ordersStatus=null; render();" aria-label="Show all orders">${ORDER_STAGES[state.ordersStatus].icon} ${ORDER_STAGES[state.ordersStatus].label} <span aria-hidden="true">✕</span></button></div>` : ''}
       ${tabFiltered.length ? `
         ${ongoing.length?`<div class="section-head" style="margin-top:2px;"><h2>In progress</h2></div>${ongoing.map(o=>custOrderCard(o)).join('')}`:''}
-        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
+        ${completed.length?`<div class="section-head" style="margin-top:${ongoing.length?'18px':'2px'};"><h2>Completed and cancelled</h2></div>${completed.map(o=>custOrderCard(o)).join('')}`:''}
       ` : `<div class="empty"><span class="ic">🧾</span>${sorted.length?`No ${ORDERS_TABS.find(t=>t.id===activeTab).label.toLowerCase()} orders`:'No orders yet — go browse a store!'}</div>`}
     </div>
   `);
@@ -14355,6 +14358,10 @@ function orderListingType(o){
 // A rental isn't "done" when it's delivered (picked up) - only once it's
 // actually been returned (rentalReturnedAt) - so it gets its own completion
 // check instead of just reading o.status like every other order type does.
+function custOrderFinished(o){
+  if(['declined','cancelled'].includes(o.status)) return true;
+  return isOrderFullyFulfilled(o);
+}
 function isOrderCompleted(o){
   if(o.rentalItemId) return !!o.rentalReturnedAt;
   return o.status==='delivered';

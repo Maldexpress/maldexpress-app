@@ -1423,7 +1423,9 @@
     .desk-banner{position:relative; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; gap:32px; height:clamp(320px, 30vw, 440px); padding:0 64px; border-radius:28px; color:#fff; overflow:hidden; margin-bottom:44px; box-shadow:0 18px 40px rgba(8,60,80,.14);}
     .desk-banner.has-photo, .desk-banner.has-photo.tone-lagoon, .desk-banner.has-photo.tone-sunset, .desk-banner.has-photo.tone-ocean{grid-template-columns:minmax(0,1fr); background:linear-gradient(90deg, rgba(6,32,44,.78) 0%, rgba(6,32,44,.52) 38%, rgba(6,32,44,.08) 70%, rgba(6,32,44,0) 100%), var(--hero-img) center 40% / cover no-repeat;}
     .desk-banner .db-copy{max-width:560px;}
-    .db-word{font-family:'Poiret One', var(--display), sans-serif; font-size:2.2em; letter-spacing:.08em; line-height:1; margin-bottom:18px; color:#fff; -webkit-text-stroke:.6px #fff; text-shadow:0 4px 18px rgba(6,40,52,.45);}
+    .db-brand{margin-bottom:18px;}
+    .db-by{margin-top:6px; font-size:.82em; font-weight:600; letter-spacing:.22em; text-transform:uppercase; color:rgba(255,255,255,.82); text-shadow:0 2px 10px rgba(6,40,52,.45);}
+    .db-word{font-family:'Poiret One', var(--display), sans-serif; font-size:2.9em; letter-spacing:.07em; line-height:1; color:#fff; -webkit-text-stroke:.6px #fff; text-shadow:0 4px 18px rgba(6,40,52,.45);}
     .db-word.glass-word{-webkit-text-stroke:.8px rgba(255,255,255,.95);}
     .desk-banner.tone-lagoon{background:radial-gradient(90% 70% at 100% 0%, rgba(255,255,255,.25), transparent 60%), linear-gradient(150deg, #19C3B4 0%, #0FA3A3 40%, #1E6FD9 100%);}
     .desk-banner.tone-sunset{background:radial-gradient(80% 70% at 100% 0%, rgba(255,214,140,.45), transparent 60%), linear-gradient(150deg, #FF8A5C 0%, #E24A24 55%, #B8306A 100%);}
@@ -11411,7 +11413,7 @@ function siteHeaderHTML(active){
 // site_images.banner_auction / banner_rental.
 const DESK_BANNER_MS = 6000;
 const DESK_BANNERS = [
-  { tone:'lagoon', title:'Shop Malé. Get it on your island.', text:'Stores in Malé send by boat to every inhabited island. Pay safely with Swipe once the store accepts your order.', cta:'Start shopping', act:"deskScrollTo('deskGrid')", art:'scene' },
+  { tone:'lagoon', title:'Everything you love, in one place.', text:'Thousands of items from trusted stores. Pay safely, follow every order and shop whenever it suits you.', cta:'Start shopping', act:"deskScrollTo('deskGrid')", art:'scene' },
   { tone:'sunset', title:'Bid on it before the timer runs out.', text:'Auctions from stores across the Maldives. The highest bid when time is up wins.', cta:'See auctions', act:"deskListing('auction')", art:'🔨', img:'banner_auction' },
   { tone:'ocean', title:'Rent it for the weekend.', text:'Snorkel gear, tools, party kit and more. Book the days you need and pick it up or have it delivered.', cta:'Browse rentals', act:"deskListing('rental')", art:'🤿', img:'banner_rental' },
 ];
@@ -11446,7 +11448,7 @@ function deskBannerHTML(){
   return `
   <section class="desk-banner tone-${b.tone} ${photo?'has-photo':''}" aria-roledescription="carousel" onpointerenter="if(event.pointerType==='mouse') _deskBannerHold=true" onpointerleave="_deskBannerHold=false" ${photo?`style="--hero-img:url('${escapeAttr(photo)}')"`:''}>
     <div class="db-copy">
-      ${b.art==='scene' ? `<div class="db-word ${photo?'glass-word':''}" aria-hidden="true">Maarukeytu</div>` : ''}
+      ${b.art==='scene' ? `<div class="db-brand" aria-hidden="true"><div class="db-word ${photo?'glass-word':''}">Maarukeytu.app</div><div class="db-by">by Worldives</div></div>` : ''}
       <h1>${b.title}</h1>
       <p>${b.text}</p>
       <button class="db-cta" onclick="${b.act}">${b.cta}</button>

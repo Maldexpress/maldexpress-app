@@ -1233,6 +1233,8 @@
   .featured-scroll .rv.rv-in, .desk-row-feat .rv.rv-in{transform:none;}
   /* side-scrolling rows only ever move sideways */
   .rail, .featured-scroll, .feat-grid, .desk-row-feat, .gal-track, .gal-thumbs{overflow-y:hidden !important; overscroll-behavior-y:auto; touch-action:pan-x pan-y;}
+  .feat-loop{scroll-snap-type:none !important; scroll-behavior:auto !important;}
+  .feat-loop .top-card{scroll-snap-align:none !important;}
   .rail .rv.rv-in{transform:none;}
   .screen-in{animation:screenIn .38s cubic-bezier(.2,.8,.2,1);}
   @keyframes screenIn{from{opacity:0;} to{opacity:1;}}   /* opacity only: a transform here would unpin the fixed header and tab bar */
@@ -4708,7 +4710,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -11120,6 +11122,50 @@ function sheetItemDetail(){
 const TOP_GRID_ROWS = 5;
 // Columns of .top-grid / Sponsored cards at this width (phones 2-3, tablets 4-5 / 6).
 function topGridCols(){ const w = window.innerWidth; return w >= 860 ? 5 : w >= 640 ? 4 : w >= 440 ? 3 : 2; }
+// Sponsored rows scroll on their own, nonstop (phone and PC): when there are
+// more items than fit, the cards are drawn twice and the row jumps back by one
+// set's width as it reaches the copy, so the first item follows the last with
+// no gap and no stop. A mouse over the row, a finger on it or the scroll wheel
+// pauses it (it carries on ~2.5 s after a touch). Off with reduced motion.
+const FEAT_LOOP_SPEED = 30;   // px per second
+const _featLoop = { raf:0, last:0, pos:{}, el:{}, pauseUntil:{} };
+function featLoopMotionOK(){ try{ return !matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return true; } }
+function featLoops(list, perView){ return featLoopMotionOK() && list.length > perView; }
+function featLoopCardsHTML(list, perView, cardFn){
+  const cards = list.map(cardFn);
+  if(!featLoops(list, perView)) return cards.join('');
+  return cards.join('') + cards.map(h=>h.replace(/^(\s*<[a-zA-Z]+)/, '$1 data-copy="1" aria-hidden="true"')).join('');
+}
+function deskFeatPerView(){ const w = window.innerWidth; return w >= 1600 ? 7 : w >= 1280 ? 6 : 5; }
+function featLoopBind(el){
+  const id = el.id, hold = on=>{ el._featHold = on; if(!on) _featLoop.pauseUntil[id] = performance.now() + 2500; };
+  el.addEventListener('pointerenter', e=>{ if(e.pointerType==='mouse') el._featHold = true; });
+  el.addEventListener('pointerleave', e=>{ if(e.pointerType==='mouse') el._featHold = false; });
+  el.addEventListener('touchstart', ()=>hold(true), { passive:true });
+  el.addEventListener('touchend', ()=>hold(false), { passive:true });
+  el.addEventListener('touchcancel', ()=>hold(false), { passive:true });
+  el.addEventListener('wheel', ()=>{ _featLoop.pauseUntil[id] = performance.now() + 2500; }, { passive:true });
+}
+function featLoopTick(t){
+  const els = document.querySelectorAll('.feat-loop');
+  if(!els.length){ _featLoop.raf = 0; _featLoop.last = 0; return; }
+  const dt = _featLoop.last ? Math.min(64, t - _featLoop.last) : 16; _featLoop.last = t;
+  els.forEach(el=>{
+    const id = el.id, copy = el.querySelector('[data-copy]'), first = el.firstElementChild;
+    if(!id || !copy || !first) return;
+    const span = copy.offsetLeft - first.offsetLeft; if(span <= 0) return;
+    let pos = _featLoop.pos[id] || 0;
+    if(_featLoop.el[id] !== el){ _featLoop.el[id] = el; featLoopBind(el); el.scrollLeft = pos; }   // a fresh render: carry on from the same spot
+    else if(Math.abs(el.scrollLeft - pos) > 3) pos = el.scrollLeft;                              // moved by hand
+    const moving = !el._featHold && t >= (_featLoop.pauseUntil[id] || 0) && !document.hidden;
+    if(moving) pos += FEAT_LOOP_SPEED * dt / 1000;
+    const wrapped = pos >= span ? (pos -= span, true) : pos < 1 && !moving && el.scrollLeft < 1 ? (pos += span, true) : false;
+    _featLoop.pos[id] = pos;
+    if(moving || wrapped) el.scrollLeft = pos;
+  });
+  _featLoop.raf = requestAnimationFrame(featLoopTick);
+}
+function ensureFeatLoop(){ if(!_featLoop.raf && document.querySelector('.feat-loop')) _featLoop.raf = requestAnimationFrame(featLoopTick); }
 function featPerView(){ return window.innerWidth >= 640 && window.innerWidth < 1024 ? 6 : 4; }
 function topGridMax(){ return TOP_GRID_ROWS * topGridCols(); }   // matches .top-grid's columns
 // Each swipe row shows its first RAIL_MAX items and a See all card: with
@@ -11167,10 +11213,10 @@ function renderCustHome(){
       ${featured.length ? `
       <div class="section feat-panel">
         <h2 class="feat-title">Sponsored</h2>
-          <div class="featured-scroll feat-grid" id="featuredScroll" onscroll="syncFeaturedDots()">
-            ${featured.map((i,idx)=>featuredCardHTML(i,idx)).join('')}
+          <div class="featured-scroll feat-grid${featLoops(featured, featPerView())?' feat-loop':''}" id="featuredScroll" onscroll="syncFeaturedDots()">
+            ${featLoopCardsHTML(featured, featPerView(), i=>featuredCardHTML(i))}
           </div>
-          ${featured.length > featPerView() ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/featPerView())},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
+          ${featured.length > featPerView() && !featLoops(featured, featPerView()) ? `<div class="dots" id="featuredDots">${Array.from({length:Math.ceil(featured.length/featPerView())},(_,idx)=>`<span class="dot ${idx===0?'active':''}"></span>`).join('')}</div>` : ''}
       </div>` : ''}
       <div class="section">
         <h2 style="margin-bottom:12px;">${(state.homeListingType||'buy_now')==='buy_now' && filtered.some(i=>unitsSold(i.id)) ? 'Bestsellers' : 'New arrivals'}</h2>
@@ -11302,7 +11348,7 @@ function renderDeskHome(){
       ${picks.length ? `
       <section class="desk-sec${featNow.length?' feat-panel':''}">
         <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'Sponsored':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
-        <div class="${featNow.length?'desk-row desk-row-feat':'desk-row'}">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>
+        ${featNow.length ? `<div class="desk-row desk-row-feat${featLoops(picks, deskFeatPerView())?' feat-loop':''}" id="deskFeatRow">${featLoopCardsHTML(picks, deskFeatPerView(), i=>topSellingCardHTML(i))}</div>` : `<div class="desk-row">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>`}
       </section>` : ''}
       <section class="desk-promos">
         <div class="desk-promo p-sell"><div><h3>Sell on Maarukeytu</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>

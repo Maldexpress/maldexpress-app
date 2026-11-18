@@ -1641,6 +1641,8 @@
   .bp-bar{height:8px; border-radius:99px; background:var(--lagoon-50); margin-top:8px; overflow:hidden;}
   .bp-bar span{display:block; height:100%; background:var(--lagoon-500); transition:width .3s ease;}
   .bulk-failed ul{margin:6px 0 6px 18px; font-size:.86em;}
+  .rail-more{flex:0 0 auto; align-self:stretch; min-width:120px; border:none; border-radius:18px; background:var(--lagoon-50); color:var(--lagoon-700); font-weight:800; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:12px;}
+  .rail-more span{font-size:1.6em; line-height:1;}
   /* ---------- Shallows refresh (2026-11-17) ----------
      One idea carried through every screen: the page is the shallow lagoon.
      Screen headers are a band of shallow water (tinted, no hard line) with big
@@ -3492,63 +3494,70 @@ function fromDbRow(part, r){
   if(part==='addresses') return { id:r.id, customerId:r.customer_id, category:r.category, name:r.name||'', phone:r.phone||'', address:r.address||'', zone:r.zone||null, island:r.island||'', harbour:r.harbour||'', isDefault:!!r.is_default, createdAt:new Date(r.created_at).getTime() };
 }
 
-async function loadDB(){
+// Loads everything in one go (every request starts at once), in two stages:
+//  1. what the shop front needs: stores, items, auctions, featured requests,
+//     custom categories, settings, sales counts, Swipe status and riders.
+//     When these are in, storageReady is set and onCore() runs, so the first
+//     screen can be drawn without waiting for the rest.
+//  2. orders, bookings, bids, addresses and the other per-person tables.
+// loadDB resolves once both are in. Without onCore it behaves as before.
+async function loadDB(opts){
+  const onCore = opts && opts.onCore;
   if(!sb){
     // Unconfigured copy (local preview): runs on sample data. Setup steps are
     // in the README, so nothing is shown to the person using it.
     storageReady = true;
+    if(onCore) onCore();
     return;
   }
   try{
-    const [b,i,o,d,pr,au,bk,bd,cr,cc,ad,fr,ps] = await Promise.all([
-      selectAll('businesses'),
-      selectAll('items'),
-      selectAll('orders'),
-      selectAll('delivery_persons'),
-      selectAll('pro_upgrade_requests'),
-      selectAll('auction_listings'),
-      selectAll('rental_bookings'),
-      selectAll('auction_bids'),
-      selectAll('category_requests'),
-      selectAll('custom_categories', 'name'),
-      selectAll('customer_addresses'),
-      selectAll('featured_requests'),
-      sb.from('platform_settings').select('*').eq('id',1).maybeSingle()
-    ]);
+    const q = {
+      b: selectAll('businesses'), i: selectAll('items'), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
+      cc: selectAll('custom_categories', 'name'), fr: selectAll('featured_requests'),
+      ps: sb.from('platform_settings').select('*').eq('id',1).maybeSingle(),
+      sales: loadItemSales(), swipe: sb.rpc('swipe_connected_business_ids'),
+      o: selectAll('orders'), pr: selectAll('pro_upgrade_requests'), bk: selectAll('rental_bookings'), bd: selectAll('auction_bids'),
+      cr: selectAll('category_requests'), ad: selectAll('customer_addresses'), banks: loadRiderBanks(),
+    };
+    Object.values(q).forEach(pr=>Promise.resolve(pr).catch(()=>{}));   // no unhandled rejections while stage 1 runs
     // Promise.all only rejects on a thrown/network-level failure - a query that
     // completes but fails server-side (e.g. an RLS policy error) resolves normally
-    // with a populated .error field instead, which was previously never checked,
-    // so a broken policy on just one table silently looked like "this store has no
-    // items" rather than surfacing anything was wrong.
-    const failed = [['businesses',b],['items',i],['orders',o],['delivery',d],['pro upgrade requests',pr],['auctions',au],['rental bookings',bk],['auction bids',bd],['category requests',cr],['custom categories',cc],['addresses',ad]]
-      .filter(([,res])=>res.error);
-    if(failed.length){
+    // with a populated .error field instead, so each one is checked.
+    const reportFailed = list=>{
+      const failed = list.filter(([,res])=>res && res.error);
+      if(!failed.length) return;
       failed.forEach(([label,res])=>console.error(`loadDB: ${label} query failed:`, res.error));
       toast(`Could not load ${failed.map(([label])=>label).join(', ')} — some data may be missing`, 'bad');
-    }
+    };
+    // Stage 1
+    const [b,i,au,d,cc,fr,ps,, swipeRes] = await Promise.all([q.b,q.i,q.au,q.d,q.cc,q.fr,q.ps,q.sales,q.swipe]);
+    reportFailed([['businesses',b],['items',i],['auctions',au],['delivery',d],['custom categories',cc]]);
     DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
     DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
-    DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
-    DB.orders.sort((a,b2)=>b2.createdAt-a.createdAt);
-    DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
-    DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
     DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
-    DB.bookings = await Promise.all((bk.data||[]).map(async r=>{ const bkg=fromDbRow('bookings',r); await decryptBookingRow(bkg, r); return bkg; }));
-DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
-    DB.bids = (bd.data||[]).map(r=>fromDbRow('bids',r));
-    DB.categoryRequests = (cr.data||[]).map(r=>fromDbRow('categoryRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.delivery = (d.data||[]).map(r=>fromDbRow('delivery',r));
     DB.customCategories = (cc.data||[]).map(r=>r.name).filter(Boolean);
-    DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
     DB.featuredRequests = (fr.data||[]).map(featReqFromRow).sort((a,b2)=>b2.createdAt-a.createdAt);
     if(ps.data) DB.settings = settingsFromRow(ps.data);
-    await loadRiderBanks();
-    await loadItemSales();
     mergeCustomCategories();
     // Ids only - credentials never leave the server (see business_swipe_accounts).
-    const { data: swipeIds, error: swipeErr } = await sb.rpc('swipe_connected_business_ids');
+    const { data: swipeIds, error: swipeErr } = swipeRes || {};
     if(swipeErr) console.error('loadDB: swipe_connected_business_ids failed:', swipeErr);
     const connected = new Set((swipeIds||[]).map(r=>typeof r==='string'?r:(r.swipe_connected_business_ids||r.business_id)));
     DB.businesses.forEach(b=>{ b.swipeConnected = connected.has(b.id); });
+    storageReady = true;
+    if(onCore){ try{ onCore(); }catch(e){ console.error('loadDB onCore:', e); } }
+    // Stage 2
+    const [o,pr,bk,bd,cr,ad] = await Promise.all([q.o,q.pr,q.bk,q.bd,q.cr,q.ad,q.banks]);
+    reportFailed([['orders',o],['pro upgrade requests',pr],['rental bookings',bk],['auction bids',bd],['category requests',cr],['addresses',ad]]);
+    DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
+    DB.orders.sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.proRequests = (pr.data||[]).map(r=>fromDbRow('proRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.bookings = await Promise.all((bk.data||[]).map(async r=>{ const bkg=fromDbRow('bookings',r); await decryptBookingRow(bkg, r); return bkg; }));
+    DB.bookings.sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.bids = (bd.data||[]).map(r=>fromDbRow('bids',r));
+    DB.categoryRequests = (cr.data||[]).map(r=>fromDbRow('categoryRequests',r)).sort((a,b2)=>b2.createdAt-a.createdAt);
+    DB.addresses = (ad.data||[]).map(r=>fromDbRow('addresses',r));
   }catch(e){ console.error(e); toast('Could not reach Supabase — check your config', 'bad'); }
   storageReady = true;
 }
@@ -4136,6 +4145,8 @@ function ensureCountdownTimer(){
 // consume this data, so those are the only tables worth the extra reads.
 const LIVE_REFRESH_MS = 8000;
 let _liveRefreshTimer = null;
+let _liveTick = 1;            // the first refresh after startup skips listings (they were just loaded)
+const LIVE_LISTINGS_EVERY = 4;  // items/stores/auctions every 4th tick (~32 s)
 async function refreshLiveListings(){
   if(!sb || !state.authed) return;
   try{
@@ -4144,16 +4155,21 @@ async function refreshLiveListings(){
     // RLS already scopes the rows back to exactly what this account can see
     // (their own orders, their own store's, and/or open + assigned delivery
     // jobs), same as every other fetch in this app.
+    // Not while the app is in the background. Orders every tick (new rider
+    // jobs, payments); the much bigger item / store / auction lists only every
+    // LIVE_LISTINGS_EVERY ticks.
+    if(document.hidden) return;
+    const listings = (_liveTick++ % LIVE_LISTINGS_EVERY) === 0;
     const [i, b, au, o] = await Promise.all([
-      selectAll('items'),
-      selectAll('businesses'),
-      selectAll('auction_listings'),
+      listings ? selectAll('items') : null,
+      listings ? selectAll('businesses') : null,
+      listings ? selectAll('auction_listings') : null,
       selectAll('orders')
     ]);
-    if(i.error || b.error || au.error || o.error) return; // silent - background refresh, not a user action
-    DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
-    DB.businesses = (b.data||[]).map(r=>fromDbRow('businesses',r));
-    DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
+    if((i && i.error) || (b && b.error) || (au && au.error) || o.error) return; // silent - background refresh, not a user action
+    if(i) DB.items = (i.data||[]).map(r=>fromDbRow('items',r));
+    if(b){ const sw = new Map(DB.businesses.map(x=>[x.id, x.swipeConnected])); DB.businesses = (b.data||[]).map(r=>{ const x = fromDbRow('businesses',r); x.swipeConnected = sw.get(x.id); return x; }); }
+    if(au) DB.auctions = (au.data||[]).map(r=>fromDbRow('auctions',r));
     DB.orders = await Promise.all((o.data||[]).map(async r=>{ const ord=fromDbRow('orders',r); await decryptOrderRow(ord, r); return ord; }));
     // Only auto-render on the screens that actually read this data, and never
     // while a sheet is open or the person is mid-typing (a search box, a sign-in/
@@ -7660,7 +7676,7 @@ function sheetBulkItems(){
       <div class="bulk-row ${bulkRowErrs(r).length||r.saveError?'has-err':''} ${bulkRowActive(r) && bulkRowFlagged(r)?'flagged':''}">
         <div class="row between" style="gap:10px; align-items:flex-start;">
           <span class="bulk-thumb-wrap">${(()=>{ const ex = bulkExtraPhotos(r).filter(x=>x.kind!=='missing').length; return ex ? `<span class="bulk-more" aria-label="${ex} more photo${ex===1?'':'s'}">+${ex}</span>` : ''; })()}
-          ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}</span>
+          ${(()=>{ const ph = bulkPhotoFor(r); return ph.kind==='file' ? `<img class="bulk-thumb" src="${bulkThumbURL(ph.file)}" alt="" loading="lazy" decoding="async">` : ph.kind==='url' ? `<img class="bulk-thumb" src="${escapeAttr(ph.url)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'bulk-thumb none',textContent:'🖼️'}))">` : `<span class="bulk-thumb none" title="No photo">📷</span>`; })()}</span>
           <div style="min-width:0; flex:1;"><strong>${escapeAttr(r.item.name||'(no name)')}</strong><p class="muted" style="font-size:.84em;">Row ${r.line} · ${typeLbl[r.item.listingType]||'?'} · ${r.item.category==='Other'&&r.item.categoryOtherName?escapeAttr(r.item.categoryOtherName):escapeAttr(r.item.category)}${Object.keys(r.item.options||{}).length?` · ${Object.entries(r.item.options).map(([n,v])=>`${escapeAttr(n)} ${escapeAttr(v.join(', '))}`).join(' · ')}`:''}</p></div>
           <span class="price" style="white-space:nowrap;">${r.item.price>0?money(r.item.price):'—'}</span>
         </div>
@@ -9894,7 +9910,7 @@ function itemArtHTML(item){
 function itemThumbHTML(item){
   // A photo that fails to load (deleted file, bad link, offline) falls back to the
   // same tinted art tile an item without a photo gets, never a broken-image icon.
-  return item && item.imageUrl ? `<img src="${item.imageUrl}" alt="" data-art-id="${escapeAttr(String(item.id||''))}">` : itemArtHTML(item);
+  return item && item.imageUrl ? `<img src="${item.imageUrl}" alt="" loading="lazy" decoding="async" data-art-id="${escapeAttr(String(item.id||''))}">` : itemArtHTML(item);
 }
 document.addEventListener('error', e=>{
   const img = e.target;
@@ -10818,7 +10834,7 @@ function itemGalleryHTML(item){
       <button class="share-fab" aria-label="Share this item" onclick="event.stopPropagation(); openShare('item','${item.id}')">${ICON_SHARE}</button>
       ${n>1 ? `<button class="gal-arrow prev" aria-label="Previous photo" onclick="galStep('${item.id}',-1)">‹</button><button class="gal-arrow next" aria-label="Next photo" onclick="galStep('${item.id}',1)">›</button><span class="gal-count" id="galCount_${item.id}">${idx+1} / ${n}</span>` : ''}
     </div>
-    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" data-art-id="${escapeAttr(String(item.id))}" alt=""></button>`).join('')}</div>` : ''}`;
+    ${n>1 ? `<div class="gal-thumbs" id="galThumbs_${item.id}">${imgs.map((u,i)=>`<button class="gal-thumb ${i===idx?'on':''}" aria-label="Photo ${i+1}" aria-current="${i===idx}" onclick="galleryGo('${item.id}', ${i})"><img src="${u}" loading="lazy" data-art-id="${escapeAttr(String(item.id))}" alt=""></button>`).join('')}</div>` : ''}`;
 }
 function renderCustItem(){
   const item = DB.items.find(i=>i.id===state.viewItemId);
@@ -10996,6 +11012,9 @@ const TOP_GRID_ROWS = 5;
 function topGridCols(){ const w = window.innerWidth; return w >= 860 ? 5 : w >= 640 ? 4 : w >= 440 ? 3 : 2; }
 function featPerView(){ return window.innerWidth >= 640 && window.innerWidth < 1024 ? 6 : 4; }
 function topGridMax(){ return TOP_GRID_ROWS * topGridCols(); }   // matches .top-grid's columns
+// Each swipe row shows its first RAIL_MAX items and a See all card: with
+// hundreds of items per category, building every card made Home slow.
+const RAIL_MAX = 16;
 function moreRailsHTML(rest){
   if(!rest.length) return '';
   const groups = {};
@@ -11005,7 +11024,7 @@ function moreRailsHTML(rest){
   return rails.map(([title, list, cat])=>`
       <div class="section">
         <div class="section-head rail-head"><h2>${cat ? categoryIcon(cat)+' ' : ''}${escapeAttr(title)}</h2>${cat && state.homeCategory==='All' ? `<button class="link-btn" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ›</button>` : ''}</div>
-        <div class="rail">${list.map(i=>topSellingCardHTML(i)).join('')}</div>
+        <div class="rail">${list.slice(0, RAIL_MAX).map(i=>topSellingCardHTML(i)).join('')}${list.length > RAIL_MAX && cat && state.homeCategory==='All' ? `<button class="rail-more" onclick="setHomeCategory('${escapeAttr(cat)}')">See all ${list.length}<span aria-hidden="true">›</span></button>` : ''}</div>
       </div>`).join('');
 }
 function renderCustHome(){
@@ -14004,6 +14023,7 @@ window.addEventListener('unhandledrejection', e=>{
   const app = document.getElementById('app');
   if(app && !storageReady) app.innerHTML = startupErrorHTML(e.reason);
 });
+const AUTH_WAIT_MS = 1500;   // how long startup waits for a saved sign-in before drawing the guest view
 (async function init(){
   // The CSS --fs var otherwise only ever gets set from the Settings slider's own
   // oninput - without this, the default state.fontSize never actually reaches the
@@ -14014,29 +14034,49 @@ window.addEventListener('unhandledrejection', e=>{
   // a slow connection showed an empty screen.
   render();
   maybeShowOpeningAd();
+  // Faster start (2026-11-19). Before, the app downloaded every table as a
+  // guest, then waited up to 8 s for the saved sign-in, then (if signed in)
+  // downloaded everything again, and only then drew the screen.
+  // Now: Firebase's saved sign-in usually answers in well under a second, so
+  // wait for it briefly (AUTH_WAIT_MS) and load the data ONCE as the right
+  // person; draw as soon as that load finishes. If the sign-in answer is
+  // slower, the guest view is drawn first and the signed-in data follows.
+  const authFirst = (sb && fbAuth) ? Promise.race([
+    new Promise(res=>{ const off = fbAuth.onAuthStateChanged(u=>{ off(); res(u); }); }),
+    new Promise(res=>setTimeout(()=>res(fbAuth.currentUser), 8000))
+  ]).catch(()=>null) : Promise.resolve(null);
+  let early = null;
+  try{ early = await Promise.race([authFirst.then(u=>({ u })), new Promise(res=>setTimeout(()=>res(null), AUTH_WAIT_MS))]); }catch(e){}
+  if(early){ try{ applySession(fbSession(early.u)); }catch(e){ console.error('Session restore failed:', e); } }
+  // Shoppers see the shop as soon as stage 1 of loadDB is in; a store owner
+  // or rider opening on their own screen waits for their orders (stage 2), so
+  // it never shows an empty order list first.
+  let workModeDone = false;
+  const startWorkMode = ()=>{ if(workModeDone) return; workModeDone = true; if(early && state.authed){ try{ if(!/[?&](item|store)=/.test(location.search)) openWorkModeOnStart(); }catch(e){} } };
   try{
-    await loadDB();
+    await loadDB({ onCore: ()=>{
+      startWorkMode();
+      if(state.role==='customer' && !state.adminMode){ try{ seedIfEmpty(); render(); }catch(e){ console.error('Render failed:', e); } }
+    } });
     seedIfEmpty();
   }catch(e){
     console.error('Startup data load failed:', e);
     storageReady = true;
     toast('Some data could not be loaded. Pull down or reload to try again', 'bad');
   }
+  startWorkMode();
+  try{ render(); }catch(e){ console.error('Render failed:', e); }
   if(sb){
     // Each step is guarded on its own: a failed session restore shouldn't stop
     // the app from opening as a guest, and a failed post-sign-in check
     // shouldn't stop the signed-in app from drawing.
-    // Firebase restores a saved sign-in on its own; wait for that first
-    // answer (capped so a slow network can't hold the app), then keep
-    // listening for sign-outs and other changes.
     try{
       if(fbAuth){
-        const first = await Promise.race([
-          new Promise(res=>{ const off = fbAuth.onAuthStateChanged(u=>{ off(); res(u); }); }),
-          new Promise(res=>setTimeout(()=>res(fbAuth.currentUser), 8000))
-        ]);
-        applySession(fbSession(first));
-        if(state.authed){ await loadDB(); await handlePostAuth(); }
+        if(!early){
+          applySession(fbSession(await authFirst));
+          if(state.authed) await loadDB();
+        }
+        if(state.authed) await handlePostAuth();
       }
     }catch(e){ console.error('Session restore failed:', e); }
     try{

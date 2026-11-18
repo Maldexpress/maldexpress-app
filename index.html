@@ -1932,6 +1932,8 @@
   .hs-tip{display:flex; gap:10px; align-items:flex-start; margin:0 0 14px; padding:12px 14px; border-radius:16px; background:#E8F5F3; border:1px solid #BFE3DE; font-size:.9em;}
   .hs-tip p{margin:3px 0 0; color:var(--ink-dim); line-height:1.4;}
   .hs-tip-x{flex:0 0 28px; height:28px; border-radius:50%; border:none; background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.1);}
+  .order-line-link{background:none; border:none; padding:0; text-align:left; font:inherit; color:var(--lagoon-700, #0B6E6E); font-weight:600; cursor:pointer; text-decoration:underline; text-decoration-color:rgba(11,110,110,.35); text-underline-offset:3px;}
+  .order-line-link span{text-decoration:none; display:inline-block; margin-left:2px;}
   /* Values the customer can't change (transfer slip amount / account) */
   input.locked-field{background:var(--sand-2, #EEF4F3) !important; color:var(--ink) !important; font-weight:700; cursor:default; pointer-events:none;
     -webkit-user-select:none; user-select:none; border-style:dashed !important;}
@@ -14513,11 +14515,22 @@ function custOrderCard(o){
   </div>`;
 }
 function openCustOrderDetail(orderId){ openSheet('custOrderDetail', orderId); }
+// One line of an order in the customer's order detail: tapping it opens the
+// item's page while it is still listed (approved, not paused); an item that's
+// gone, paused or taken down is plain text and can't be tapped.
+function custOrderLineHTML(it){
+  const item = it.itemId ? DB.items.find(x=>x.id===it.itemId) : null;
+  const listed = !!(item && isApprovedItem(item));
+  const label = `${it.qty}× ${escapeAttr(it.name||'')}`;
+  return `<div class="row between" style="margin-bottom:6px; gap:10px;">${listed
+    ? `<button class="order-line-link" onclick="openItemDetail('${escapeAttr(item.id)}')" aria-label="Open ${escapeAttr(it.name||'item')}">${label} <span aria-hidden="true">›</span></button>`
+    : `<span class="muted" title="No longer listed">${label}</span>`}<span style="flex-shrink:0;">${money(it.price*it.qty)}</span></div>`;
+}
 function sheetCustOrderDetail(){
   const o = DB.orders.find(x=>x.id===state.sheetData);
   if(!o) return `<p class="muted">Order not found.</p>`;
   const biz = DB.businesses.find(b=>b.id===o.businessId);
-  const itemsList = (o.items||[]).map(it=>`<div class="row between" style="margin-bottom:6px;"><span class="muted">${it.qty}× ${it.name}</span><span>${money(it.price*it.qty)}</span></div>`).join('');
+  const itemsList = (o.items||[]).map(custOrderLineHTML).join('');
   // The store's account shows only once the store has accepted the order (pay now) and while the slip is being checked.
   const showAcct = o.paymentMethod==='transfer' && ['pending_transfer','slip_uploaded'].includes(o.paymentStatus) && o.status!=='declined';
   return `

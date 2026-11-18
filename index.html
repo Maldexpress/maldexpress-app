@@ -6748,9 +6748,20 @@ const PHOTO_MAX = 5;
 // ---- One name and one photo per item, per store ----
 function nameKey(t){ return bulkSlug(t); }
 function storeItemByName(bizId, name, exceptId){ const k = nameKey(name); return k ? DB.items.find(i=>i.businessId===bizId && i.id!==exceptId && nameKey(i.name)===k) : null; }
-// A photo's fingerprint: a 64-bit difference hash of the picture plus its
-// colours in 4 corners, so the same photo still matches after it was
-// resized or re-saved, while colour variants of one product don't.
+// A photo's fingerprint ("v2:"): the picture is cropped to the product (the
+// plain background around it is ignored, so a small product on a big white
+// page still fills the grid), smoothed down to a 16x16 grid of brightness
+// levels stretched to the photo's own contrast (0-15, one hex digit per cell),
+// plus the product's average colour.
+// Two photos match when their grids differ by little on average
+// (PRINT_MAX_DIFF), so a resized or re-saved copy still matches; different
+// products on white, which all looked the same to the old 9x8 hash, now
+// differ, a colour variant of one product differs by its colour, and the
+// product's width : height must agree within ~6%.
+// Old fingerprints (64-bit hash + corner colours) are still compared with
+// each other, and a store's items get the new kind in ensureBizPrints().
+const PRINT_V = 'v2:';
+let PRINT_MAX_DIFF = 0.45;   // average brightness-level difference per cell (0-15 scale)
 const _printCache = new Map();
 function photoPrint(src){
   if(!src) return Promise.resolve(null);
@@ -6759,28 +6770,68 @@ function photoPrint(src){
     const img = new Image(); let obj = null;
     if(typeof src==='string' && /^https?:/i.test(src)) img.crossOrigin = 'anonymous';
     const done = v=>{ if(obj) URL.revokeObjectURL(obj); res(v); };
-    img.onload = ()=>{ try{
-      const c = document.createElement('canvas'), x = c.getContext('2d', { willReadFrequently:true });
-      c.width = 9; c.height = 8; x.drawImage(img, 0, 0, 9, 8);
-      const d = x.getImageData(0, 0, 9, 8).data, lum = k=>d[k]*.299 + d[k+1]*.587 + d[k+2]*.114;
-      let hex = '';
-      for(let y=0;y<8;y++){ let nib = 0; for(let i=0;i<8;i++){ const a = (y*9+i)*4; nib = (nib<<1) | (lum(a) > lum(a+4) ? 1 : 0); if(i===3 || i===7){ hex += nib.toString(16); nib = 0; } } }
-      c.width = 2; c.height = 2; x.drawImage(img, 0, 0, 2, 2);
-      const e = x.getImageData(0, 0, 2, 2).data; let col = '';
-      for(let k=0;k<16;k+=4) col += [e[k],e[k+1],e[k+2]].map(v=>(v>>5).toString(8)).join('');
-      done(hex + '-' + col);
-    }catch(_){ done(null); } };
+    img.onload = ()=>{ try{ done(printFromImage(img)); }catch(_){ done(null); } };
     img.onerror = ()=>done(null);
     if(src instanceof Blob){ obj = URL.createObjectURL(src); img.src = obj; } else img.src = src;
   });
   _printCache.set(src, p); return p;
 }
+function printFromImage(img){
+  const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+  if(!W || !H) return null;
+  const draw = (w, h, sx, sy, sw, sh)=>{
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const x = c.getContext('2d', { willReadFrequently:true });
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);          // transparent PNGs count as white
+    x.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+    return x.getImageData(0, 0, w, h).data;
+  };
+  // 1. Find the product: everything that differs from the background colour.
+  const S = 128, d0 = draw(S, S, 0, 0, W, H);
+  const at = (k)=>[d0[k], d0[k+1], d0[k+2]];
+  const corners = [0, (S-1)*4, (S*(S-1))*4, (S*S-1)*4].map(at);
+  const bg = [0,1,2].map(c=>corners.map(v=>v[c]).sort((a,b)=>a-b)[1]);
+  let x0 = S, y0 = S, x1 = -1, y1 = -1;
+  for(let y=0;y<S;y++) for(let x=0;x<S;x++){
+    const k = (y*S+x)*4;
+    if(Math.max(Math.abs(d0[k]-bg[0]), Math.abs(d0[k+1]-bg[1]), Math.abs(d0[k+2]-bg[2])) > 28){
+      if(x<x0) x0 = x; if(x>x1) x1 = x; if(y<y0) y0 = y; if(y>y1) y1 = y;
+    }
+  }
+  if(x1 < x0){ x0 = 0; y0 = 0; x1 = S-1; y1 = S-1; }
+  const sx = x0/S*W, sy = y0/S*H, sw = Math.max(1, (x1-x0+1)/S*W), sh = Math.max(1, (y1-y0+1)/S*H);
+  // 2. Brightness of the product area on a 16x16 grid (each cell the average of 4x4 pixels).
+  const GW = 16, GH = 16, d = draw(GW*4, GH*4, sx, sy, sw, sh);
+  const lum = new Float32Array(GW*GH); let r = 0, g = 0, b = 0, n = 0;
+  for(let y=0;y<GH*4;y++) for(let x=0;x<GW*4;x++){
+    const k = (y*GW*4+x)*4, L = d[k]*.299 + d[k+1]*.587 + d[k+2]*.114;
+    lum[(y>>2)*GW + (x>>2)] += L / 16;
+    if(Math.max(Math.abs(d[k]-bg[0]), Math.abs(d[k+1]-bg[1]), Math.abs(d[k+2]-bg[2])) > 28){ r += d[k]; g += d[k+1]; b += d[k+2]; n++; }
+  }
+  // Stretch to the photo's own contrast, so a pale product on white shows its shape too.
+  let mean = 0; for(let k=0;k<lum.length;k++) mean += lum[k]; mean /= lum.length;
+  let sd = 0; for(let k=0;k<lum.length;k++) sd += (lum[k]-mean)**2; sd = Math.sqrt(sd / lum.length);
+  let hex = '';
+  for(let k=0;k<GW*GH;k++) hex += Math.max(0, Math.min(15, Math.round(7.5 + (sd > 1 ? (lum[k]-mean)/sd : 0) * 2.5))).toString(16);
+  const col = n ? [r/n, g/n, b/n].map(v=>(Math.round(v)>>5).toString(8)).join('') : '777';
+  const shape = Math.round(100 * Math.log2(sw / sh)) + 500;   // product width : height, 9 steps = ~6%
+  return PRINT_V + hex + '-' + col + '-' + shape;
+}
 function printsMatch(a, b){
   if(!a || !b) return false; if(a===b) return true;
-  const [ha, ca] = a.split('-'), [hb, cb] = b.split('-');
+  const va = a.startsWith(PRINT_V), vb = b.startsWith(PRINT_V);
+  if(va !== vb) return false;                              // old and new kinds can't be compared
+  const [ha, ca, sa] = (va ? a.slice(PRINT_V.length) : a).split('-'), [hb, cb, sb2] = (vb ? b.slice(PRINT_V.length) : b).split('-');
   if(!ha || !hb || !ca || !cb || ha.length!==hb.length || ca.length!==cb.length) return false;
-  let bits = 0; for(let k=0;k<ha.length;k++){ let v = parseInt(ha[k],16) ^ parseInt(hb[k],16); while(v){ bits += v & 1; v >>= 1; } }
-  if(bits > 4) return false;
+  if(va){
+    if(Math.abs(Number(sa) - Number(sb2)) > 9) return false;                // product shape differs by more than ~6%
+    let sum = 0; for(let k=0;k<ha.length;k++) sum += Math.abs(parseInt(ha[k],16) - parseInt(hb[k],16));
+    if(sum / ha.length > PRINT_MAX_DIFF) return false;
+  } else {
+    let bits = 0; for(let k=0;k<ha.length;k++){ let v = parseInt(ha[k],16) ^ parseInt(hb[k],16); while(v){ bits += v & 1; v >>= 1; } }
+    if(bits > 4) return false;
+  }
   for(let k=0;k<ca.length;k++) if(Math.abs(parseInt(ca[k],8) - parseInt(cb[k],8)) > 1) return false;
   return true;
 }
@@ -6790,7 +6841,7 @@ const _printsReady = {};
 function ensureBizPrints(bizId){
   if(_printsReady[bizId]) return _printsReady[bizId];
   _printsReady[bizId] = (async()=>{
-    const todo = DB.items.filter(i=>i.businessId===bizId && itemImages(i).length && !(i.photoPrints && i.photoPrints.length===itemImages(i).length));
+    const todo = DB.items.filter(i=>i.businessId===bizId && itemImages(i).length && !(i.photoPrints && i.photoPrints.length===itemImages(i).length && i.photoPrints.every(p=>p && p.startsWith(PRINT_V))));
     const changed = [];
     for(const it of todo){
       const prints = await Promise.all(itemImages(it).map(u=>photoPrint(u)));

@@ -1814,7 +1814,7 @@
     .home-hero.has-photo{background:
       linear-gradient(180deg, rgba(4,30,42,.55) 0%, rgba(4,30,42,.12) 30%, rgba(4,30,42,0) 52%, rgba(4,30,42,.46) 100%),
       linear-gradient(90deg, rgba(4,30,42,.42) 0%, rgba(4,30,42,0) 62%),
-      var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat !important;}
+      var(--hero-img) var(--hero-x, 50%) calc(var(--hero-y, 50%) + var(--hero-shift,0px)) / var(--hero-size, cover) no-repeat !important;}
     .home-hero > .home-header{padding-top:calc(12px + env(safe-area-inset-top)) !important; padding-bottom:2px !important; align-items:center;}
     .home-header .row{gap:8px !important;}
     .home-header .brand-mark{display:none !important;}           /* the name below is the brand */
@@ -1873,7 +1873,7 @@
     background:var(--sand-bg, #F3F7F6); border-radius:30px 30px 0 0; box-shadow:0 -10px 30px -12px rgba(4,30,42,.35);}
   .home-hero.has-photo{background:
     linear-gradient(180deg, rgba(4,30,42,.55) 0%, rgba(4,30,42,.1) 34%, rgba(4,30,42,.05) 60%, rgba(4,30,42,.35) 100%),
-    var(--hero-img) center calc(50% + var(--hero-shift,0px)) / cover no-repeat !important;}
+    var(--hero-img) var(--hero-x, 50%) calc(var(--hero-y, 50%) + var(--hero-shift,0px)) / var(--hero-size, cover) no-repeat !important;}
   .home-hero .hero-wordmark{margin:10px 0 34px !important; font-size:clamp(32px, 10vw, 40px) !important;}
   .home-hero > .row.search-row, .home-hero > .hero-tabs{position:relative; z-index:2;}
   .word-fly{transition:color .18s, -webkit-text-fill-color .18s;}
@@ -4848,7 +4848,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -4907,6 +4907,74 @@ function applyReveal(){
   heroParallax();
 }
 // The header picture drifts up slower than the page and fades as it goes.
+// ---------- Header photo on phones ----------
+// Header photos are made wide for the PC banner. On a phone the header is much
+// narrower, so showing the middle of the photo cuts the subject (the boat, the
+// gavel…) off. The app finds the subject automatically (where the picture has
+// the most detail) and shifts the photo so it sits on the right of the phone
+// header, clear of the name and the search. The admin's upload saves the
+// result (site_images.hero_focus); otherwise it is worked out on the phone.
+const HERO_SUBJECT_AT = 0.68;          // where the subject's centre goes, across the phone header
+const _heroFit = {};                   // url -> { w, h, x, y } | 'loading' | 'fail'
+function photoFocusFromImage(img){
+  const W = 240, H = Math.max(24, Math.round(W * img.naturalHeight / img.naturalWidth));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d', { willReadFrequently:true }); g.drawImage(img, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data, L = new Float32Array(W*H), S = new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){ const r=d[i*4], gg=d[i*4+1], b=d[i*4+2], mx=Math.max(r,gg,b), mn=Math.min(r,gg,b); L[i]=.299*r+.587*gg+.114*b; S[i]=mx-mn; }
+  // detail = brightness edges plus colour edges; thin faint lines (palm leaves, waves) count little
+  const col = new Float32Array(W), E = new Float32Array(W*H), y0 = Math.round(H*.06), y1 = Math.round(H*.94);
+  for(let y=Math.max(1,y0); y<Math.min(H-1,y1); y++) for(let x=1;x<W-1;x++){
+    const i=y*W+x, e = Math.abs(L[i+1]-L[i-1]) + Math.abs(L[i+W]-L[i-W]) + .6*(Math.abs(S[i+1]-S[i-1]) + Math.abs(S[i+W]-S[i-W]));
+    const v = e > 18 ? e*e : 0; E[i]=v; col[x]+=v; }
+  const win = Math.round(W*.3); let best=0, bx=0, run=0;
+  for(let x=0;x<W;x++){ run += col[x] - (x>=win ? col[x-win] : 0); if(x>=win-1 && run>best){ best=run; bx=x-win+1; } }
+  if(!best) return null;
+  let sx=0, sw=0, sy=0, swy=0;
+  for(let x=bx;x<bx+win;x++){ sx += x*col[x]; sw += col[x]; for(let y=y0;y<y1;y++){ const v=E[y*W+x]; sy += y*v; swy += v; } }
+  return { x: (sx/sw + .5)/W, y: swy ? (sy/swy + .5)/H : .5 };
+}
+function photoFocusFromFile(file){
+  return new Promise(res=>{ const u = URL.createObjectURL(file), im = new Image();
+    im.onload = ()=>{ let f = null; try{ f = photoFocusFromImage(im); }catch(e){} URL.revokeObjectURL(u); res(f); };
+    im.onerror = ()=>{ URL.revokeObjectURL(u); res(null); }; im.src = u; });
+}
+function heroFitInfo(url){
+  const have = _heroFit[url]; if(have) return have;
+  _heroFit[url] = 'loading';
+  const saved = DB.settings && DB.settings.siteImages && DB.settings.siteImages.hero_focus;
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = ()=>{
+    let f = saved && saved.url===url && typeof saved.x==='number' ? saved : null;
+    if(!f){ try{ f = photoFocusFromImage(im); }catch(e){ f = null; } }
+    _heroFit[url] = { w:im.naturalWidth, h:im.naturalHeight, x: f ? f.x : .5, y: f ? f.y : .5 };
+    _heroImgSize[url] = { w:im.naturalWidth, h:im.naturalHeight };
+    fitHeroPhoto(); updateHomeMiniHeader();
+  };
+  im.onerror = ()=>{ _heroFit[url] = 'fail'; };
+  im.src = url;
+  return 'loading';
+}
+// Size and place the photo in the phone header: it covers just the part you
+// can see (above the Shore sheet), top-aligned, with the subject moved right.
+function heroPhotoBox(W, H, fit, sheetH){
+  const vis = Math.max(H * .5, H - (sheetH || 0));
+  const k = Math.max(W / fit.w, vis / fit.h), sw = fit.w * k, sh = fit.h * k;
+  const ox = sw <= W + 1 ? (W - sw) / 2 : Math.min(0, Math.max(W - sw, W * HERO_SUBJECT_AT - fit.x * sw));
+  return { sw, sh, ox, oy: 0 };
+}
+function fitHeroPhoto(){
+  const hero = document.querySelector('.home-hero.has-photo'); if(!hero) return;
+  const url = DB.settings && DB.settings.heroImageUrl;
+  if(!url || isDesktop()){ ['--hero-x','--hero-y','--hero-size'].forEach(v=>hero.style.removeProperty(v)); return; }
+  const fit = heroFitInfo(url); if(!fit || typeof fit !== 'object') return;
+  const r = hero.getBoundingClientRect(), sheetH = parseFloat(getComputedStyle(hero, '::after').height) || 0;
+  const bx = heroPhotoBox(r.width, r.height, fit, sheetH);
+  hero.style.setProperty('--hero-x', bx.ox.toFixed(1) + 'px');
+  hero.style.setProperty('--hero-y', bx.oy.toFixed(1) + 'px');
+  hero.style.setProperty('--hero-size', `${bx.sw.toFixed(1)}px ${bx.sh.toFixed(1)}px`);
+}
+window.addEventListener('resize', ()=>{ fitHeroPhoto(); });
 function heroParallax(){
   if(REDUCED_MOTION) return;
   const sc = document.querySelector('.home-hero .hero-scene'); const hero = document.querySelector('.home-hero');
@@ -5426,7 +5494,7 @@ async function adminSaveSettings(){
   if(adLink && !/^https?:\/\//i.test(adLink)){ toast('The ad link must start with https://','bad'); return; }
   const adOn = !!(document.getElementById('set_ad_on')||{}).checked;
   if(adOn && !_adDraft.url){ toast('Upload an ad image or video first','bad'); return; }
-  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null, site_images: siteImgDraftOut() });
+  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null, site_images: { ...siteImgDraftOut(), ...heroFocusOut() } });
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -5578,6 +5646,13 @@ function sponsoredBgClass(){ return siteImg('sponsored_bg') ? ' has-bg' : ''; }
 function sponsoredBgStyle(){ const u = siteImg('sponsored_bg'); return u ? `style="--feat-img:url('${escapeAttr(u)}')"` : ''; }
 function siteImg(key){ const m = DB.settings && DB.settings.siteImages; return (m && typeof m[key]==='string') ? m[key] : ''; }
 function siteImgDraft(){ const st = DB.settings; if(_siteImgDraft.loadedFrom !== st) _siteImgDraft = { imgs:{ ...(st.siteImages||{}) }, loadedFrom:st }; return _siteImgDraft.imgs; }
+// The header photo's subject point, saved with it so phones don't have to work it out.
+function heroFocusOut(){
+  const url = _heroDraft.url; if(!url) return {};
+  if(_heroDraft.focus) return { hero_focus:{ url, x:+_heroDraft.focus.x.toFixed(4), y:+_heroDraft.focus.y.toFixed(4) } };
+  const old = DB.settings.siteImages && DB.settings.siteImages.hero_focus;
+  return old && old.url===url ? { hero_focus: old } : {};
+}
 function siteImgDraftOut(){ const d = siteImgDraft(), out = {}; SITE_IMAGES.forEach(x=>{ if(d[x.key]) out[x.key] = d[x.key]; }); return out; }
 function siteImgAdminHTML(){
   const d = siteImgDraft();
@@ -5613,7 +5688,8 @@ async function onHeroFile(e){
   toast('Uploading picture…');
   const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
   if(!url) return;
-  _heroDraft.url = url; render(); toast('Uploaded. Press Save settings to use it');
+  _heroDraft.url = url; _heroDraft.focus = await photoFocusFromFile(f);   // where the subject is, for phones
+  render(); toast('Uploaded. Press Save settings to use it');
 }
 function adAdminPreviewHTML(){
   const st = DB.settings;
@@ -10873,11 +10949,15 @@ function alignMiniPhoto(el, row, lockAt){
   if(!nat){ _heroImgSize[url] = 'loading'; const im = new Image(); im.onload = ()=>{ _heroImgSize[url] = { w:im.naturalWidth, h:im.naturalHeight }; updateHomeMiniHeader(); }; im.src = url; return; }
   if(nat==='loading' || !nat.w) return;
   const hr = hero.getBoundingClientRect(), W = hr.width, H = hr.height;
-  const k = Math.max(W / nat.w, H / nat.h), sw = nat.w * k, sh = nat.h * k;
+  let k = Math.max(W / nat.w, H / nat.h), sw = nat.w * k, sh = nat.h * k;
+  const hs = (hero.style.getPropertyValue('--hero-size') || '').split(' ').map(parseFloat);   // the phone fit (fitHeroPhoto)
+  const hy = parseFloat(hero.style.getPropertyValue('--hero-y'));
+  if(hs.length === 2 && hs[0] && hs[1]){ sw = hs[0]; sh = hs[1]; }
   const heroTopWhenLocked = lockAt - (row.getBoundingClientRect().top - hr.top);   // hero's top edge, relative to the screen, at the lock point
   el.style.setProperty('--mini-bg-size', `${sw}px ${sh}px`);
   const shift = parseFloat(getComputedStyle(hero).getPropertyValue('--hero-shift')) || 0;   // the big header's photo drifts with scroll (heroParallax)
-  el.style.setProperty('--mini-bg-pos', `${hr.left + (W - sw)/2}px ${heroTopWhenLocked + (H - sh)/2 + shift}px`);
+  const hx = parseFloat(hero.style.getPropertyValue('--hero-x'));   // the phone fit (fitHeroPhoto), else centred
+  el.style.setProperty('--mini-bg-pos', `${hr.left + (isNaN(hx) ? (W - sw)/2 : hx)}px ${heroTopWhenLocked + (isNaN(hy) ? (H - sh)/2 : hy) + shift}px`);
 }
 document.body.addEventListener('scroll', updateHomeMiniHeader, { passive:true });
 window.addEventListener('scroll', updateHomeMiniHeader, { passive:true });

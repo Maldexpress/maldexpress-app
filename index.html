@@ -1269,6 +1269,15 @@
   .section > h2, .section-head h2{position:relative; padding-bottom:6px;}
   .section > h2::after, .section-head h2::after{content:""; position:absolute; left:0; bottom:0; width:28px; height:3px; border-radius:3px; background:linear-gradient(90deg, var(--lagoon-500), var(--sunset));}
   .feat-panel{overflow:hidden;}
+  /* admin background photo for Sponsored, under a light wash so the gold title and cards stay clear */
+  .feat-panel.has-bg{background:linear-gradient(135deg, rgba(255,248,226,.86) 0%, rgba(255,250,236,.62) 45%, rgba(234,246,255,.55) 100%), var(--feat-img) center / cover no-repeat;}
+  /* Admin -> Settings -> Home pictures */
+  .site-img-grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-bottom:8px;}
+  .site-img-tile{display:flex; flex-direction:column; gap:6px; padding:10px; border-radius:16px; background:var(--sand-2, #EEF5F4);}
+  .site-img-tile strong{font-size:.9em;}
+  .site-img-tile .muted{font-size:.76em;}
+  .sit-prev{aspect-ratio:16/7; border-radius:12px; background:#fff center / cover no-repeat; display:flex; align-items:center; justify-content:center; font-size:.78em; color:var(--ink-dim);}
+  .sit-prev.empty{background:repeating-linear-gradient(135deg, #fff 0 10px, #F4F8F8 10px 20px); border:1px dashed var(--edge);}
   .feat-panel::after{content:""; position:absolute; top:0; bottom:0; left:-60%; width:40%; pointer-events:none; background:linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,.45), rgba(255,255,255,0)); transform:skewX(-18deg); animation:goldSheen 6.5s ease-in-out infinite; z-index:0;}
   .feat-panel > *{position:relative; z-index:1;}
   @keyframes goldSheen{0%,70%{left:-60%;} 100%{left:130%;}}
@@ -1412,7 +1421,7 @@
        Maarukeytu name sits above the headline in the same frosted line type as
        the phone header; other slides keep their colour and a small picture. */
     .desk-banner{position:relative; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; gap:32px; height:clamp(320px, 30vw, 440px); padding:0 64px; border-radius:28px; color:#fff; overflow:hidden; margin-bottom:44px; box-shadow:0 18px 40px rgba(8,60,80,.14);}
-    .desk-banner.has-photo, .desk-banner.has-photo.tone-lagoon{grid-template-columns:minmax(0,1fr); background:linear-gradient(90deg, rgba(6,32,44,.78) 0%, rgba(6,32,44,.52) 38%, rgba(6,32,44,.08) 70%, rgba(6,32,44,0) 100%), var(--hero-img) center 40% / cover no-repeat;}
+    .desk-banner.has-photo, .desk-banner.has-photo.tone-lagoon, .desk-banner.has-photo.tone-sunset, .desk-banner.has-photo.tone-ocean{grid-template-columns:minmax(0,1fr); background:linear-gradient(90deg, rgba(6,32,44,.78) 0%, rgba(6,32,44,.52) 38%, rgba(6,32,44,.08) 70%, rgba(6,32,44,0) 100%), var(--hero-img) center 40% / cover no-repeat;}
     .desk-banner .db-copy{max-width:560px;}
     .db-word{font-family:'Poiret One', var(--display), sans-serif; font-size:2.2em; letter-spacing:.08em; line-height:1; margin-bottom:18px; color:#fff; -webkit-text-stroke:.6px #fff; text-shadow:0 4px 18px rgba(6,40,52,.45);}
     .db-word.glass-word{-webkit-text-stroke:.8px rgba(255,255,255,.95);}
@@ -1455,6 +1464,12 @@
     .desk-promo.p-sell{background:#FFF1D9;}
     .desk-promo.p-ride{background:#E3F4E7;}
     .dp-art{font-size:5.5em; flex-shrink:0;}
+    /* admin photos on the promo cards: a soft wash on the left keeps the text readable */
+    .desk-promo.has-photo .dp-art{visibility:hidden;}
+    .desk-promo.p-sell.has-photo{background:linear-gradient(90deg, rgba(255,241,217,.97) 0%, rgba(255,241,217,.9) 42%, rgba(255,241,217,.35) 70%, rgba(255,241,217,0) 100%), var(--promo-img) center / cover no-repeat;}
+    .desk-promo.p-ride.has-photo{background:linear-gradient(90deg, rgba(227,244,231,.97) 0%, rgba(227,244,231,.9) 42%, rgba(227,244,231,.35) 70%, rgba(227,244,231,0) 100%), var(--promo-img) center / cover no-repeat;}
+    .desk-banner.db-swap{animation:dbSwap .7s ease both;}
+    @keyframes dbSwap{from{opacity:.35;} to{opacity:1;}}
 
     .site-foot{display:block; margin:24px calc(50% - 50vw) 0; background:#fff; border-top:1px solid var(--edge); padding:44px 0 28px;}
     .sf-cols{display:grid; grid-template-columns:repeat(4, 1fr); gap:28px;}
@@ -4743,7 +4758,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -5169,10 +5184,10 @@ async function graduateApprovedCategory(req){
 // be featured: paid by the store (featured_requests, approved by the admin)
 // or picked by the admin. Featured spots are limited (DB.settings); the
 // featured list is reshuffled every hour.
-const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5, heroImageUrl:'' };
+const DEFAULT_SETTINGS = { swipeEnabled:false, featuredSlots:12, featuredPrice:50, featuredDays:3, bankAccountName:'', bankAccountNumber:'', adEnabled:false, adMediaUrl:'', adMediaType:'image', adLink:'', adSeconds:10, adSkipAfter:5, heroImageUrl:'', siteImages:{} };
 if(!DB.settings) DB.settings = { ...DEFAULT_SETTINGS };
 if(!DB.featuredRequests) DB.featuredRequests = [];
-function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5, heroImageUrl:r.hero_image_url||'' }; }
+function settingsFromRow(r){ return { swipeEnabled:!!r.swipe_enabled, featuredSlots:r.featured_slots||12, featuredPrice:Number(r.featured_price!=null?r.featured_price:50), featuredDays:r.featured_days||3, bankAccountName:r.bank_account_name||'', bankAccountNumber:r.bank_account_number||'', adEnabled:!!r.ad_enabled, adMediaUrl:r.ad_media_url||'', adMediaType:r.ad_media_type==='video'?'video':'image', adLink:r.ad_link||'', adSeconds:r.ad_seconds||10, adSkipAfter:r.ad_skip_after!=null?r.ad_skip_after:5, heroImageUrl:r.hero_image_url||'', siteImages:(r.site_images && typeof r.site_images==='object') ? r.site_images : {} }; }
 function featReqFromRow(r){ return { id:r.id, itemId:r.item_id, businessId:r.business_id, amount:Number(r.amount), days:r.days, paymentMethod:r.payment_method, status:r.status, slipUrl:r.slip_url||null, note:r.note||'', createdAt:new Date(r.created_at).getTime(), resolvedAt:r.resolved_at?new Date(r.resolved_at).getTime():null, startsAt:r.starts_at?new Date(r.starts_at).getTime():null, endsAt:r.ends_at?new Date(r.ends_at).getTime():null }; }
 function isApprovedItem(i){ return (i.approvalStatus||'approved')==='approved' && !i.paused; }   // listed: approved and not paused
 function isFeaturedNow(i){ return isApprovedItem(i) && i.featuredUntil && i.featuredUntil > Date.now(); }
@@ -5321,7 +5336,7 @@ async function adminSaveSettings(){
   if(adLink && !/^https?:\/\//i.test(adLink)){ toast('The ad link must start with https://','bad'); return; }
   const adOn = !!(document.getElementById('set_ad_on')||{}).checked;
   if(adOn && !_adDraft.url){ toast('Upload an ad image or video first','bad'); return; }
-  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null });
+  Object.assign(row, { ad_enabled: adOn, ad_media_url: _adDraft.url||null, ad_media_type: _adDraft.type||'image', ad_link: adLink||null, hero_image_url: _heroDraft.url||null, site_images: siteImgDraftOut() });
   if(!sb){ DB.settings = settingsFromRow({ ...row }); toast('Saved'); render(); return; }
   const { data, error } = await sb.from('platform_settings').update(row).eq('id',1).select().maybeSingle();
   if(error || !data){ toast('Could not save settings'+(error?': '+error.message:''),'bad'); return; }
@@ -5442,6 +5457,10 @@ function adminSettingsTab(){
       ${_heroDraft.url ? `<button class="btn btn-ghost btn-sm" onclick="_heroDraft.url=''; render();">Use the island drawing</button>` : ''}
     </div>
     <p class="muted" style="font-size:.78em; margin-bottom:6px;">Press Save settings below to put it live.</p>
+    <h3 style="margin-top:18px;">Home pictures</h3>
+    <p class="muted" style="font-size:.86em; margin:4px 0 10px;">The other pictures on the shop front. The PC header has three slides that change by themselves: the first uses the Main header picture above, the next two are set here. Leave one empty to keep its built-in colours.</p>
+    <div class="site-img-grid" id="siteImgGrid">${siteImgAdminHTML()}</div>
+    <p class="muted" style="font-size:.78em; margin-bottom:6px;">Press Save settings below to put them live.</p>
     <h3 style="margin-top:18px;">Opening ad</h3>
     <p class="muted" style="font-size:.86em; margin:4px 0 10px;">A full-screen picture or short video everyone sees when they open the app, for 10 seconds. They can skip it after 5 seconds.</p>
     ${chkRowHTML('set_ad_on', st.adEnabled, 'Show the opening ad')}
@@ -5455,6 +5474,44 @@ function adminSettingsTab(){
 }
 let _adDraft = { url:'', type:'image', loadedFrom:null };
 let _heroDraft = { url:'', loadedFrom:null };
+// Admin -> Settings -> Home pictures: the 2nd / 3rd PC header slides, the two
+// promo cards and the Sponsored panel (platform_settings.site_images).
+const SITE_IMAGES = [
+  { key:'banner_auction', label:'Header slide 2 · Auctions', hint:'Wide photo, e.g. 1600×600' },
+  { key:'banner_rental',  label:'Header slide 3 · Rentals',  hint:'Wide photo, e.g. 1600×600' },
+  { key:'promo_sell',     label:'Sell on Maarukeytu card',   hint:'Wide photo; the text sits on the left' },
+  { key:'promo_ride',     label:'Deliver on your island card', hint:'Wide photo; the text sits on the left' },
+  { key:'sponsored_bg',   label:'Sponsored background',      hint:'Soft or light photos work best' },
+];
+let _siteImgDraft = { imgs:{}, loadedFrom:null };
+function sponsoredBgClass(){ return siteImg('sponsored_bg') ? ' has-bg' : ''; }
+function sponsoredBgStyle(){ const u = siteImg('sponsored_bg'); return u ? `style="--feat-img:url('${escapeAttr(u)}')"` : ''; }
+function siteImg(key){ const m = DB.settings && DB.settings.siteImages; return (m && typeof m[key]==='string') ? m[key] : ''; }
+function siteImgDraft(){ const st = DB.settings; if(_siteImgDraft.loadedFrom !== st) _siteImgDraft = { imgs:{ ...(st.siteImages||{}) }, loadedFrom:st }; return _siteImgDraft.imgs; }
+function siteImgDraftOut(){ const d = siteImgDraft(), out = {}; SITE_IMAGES.forEach(x=>{ if(d[x.key]) out[x.key] = d[x.key]; }); return out; }
+function siteImgAdminHTML(){
+  const d = siteImgDraft();
+  return SITE_IMAGES.map(x=>{ const url = d[x.key]||'';
+    return `<div class="site-img-tile">
+      <div class="sit-prev ${url?'':'empty'}" style="${url?`background-image:url('${escapeAttr(url)}')`:''}">${url?'':'Built-in look'}</div>
+      <strong>${x.label}</strong><span class="muted">${x.hint}</span>
+      <input type="file" id="sitf_${x.key}" accept="image/*" style="display:none;" onchange="onSiteImgFile(event,'${x.key}')">
+      <div class="row" style="gap:6px; flex-wrap:wrap;">
+        <label for="sitf_${x.key}" class="btn btn-ghost btn-sm">${url?'Change':'Upload'}</label>
+        ${url?`<button class="btn btn-ghost btn-sm" onclick="siteImgClear('${x.key}')">Remove</button>`:''}
+      </div>
+    </div>`; }).join('');
+}
+function siteImgRefresh(){ const g = document.getElementById('siteImgGrid'); if(g) g.innerHTML = siteImgAdminHTML(); }
+function siteImgClear(key){ delete siteImgDraft()[key]; siteImgRefresh(); }
+async function onSiteImgFile(e, key){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  if(!/^image\//.test(f.type)){ toast('Choose a picture (JPG, PNG or WebP)','bad'); return; }
+  toast('Uploading picture…');
+  const url = sb ? await uploadItemPhoto(f) : URL.createObjectURL(f);
+  if(!url) return;
+  siteImgDraft()[key] = url; siteImgRefresh(); toast('Uploaded. Press Save settings to use it');
+}
 function heroAdminPreviewHTML(){
   const st = DB.settings;
   if(_heroDraft.loadedFrom !== st){ _heroDraft = { url:st.heroImageUrl||'', loadedFrom:st }; }
@@ -11258,7 +11315,7 @@ function renderCustHome(){
       </div>
       ${state.homeListingType==='rental' ? rentalSectionsHTML(filtered) : `
       ${featured.length ? `
-      <div class="section feat-panel">
+      <div class="section feat-panel${sponsoredBgClass()}" ${sponsoredBgStyle()}>
         <h2 class="feat-title">Sponsored</h2>
           <div class="featured-scroll feat-grid${featLoops(featured, featPerView())?' feat-loop':''}" id="featuredScroll" onscroll="syncFeaturedDots()">
             ${featLoopCardsHTML(featured, featPerView(), i=>featuredCardHTML(i))}
@@ -11347,21 +11404,47 @@ function siteHeaderHTML(active){
     </nav>
   </header>`;
 }
-// Promo banners on the PC home page: arrows switch between them; nothing
-// moves by itself.
+// Promo banners on the PC home page. They change by themselves every
+// DESK_BANNER_MS (paused while the mouse is over the banner, while the tab is
+// hidden, and with reduced motion); the arrows and dots still work. Each slide
+// can have an admin photo: the first uses hero_image_url, the others
+// site_images.banner_auction / banner_rental.
+const DESK_BANNER_MS = 6000;
 const DESK_BANNERS = [
   { tone:'lagoon', title:'Shop Malé. Get it on your island.', text:'Stores in Malé send by boat to every inhabited island. Pay safely with Swipe once the store accepts your order.', cta:'Start shopping', act:"deskScrollTo('deskGrid')", art:'scene' },
-  { tone:'sunset', title:'Bid on it before the timer runs out.', text:'Auctions from stores across the Maldives. The highest bid when time is up wins.', cta:'See auctions', act:"deskListing('auction')", art:'🔨' },
-  { tone:'ocean', title:'Rent it for the weekend.', text:'Snorkel gear, tools, party kit and more. Book the days you need and pick it up or have it delivered.', cta:'Browse rentals', act:"deskListing('rental')", art:'🤿' },
+  { tone:'sunset', title:'Bid on it before the timer runs out.', text:'Auctions from stores across the Maldives. The highest bid when time is up wins.', cta:'See auctions', act:"deskListing('auction')", art:'🔨', img:'banner_auction' },
+  { tone:'ocean', title:'Rent it for the weekend.', text:'Snorkel gear, tools, party kit and more. Book the days you need and pick it up or have it delivered.', cta:'Browse rentals', act:"deskListing('rental')", art:'🤿', img:'banner_rental' },
 ];
-let _deskBanner = 0;
-function deskBannerStep(d){ _deskBanner = (_deskBanner + d + DESK_BANNERS.length) % DESK_BANNERS.length; render(); }
-function deskBannerGo(i){ _deskBanner = i; render(); }
+let _deskBanner = 0, _deskBannerTimer = null, _deskBannerHold = false;
+function deskBannerPhoto(b){ return b.art==='scene' ? (DB.settings.heroImageUrl||'') : siteImg(b.img); }
+// Swaps just the banner (a full render would disturb the search box and the
+// Sponsored row); falls back to render() if it isn't on screen.
+function deskBannerShow(i, user){
+  _deskBanner = (i + DESK_BANNERS.length) % DESK_BANNERS.length;
+  const el = document.querySelector('.desk-banner');
+  if(!el){ render(); return; }
+  const tmp = document.createElement('div'); tmp.innerHTML = deskBannerHTML().trim();
+  const nu = tmp.firstElementChild; nu.classList.add('db-swap'); el.replaceWith(nu);
+  if(user) ensureDeskBannerTimer(true);
+}
+function deskBannerStep(d){ deskBannerShow(_deskBanner + d, true); }
+function deskBannerGo(i){ deskBannerShow(i, true); }
+function ensureDeskBannerTimer(restart){
+  if(REDUCED_MOTION) return;
+  if(_deskBannerTimer && !restart) return;
+  clearInterval(_deskBannerTimer);
+  _deskBannerTimer = setInterval(()=>{
+    const el = document.querySelector('.desk-banner');
+    if(!el){ clearInterval(_deskBannerTimer); _deskBannerTimer = null; return; }
+    if(_deskBannerHold || document.hidden || state.sheet) return;
+    deskBannerShow(_deskBanner + 1);
+  }, DESK_BANNER_MS);
+}
 function deskBannerHTML(){
   const b = DESK_BANNERS[_deskBanner];
-  const photo = b.art==='scene' && DB.settings.heroImageUrl;
+  const photo = deskBannerPhoto(b);
   return `
-  <section class="desk-banner tone-${b.tone} ${photo?'has-photo':''}" aria-roledescription="carousel" ${photo?`style="--hero-img:url('${escapeAttr(DB.settings.heroImageUrl)}')"`:''}>
+  <section class="desk-banner tone-${b.tone} ${photo?'has-photo':''}" aria-roledescription="carousel" onpointerenter="if(event.pointerType==='mouse') _deskBannerHold=true" onpointerleave="_deskBannerHold=false" ${photo?`style="--hero-img:url('${escapeAttr(photo)}')"`:''}>
     <div class="db-copy">
       ${b.art==='scene' ? `<div class="db-word ${photo?'glass-word':''}" aria-hidden="true">Maarukeytu</div>` : ''}
       <h1>${b.title}</h1>
@@ -11393,13 +11476,13 @@ function renderDeskHome(){
       ${state.homeSearch || state.homeCategory!=='All' ? '' : `
 
       ${picks.length ? `
-      <section class="desk-sec${featNow.length?' feat-panel':''}">
+      <section class="desk-sec${featNow.length?' feat-panel'+sponsoredBgClass():''}" ${featNow.length?sponsoredBgStyle():''}>
         <div class="desk-sec-head"><div><h2${featNow.length?' class="feat-title"':''}>${featNow.length?'Sponsored':'Today’s picks'}</h2><p class="muted">${featNow.length?'Hand-picked items from stores across the Maldives':state.homeListingType==='buy_now'?'From stores across the Maldives':typeLabel+' from stores near you'}</p></div><button class="link-btn" onclick="deskScrollTo('deskGrid')">See all</button></div>
         ${featNow.length ? `<div class="desk-row desk-row-feat${featLoops(picks, deskFeatPerView())?' feat-loop':''}" id="deskFeatRow">${featLoopCardsHTML(picks, deskFeatPerView(), i=>topSellingCardHTML(i))}</div>` : `<div class="desk-row">${picks.map(i=>topSellingCardHTML(i)).join('')}</div>`}
       </section>` : ''}
       <section class="desk-promos">
-        <div class="desk-promo p-sell"><div><h3>Sell on Maarukeytu</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
-        <div class="desk-promo p-ride"><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
+        <div class="desk-promo p-sell${siteImg('promo_sell')?' has-photo':''}" ${siteImg('promo_sell')?`style="--promo-img:url('${escapeAttr(siteImg('promo_sell'))}')"`:''}><div><h3>Sell on Maarukeytu</h3><p>Open a store for free and start selling across the islands. Customers pay you by bank transfer or Swipe.</p><button class="db-cta dark" onclick="enterRole('business')">Open a store</button></div><span class="dp-art">🏪</span></div>
+        <div class="desk-promo p-ride${siteImg('promo_ride')?' has-photo':''}" ${siteImg('promo_ride')?`style="--promo-img:url('${escapeAttr(siteImg('promo_ride'))}')"`:''}><div><h3>Deliver on your island</h3><p>Pick your island, go online, and get jobs from stores on your island and near you.</p><button class="db-cta dark" onclick="enterRole('delivery')">Become a rider</button></div><span class="dp-art">🛵</span></div>
       </section>`}
       ${state.homeListingType==='rental' && !state.homeSearch && state.homeCategory==='All' ? `<section class="desk-sec" id="deskGrid">${rentalSectionsHTML(filtered)}</section>` : `
       <section class="desk-sec" id="deskGrid">

@@ -3514,8 +3514,10 @@ async function loadDB(opts){
     const q = {
       b: selectAll('businesses'), i: selectAll('items'), au: selectAll('auction_listings'), d: selectAll('delivery_persons'),
       cc: selectAll('custom_categories', 'name'), fr: selectAll('featured_requests'),
-      ps: sb.from('platform_settings').select('*').eq('id',1).maybeSingle(),
-      sales: loadItemSales(), swipe: sb.rpc('swipe_connected_business_ids'),
+      // Query builders run each time something awaits them, so turn them into
+      // one real promise here; otherwise the request is sent twice.
+      ps: Promise.resolve(sb.from('platform_settings').select('*').eq('id',1).maybeSingle()),
+      sales: loadItemSales(), swipe: Promise.resolve(sb.rpc('swipe_connected_business_ids')),
       o: selectAll('orders'), pr: selectAll('pro_upgrade_requests'), bk: selectAll('rental_bookings'), bd: selectAll('auction_bids'),
       cr: selectAll('category_requests'), ad: selectAll('customer_addresses'), banks: loadRiderBanks(),
     };

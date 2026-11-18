@@ -569,14 +569,15 @@
     filter:drop-shadow(0 2px 1px rgba(6,40,52,.25)) drop-shadow(0 8px 18px rgba(6,40,52,.35));}
   .home-hero.has-photo .hero-wordmark, .word-fly.glass-word{-webkit-text-stroke:.7px rgba(255,255,255,.95);}
 
-  .home-mini .mini-word{width:auto; max-width:calc(132px * var(--p)); height:40px; display:flex; align-items:center; border:none; background:none; color:#fff; border-radius:0;
+  .home-mini .mini-word{width:auto; max-width:calc(176px * var(--p)); height:40px; display:flex; align-items:center; border:none; background:none; color:#fff; border-radius:0;
     font-family:'Poiret One', var(--display), sans-serif; font-size:19px; letter-spacing:.05em; -webkit-text-stroke:.5px #fff; line-height:1; white-space:nowrap; text-shadow:0 2px 8px rgba(6,40,52,.45); padding:0 2px 0 0;}
   /* the small header has less room: its Categories pill shows just the icon (the label is in aria-label) */
   .home-mini .cat-open-btn{padding:0 10px; max-width:none;}
   .home-mini .cat-open-btn .cob-txt, .search-row.making-room .cat-open-btn .cob-txt{display:none;}
   .search-row.making-room .cat-open-btn{padding:0 10px; max-width:none;}
   .home-mini .mini-word.glass-word{color:transparent; -webkit-text-stroke:.5px rgba(255,255,255,.95); background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.7)); -webkit-background-clip:text; background-clip:text;}
-  @media (max-width:359px){ .home-mini .mini-word{font-size:16px; max-width:calc(108px * var(--p));} }
+  @media (max-width:419px){ .home-mini .mini-word{font-size:17px; letter-spacing:.03em;} }   /* 'Maarukeytu.app' must fit whole */
+  @media (max-width:359px){ .home-mini .mini-word{font-size:15px; max-width:calc(140px * var(--p));} }
   .home-mini .mini-mark svg{width:26px; height:26px; flex-shrink:0;}
   .home-mini .search-row{flex:1; min-width:0;}
   @media (min-width:1024px){ .home-mini{display:none;} }
@@ -1891,6 +1892,7 @@
 }
   @media (max-width:359px){ .mode-group .mode-pill span{display:none;} .mode-group .mode-pill{padding:0 9px;} .hero-tabs .ht span{display:none;} }
 
+  .aa-by{margin-top:6px; font-family:'Plus Jakarta Sans', sans-serif; font-size:11px; font-weight:700; letter-spacing:.3em; text-transform:uppercase; color:rgba(255,255,255,.86);}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -10919,10 +10921,10 @@ function homeMiniHeaderHTML(){
   const p = keep ? Math.max(_miniP, 1) : _miniP;
   const photo = phoneHeroPhoto();
   return `<div class="home-mini ${p>=0?'show':''} ${photo?'has-photo':''}" id="homeMini" style="--p:${Math.max(0,p)};${photo?`--hero-img:url('${escapeAttr(photo)}')`:''}">
-    <button class="mini-mark mini-word ${photo?'glass-word':''}" aria-label="Maarukeytu home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''} style="opacity:${p>=1?1:0}">Maarukeytu</button>
+    <button class="mini-mark mini-word ${photo?'glass-word':''}" aria-label="Maarukeytu home" onclick="goHomeFromLogo()" ${p<0.5?'tabindex="-1"':''} style="opacity:${p>=1?1:0}">Maarukeytu.app</button>
     ${homeSearchRowHTML('mini')}
   </div>
-  <div class="word-fly ${photo?'glass-word':''}" id="wordFly" aria-hidden="true">Maarukeytu</div>`;
+  <div class="word-fly ${photo?'glass-word':''}" id="wordFly" aria-hidden="true">Maarukeytu.app</div>`;
 }
 function updateHomeMiniHeader(){
   const el = document.getElementById('homeMini'); if(!el) return;
@@ -11552,7 +11554,7 @@ function renderCustHome(){
     <div class="home-hero ${phoneHeroPhoto()?'has-photo':''}" style="${phoneHeroPhoto()?`--hero-img:url('${escapeAttr(phoneHeroPhoto())}')`:''}">
       ${homeHeaderHTML()}
       ${phoneHeroPhoto() ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
-      <h1 class="hero-wordmark" aria-label="Maarukeytu by Worldives">Maarukeytu<span class="hw-by" aria-hidden="true">by Worldives</span></h1>
+      <h1 class="hero-wordmark" aria-label="Maarukeytu.app by Worldives">Maarukeytu.app<span class="hw-by" aria-hidden="true">by Worldives</span></h1>
       ${homeSearchRowHTML('hero')}
       ${heroTabsHTML()}
     </div>
@@ -11624,7 +11626,7 @@ function siteHeaderHTML(active){
       </div>
     </div></div>
     <div class="site-main"><div class="site-wrap">
-      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maarukeytu home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu</span></button>
+      <button class="site-logo" onclick="goHomeFromLogo()" aria-label="Maarukeytu.app home"><span class="site-logo-mark">${BRAND_MARK_SVG}</span><span class="site-logo-word">Maarukeytu.app</span></button>
       <div class="site-search">
         <span class="ss-ic" aria-hidden="true">${ICON_SEARCH}</span>
         <input id="homeSearchInput" placeholder="Search items or stores" value="${escapeAttr(state.homeSearch||'')}" oninput="deskSearch(this.value)" aria-label="Search">
@@ -13582,7 +13584,8 @@ function authArtHTML(){
     <div class="aa-glow"></div>
     <div class="aa-words">
       <div class="aa-mark">${BRAND_MARK_SVG}</div>
-      <div class="aa-name">Maarukeytu</div>
+      <div class="aa-name">Maarukeytu.app</div>
+      <div class="aa-by">by Worldives</div>
       <p class="aa-line">${sign ? 'Shops on every island, one account.' : 'Shops on every island, delivered by boat.'}</p>
     </div>
   </div>`;

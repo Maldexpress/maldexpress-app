@@ -1626,6 +1626,10 @@
   .discount-badge{background:#E3F3EA; color:var(--palm); font-weight:800; border-radius:999px; padding:2px 8px;}
   :focus-visible{outline:2px solid var(--lagoon-500, #14A3A0); outline-offset:2px;}
 
+  .adm-limit{display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin-top:12px; padding-top:12px; border-top:1px solid var(--edge); font-size:.9em;}
+  .adm-limit label{font-weight:700;}
+  .adm-limit input{width:96px; height:36px; padding:0 10px; border-radius:10px; border:1px solid var(--edge-2); background:#fff;}
+  .adm-limit .muted{font-size:.9em;}
   /* ---------- Shallows refresh (2026-11-17) ----------
      One idea carried through every screen: the page is the shallow lagoon.
      Screen headers are a band of shallow water (tinted, no hard line) with big
@@ -3461,7 +3465,7 @@ function toDbRow(part, o){
   if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, island:o.island||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
-  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null };
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null, itemLimit:r.item_limit!=null?Number(r.item_limit):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: Array.isArray(r.photo_prints) ? r.photo_prints : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
@@ -3547,7 +3551,7 @@ async function saveDB(part, only){
     // upsert if the batch includes even one row this session doesn't own.
     const rows = (only || DB[part]).map(o=>toDbRow(part,o));
     const { error } = await sb.from(TABLES[part]).upsert(rows);
-    if(error){ console.error(error); toast(/item_limit_reached/.test(error.message) ? `Your store has reached the ${STORE_ITEM_LIMIT}-item limit` : /photo_in_use/.test(error.message) ? `A photo is already used for “${(error.message.split('photo_in_use:')[1]||'another item').trim()}”. Each item needs its own photo` : /store_bank_required/.test(error.message) ? 'Add your store bank account in Settings first' : 'Save failed: '+error.message, 'bad'); return false; }
+    if(error){ console.error(error); toast(/item_limit_reached/.test(error.message) ? `Your store has reached the ${storeItemLimit(currentBiz())}-item limit` : /photo_in_use/.test(error.message) ? `A photo is already used for “${(error.message.split('photo_in_use:')[1]||'another item').trim()}”. Each item needs its own photo` : /store_bank_required/.test(error.message) ? 'Add your store bank account in Settings first' : 'Save failed: '+error.message, 'bad'); return false; }
     return true;
   }catch(e){ console.error(e); toast('Save failed — check connection', 'bad'); return false; }
 }
@@ -4337,7 +4341,10 @@ function seedIfEmpty(){
 // Listing is free for every store, up to STORE_ITEM_LIMIT items (no trial, no Pro).
 // The database enforces the same limit (items_store_limit trigger).
 const STORE_ITEM_LIMIT = 250;
-function tierInfo(biz){ return { trialDaysLeft: 0, trialActive: false, trialExpired: false, limit: STORE_ITEM_LIMIT }; }
+// A store's own limit: STORE_ITEM_LIMIT unless the Super Admin gave it another
+// (businesses.item_limit, Admin → Stores → a store → Item limit).
+function storeItemLimit(biz){ return (biz && biz.itemLimit) || STORE_ITEM_LIMIT; }
+function tierInfo(biz){ return { trialDaysLeft: 0, trialActive: false, trialExpired: false, limit: storeItemLimit(biz) }; }
 
 /* =================== STATE =================== */
 let state = {
@@ -4774,11 +4781,17 @@ function adminStoreView(){
     </div>
     ${b.phone ? contactHTML(b.phone, b.name) : ''}
     <div class="adm-counts">
-      <div><strong>${all.length}</strong><span>of ${STORE_ITEM_LIMIT}</span></div>
+      <div><strong>${all.length}</strong><span>of ${storeItemLimit(b)}</span></div>
       <div><strong>${count('live')}</strong><span>Live</span></div>
       <div><strong>${count('pending')}</strong><span>Waiting</span></div>
       <div><strong>${count('paused')}</strong><span>Paused</span></div>
       <div><strong>${count('rejected')}</strong><span>Taken down</span></div>
+    </div>
+    <div class="adm-limit">
+      <label for="adm_limit">Item limit</label>
+      <input id="adm_limit" type="number" inputmode="numeric" min="1" max="10000" value="${storeItemLimit(b)}">
+      <button class="btn btn-ghost btn-sm" onclick="adminSetItemLimit('${b.id}')">Save</button>
+      <span class="muted">${b.itemLimit ? `Default is ${STORE_ITEM_LIMIT}` : 'Default limit'}</span>
     </div>
   </div>
   <div class="adm-tools">
@@ -4838,7 +4851,7 @@ function adminBusinessesTab(list){
       <div class="row" style="align-items:flex-start;">
         <span class="admin-av">${escapeAttr((b.name||'?').trim().charAt(0).toUpperCase())}</span>
         <div style="flex:1; min-width:0;">
-          <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge free">${DB.items.filter(i=>i.businessId===b.id).length} / ${STORE_ITEM_LIMIT} items</span></div>
+          <div class="row between" style="gap:8px;"><h3 style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${b.name}</h3><span class="badge free">${DB.items.filter(i=>i.businessId===b.id).length} / ${storeItemLimit(b)} items</span></div>
           <p class="muted" style="font-size:.86em; margin-top:2px;">${b.ownerName}${b.phone?` · ${b.phone}`:''}</p>
           <p class="muted" style="font-size:.8em; margin-top:2px;">Joined ${new Date(b.joinDate).toLocaleDateString()}${(()=>{ const w=DB.items.filter(i=>i.businessId===b.id && i.approvalStatus==='pending').length; return w?` · <strong style="color:var(--amber);">${w} waiting</strong>`:''; })()}</p>
         </div>
@@ -5100,6 +5113,16 @@ async function adminRejectFeatured(id){
   const rows = await adminRpc('admin_reject_featured_request', { p_id: id, p_note: note }); if(!rows) return;
   const k = DB.featuredRequests.findIndex(x=>x.id===id); if(k>=0 && rows[0]) DB.featuredRequests[k] = featReqFromRow(rows[0]);
   toast('Request rejected'); render();
+}
+async function adminSetItemLimit(bizId){
+  const n = Math.round(Number(val('adm_limit')));
+  if(!(n>=1 && n<=10000)){ toast('Item limit must be 1 to 10000','bad'); return; }
+  const b = DB.businesses.find(x=>x.id===bizId); if(!b) return;
+  const used = DB.items.filter(i=>i.businessId===bizId).length;
+  if(n < used){ toast(`This store already has ${used} items. Set ${used} or more`,'bad'); return; }
+  const row = await adminRpc('admin_set_item_limit', { p_business_id: bizId, p_limit: n }); if(!row) return;
+  b.itemLimit = row.item_limit!=null ? Number(row.item_limit) : null;
+  toast(`${b.name} can now list up to ${storeItemLimit(b)} items`); render();
 }
 async function adminFeatureItem(itemId, days){
   const rows = await adminRpc('admin_feature_item', { p_item_id: itemId, p_days: days }); if(!rows) return;
@@ -7480,7 +7503,7 @@ function sheetBulkItems(){
     ${okNew.length>room?`<span class="status-pill wait">${okNew.length-room} over your limit</span>`:''}
     <span class="status-pill mid">${ok.filter(r=>['file','url'].includes(bulkPhotoFor(r).kind)).length} with photos</span>
   </div>
-  ${okNew.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} new item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.${biz.tier==='free'?' Go Pro for up to 500 items.':''}</p></div>` : ''}
+  ${okNew.length>room ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;">Only the first ${room} new item${room===1?'':'s'} will be added because of your ${t.limit}-item limit.</p></div>` : ''}
   ${audit.unused.length ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>${audit.unused.length} photo${audit.unused.length===1?' isn\u2019t':'s aren\u2019t'} matched to any item:</strong> ${audit.unused.slice(0,12).map(f=>escapeAttr(f.name)).join(', ')}${audit.unused.length>12?'…':''}. Put the file name in that item's photo column, or use Choose photo on the item.</p></div>` : ''}
   ${_bulk.rows.some(r=>(r.photoErrs||[]).length) ? `<div class="card notice-warn" style="margin-top:10px;"><p style="font-size:.9em;"><strong>Each item needs its own photo.</strong> Rows whose photo is already used are marked below and won't be added until you change the photo.</p></div>` : ''}
   <input type="file" accept="image/*" id="bulkRowPhoto" style="display:none;" onchange="onBulkRowPhoto(event)">

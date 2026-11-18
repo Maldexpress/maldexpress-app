@@ -1893,6 +1893,17 @@
   @media (max-width:359px){ .mode-group .mode-pill span{display:none;} .mode-group .mode-pill{padding:0 9px;} .hero-tabs .ht span{display:none;} }
 
   .aa-by{margin-top:6px; font-family:'Plus Jakarta Sans', sans-serif; font-size:11px; font-weight:700; letter-spacing:.3em; text-transform:uppercase; color:rgba(255,255,255,.86);}
+
+  /* Auctions / Rentals tint (applyHomeAccent): Home's buttons take the tab's header colour */
+  body.tab-tinted .hero-tabs .ht.on{background:var(--tab-accent) !important; box-shadow:0 8px 18px -8px color-mix(in srgb, var(--tab-accent) 75%, transparent) !important;}
+  body.tab-tinted .search-row.hero .cat-open-btn, body.tab-tinted .home-mini .cat-open-btn.on{background:var(--tab-accent) !important; box-shadow:0 8px 20px -8px color-mix(in srgb, var(--tab-accent) 70%, transparent) !important;}
+  body.tab-tinted .home-search-wrap .hs-ic{color:var(--tab-accent);}
+  body.tab-tinted .cat-chip{border-color:var(--tab-accent); color:var(--tab-accent); background:color-mix(in srgb, var(--tab-accent) 9%, #fff);}
+  body.tab-tinted .navbtn.active{color:var(--tab-accent);}
+  body.tab-tinted .navbtn.active .ic{background:color-mix(in srgb, var(--tab-accent) 13%, #fff) !important;}
+  body.tab-tinted #app .link-btn, body.tab-tinted #app .see-all{color:var(--tab-accent);}
+  body.tab-tinted #app .empty .ic{background:color-mix(in srgb, var(--tab-accent) 10%, #fff) !important; box-shadow:0 0 0 14px color-mix(in srgb, var(--tab-accent) 6%, transparent) !important;}
+  body.tab-tinted .home-mini:not(.has-photo){background:linear-gradient(150deg, color-mix(in srgb, var(--tab-accent) 80%, #fff), var(--tab-accent)) !important;}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -4879,7 +4890,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -4963,7 +4974,40 @@ function photoFocusFromImage(img){
   if(!best) return null;
   let sx=0, sw=0, sy=0, swy=0;
   for(let x=bx;x<bx+win;x++){ sx += x*col[x]; sw += col[x]; for(let y=y0;y<y1;y++){ const v=E[y*W+x]; sy += y*v; swy += v; } }
-  return { x: (sx/sw + .5)/W, y: swy ? (sy/swy + .5)/H : .5 };
+  return { x: (sx/sw + .5)/W, y: swy ? (sy/swy + .5)/H : .5, accent: photoAccent(d) };
+}
+// The photo's main colour (its vivid pixels, averaged), darkened until white
+// text on it passes WCAG AA (4.5:1), for the buttons on that tab.
+function photoAccent(d){
+  let r=0, g=0, b=0, w=0;
+  for(let i=0;i<d.length;i+=16){ const R=d[i], G=d[i+1], B=d[i+2], mx=Math.max(R,G,B), mn=Math.min(R,G,B);
+    if(mx < 45 || mx > 250) continue; const sat = (mx-mn)/mx; if(sat < .35) continue; const k = sat*sat; r+=R*k; g+=G*k; b+=B*k; w+=k; }
+  if(!w) return null;
+  return accentForWhiteText(r/w, g/w, b/w);
+}
+function accentForWhiteText(r, g, b){
+  // to HSL, keep the hue, firm up saturation, then lower lightness until contrast with white >= 4.6
+  r/=255; g/=255; b/=255; const mx=Math.max(r,g,b), mn=Math.min(r,g,b); let h=0, s=0, l=(mx+mn)/2;
+  if(mx!==mn){ const dd=mx-mn; s = l>.5 ? dd/(2-mx-mn) : dd/(mx+mn);
+    h = mx===r ? (g-b)/dd + (g<b?6:0) : mx===g ? (b-r)/dd + 2 : (r-g)/dd + 4; h/=6; }
+  s = Math.min(.85, Math.max(.55, s));
+  const toRgb = L=>{ const q = L<.5 ? L*(1+s) : L+s-L*s, p = 2*L-q, f = t=>{ t=(t+1)%1; return t<1/6 ? p+(q-p)*6*t : t<.5 ? q : t<2/3 ? p+(q-p)*(2/3-t)*6 : p; }; return [f(h+1/3), f(h), f(h-1/3)]; };
+  const lum = c=>{ const v = c.map(x=>x<=.03928 ? x/12.92 : Math.pow((x+.055)/1.055, 2.4)); return .2126*v[0]+.7152*v[1]+.0722*v[2]; };
+  let L = .52, c = toRgb(L);   // start bright (the average is pulled dark by shadows), then darken only as needed
+  while(L > .12 && 1.05 / (lum(c) + .05) < 4.6){ L -= .02; c = toRgb(L); }
+  return '#' + c.map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('');
+}
+// Phone Home buttons take the tab's colour: Auctions / Rentals use their header
+// photo's colour (fixed red / blue without a photo); Buy now keeps the lagoon.
+const TAB_ACCENT_FALLBACK = { auction:'#B8304A', rental:'#2149C2' };
+function applyHomeAccent(){
+  const t = state.homeListingType || 'buy_now';
+  const on = state.role === 'customer' && state.screen === 'custHome' && !state.adminMode && t !== 'buy_now';
+  let col = '';
+  if(on){ const url = phoneHeroPhoto(), fit = url && (url === DB.settings.heroImageUrl && t !== 'buy_now' ? null : _heroFit[url]);
+    col = (fit && typeof fit === 'object' && fit.accent) || TAB_ACCENT_FALLBACK[t]; }
+  document.body.classList.toggle('tab-tinted', !!col);
+  if(col) document.body.style.setProperty('--tab-accent', col); else document.body.style.removeProperty('--tab-accent');
 }
 function photoFocusFromFile(file){
   return new Promise(res=>{ const u = URL.createObjectURL(file), im = new Image();
@@ -4987,7 +5031,9 @@ function heroFitInfo(url){
   im.onload = ()=>{
     let f = saved && saved.url===url && typeof saved.x==='number' ? saved : null;
     if(!f){ try{ f = photoFocusFromImage(im); }catch(e){ f = null; } }
-    _heroFit[url] = { w:im.naturalWidth, h:im.naturalHeight, x: f ? f.x : .5, y: f ? f.y : .5 };
+    let acc = f && f.accent; if(!acc){ try{ const c=document.createElement('canvas'); c.width=120; c.height=Math.max(12, Math.round(120*im.naturalHeight/im.naturalWidth)); const g=c.getContext('2d'); g.drawImage(im,0,0,c.width,c.height); acc = photoAccent(g.getImageData(0,0,c.width,c.height).data); }catch(e){} }
+    _heroFit[url] = { w:im.naturalWidth, h:im.naturalHeight, x: f ? f.x : .5, y: f ? f.y : .5, accent: acc || null };
+    applyHomeAccent();
     _heroImgSize[url] = { w:im.naturalWidth, h:im.naturalHeight };
     fitHeroPhoto(); updateHomeMiniHeader();
   };

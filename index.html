@@ -23,10 +23,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Maarukeytu">
 <meta name="theme-color" content="#0FA3A3">
-<title>Maarukeytu</title>
+<title>Maarukeytu.app by Worldives</title>
 <meta name="description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Maarukeytu">
+<meta property="og:site_name" content="Maarukeytu.app by Worldives">
 <meta property="og:title" content="Maarukeytu · Shop every island">
 <meta property="og:description" content="Shop stores across the Maldives and get it delivered to your door or your boat.">
 <meta property="og:image" content="https://maldexpress.github.io/maldexpress-app/icons/icon-512.png">
@@ -1890,12 +1890,40 @@
   .hero-tabs .ht.on{background:var(--lagoon-700, #0B6E6E) !important; color:#fff !important; box-shadow:0 8px 18px -8px rgba(11,110,110,.7) !important;}
 }
   @media (max-width:359px){ .mode-group .mode-pill span{display:none;} .mode-group .mode-pill{padding:0 9px;} .hero-tabs .ht span{display:none;} }
+
+  /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
+  .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
+    background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
+  .sp-glow{position:absolute; inset:-20%; opacity:.35; pointer-events:none;
+    background:repeating-radial-gradient(ellipse at 50% 120%, rgba(255,255,255,0) 0 26px, rgba(255,255,255,.22) 26px 27.5px);
+    -webkit-mask:radial-gradient(70% 60% at 50% 100%, #000, transparent); mask:radial-gradient(70% 60% at 50% 100%, #000, transparent);}
+  .sp-mid{position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; animation:spIn .8s cubic-bezier(.2,.8,.2,1) both;}
+  .sp-mark{width:84px; height:84px; border-radius:26px; display:flex; align-items:center; justify-content:center; margin-bottom:22px;
+    background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.38); box-shadow:0 18px 40px -14px rgba(4,30,42,.55), inset 0 1px 0 rgba(255,255,255,.35);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);}
+  .sp-mark svg{width:58px; height:58px;}
+  .sp-name{font-family:'Poiret One', 'Bricolage Grotesque', sans-serif; font-size:clamp(34px, 10.5vw, 52px); letter-spacing:.06em; line-height:1.05;
+    -webkit-text-stroke:.7px #fff; text-shadow:0 6px 24px rgba(4,30,42,.35);}
+  .sp-by{margin-top:10px; font-family:'Plus Jakarta Sans', sans-serif; font-size:12px; font-weight:700; letter-spacing:.32em; text-transform:uppercase; color:rgba(255,255,255,.85);}
+  .sp-bar{position:absolute; bottom:calc(64px + env(safe-area-inset-bottom)); width:120px; height:4px; border-radius:99px; background:rgba(255,255,255,.22); overflow:hidden;}
+  .sp-bar span{position:absolute; top:0; bottom:0; width:40%; border-radius:99px; background:#fff; animation:spBar 1.25s ease-in-out infinite;}
+  @keyframes spIn{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:none;}}
+  @keyframes spBar{0%{left:-40%;} 100%{left:100%;}}
+  @media (prefers-reduced-motion:reduce){ .sp-mid, .sp-bar span{animation:none;} .sp-bar span{left:30%;} }
 </style>
 </head>
 <body>
 
 <div class="toast-wrap" id="toastWrap"><div id="toast" class="toast"></div></div>
-<div id="app"></div>
+<div id="app"><div class="splash" role="status" aria-label="Opening Maarukeytu.app by Worldives">
+  <div class="sp-glow" aria-hidden="true"></div>
+  <div class="sp-mid">
+    <div class="sp-mark" aria-hidden="true"><svg viewBox="0 0 40 40" width="40" height="40"><defs><linearGradient id="spg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".95"/><stop offset="1" stop-color="#FFFFFF" stop-opacity=".75"/></linearGradient></defs><path d="M7 25c4-4 8-4 12 0s8 4 14 0" fill="none" stroke="url(#spg)" stroke-width="3.2" stroke-linecap="round"/><path d="M9 17c3-3 6-3 9 0s6 3 11 0" fill="none" stroke="url(#spg)" stroke-width="3.2" stroke-linecap="round" opacity=".7"/><circle cx="29" cy="10" r="3.2" fill="#FFD27A"/></svg></div>
+    <div class="sp-name">Maarukeytu.app</div>
+    <div class="sp-by">by Worldives</div>
+  </div>
+  <div class="sp-bar" aria-hidden="true"><span></span></div>
+</div></div>
 
 <script>
 /* =================== SUPABASE CONFIG =================== */
@@ -4825,6 +4853,7 @@ function viewShuffle(list, salt){
   const key = x=>(lead && x && x.id && lead.has(x.id)) ? 0 : 1;
   return list.slice().sort((a,b)=>(key(a)-key(b)) || (seededRank(String(a.id||a),seed)-seededRank(String(b.id||b),seed)));
 }
+const _SPLASH_HTML = (document.querySelector('#app .splash') || {}).outerHTML || '<div class="splash"></div>';
 function render(){
   const app = document.getElementById('app');
   { const vk = state.adminMode ? 'admin' : [state.role, state.screen, state.screen==='custHome' ? [state.homeListingType, state.homeCategory, state.homeSearch].join('|') : ''].join(':');
@@ -4832,7 +4861,7 @@ function render(){
     // same Home (Back, the logo, closing an item) keeps its order and scroll.
     if(vk !== _lastViewKey){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode){ const hk = vk; if(hk !== _lastHomeKey){ _homeSeed = (Math.random()*4294967296)>>>0; _lastHomeKey = hk; _deskShown = DESK_GRID_STEP; _homeScrollY = 0; } } _lastViewKey = vk; }
     if(_itemsPartial && _homeLead && _homeLeadSeed === null && storageReady) _homeLeadSeed = _homeSeed; }
-  if(!storageReady){ app.innerHTML = `<div class="empty" style="padding-top:40vh;">Loading Maarukeytu…</div>`; return; }
+  if(!storageReady){ if(!app.querySelector('.splash')) app.innerHTML = _SPLASH_HTML; return; }   // the opening screen (already in the page on first load)
   if(state.adminMode) renderAdmin();
   else if(state.role==='business') renderBusiness();
   else if(state.role==='delivery') renderDelivery();
@@ -14521,7 +14550,7 @@ const AUTH_WAIT_MS = 1500;   // how long startup waits for a saved sign-in befor
   // oninput - without this, the default state.fontSize never actually reaches the
   // page until the user drags the slider once.
   setFont(state.fontSize);
-  // Draw the "Loading Maarukeytu…" screen straight away. Before, nothing was
+  // Draw the opening screen (Maarukeytu.app by Worldives) straight away. Before, nothing was
   // drawn until every table had downloaded and the sign-in check finished, so
   // a slow connection showed an empty screen.
   render();

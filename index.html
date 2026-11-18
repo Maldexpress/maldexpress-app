@@ -7007,22 +7007,33 @@ function previewItemPhoto(e, previewId='itemPhotoPreview'){
 // the browser can't write WebP). Small photos are left as they are, and the
 // original is kept if the new one wouldn't be smaller.
 const PHOTO_MAX_SIDE = 1600, PHOTO_QUALITY = 0.86;
-async function shrinkPhoto(file){
+// Every picture people upload is compressed in the browser first
+// (compressImage): long side at most maxSide px, re-encoded as WebP (JPEG
+// where the browser can't write WebP), and the original kept only when that
+// wouldn't make it smaller. A photo already small enough (side <= maxSide and
+// size <= keepUnder) is left alone. GIFs are never touched (animation).
+//   product, store, banner and ad photos  shrinkPhoto()   1600 px, q 0.86, kept under 150 KB
+//   bank slips (all kinds)                 previewSlip()   1600 px, q 0.80
+//   rider package photos                   previewHandoffPhoto()  1280 px, q 0.75
+async function compressImage(file, { maxSide = PHOTO_MAX_SIDE, quality = PHOTO_QUALITY, keepUnder = 150*1024 } = {}){
   try{
-    if(!file || /gif$/i.test(file.type)) return file;
+    if(!file || /gif$/i.test(file.type) || !/^image\//.test(file.type || 'image/')) return file;
     const bmp = await createImageBitmap(file);
     const big = Math.max(bmp.width, bmp.height);
-    if(big <= PHOTO_MAX_SIDE && file.size <= 350*1024){ bmp.close && bmp.close(); return file; }
-    const k = Math.min(1, PHOTO_MAX_SIDE / big);
+    if(big <= maxSide && file.size <= keepUnder){ bmp.close && bmp.close(); return file; }
+    const k = Math.min(1, maxSide / big);
     const c = document.createElement('canvas'); c.width = Math.round(bmp.width*k); c.height = Math.round(bmp.height*k);
-    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
-    let blob = await new Promise(r=>c.toBlob(r, 'image/webp', PHOTO_QUALITY));
-    if(!blob || blob.type !== 'image/webp') blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', 0.9));
+    const g = c.getContext('2d');
+    g.imageSmoothingQuality = 'high'; g.drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    let blob = await new Promise(r=>c.toBlob(r, 'image/webp', quality));
+    if(!blob || blob.type !== 'image/webp') blob = await new Promise(r=>c.toBlob(r, 'image/jpeg', Math.min(0.9, quality + 0.04)));
     if(!blob || blob.size >= file.size) return file;
     const ext = blob.type === 'image/webp' ? 'webp' : 'jpg';
-    return new File([blob], file.name.replace(/\.[^.]+$/,'') + '.' + ext, { type: blob.type });
+    return new File([blob], (file.name || 'photo').replace(/\.[^.]+$/,'') + '.' + ext, { type: blob.type });
   }catch(e){ return file; }
 }
+function shrinkPhoto(file){ return compressImage(file); }
+function blobToDataURL(b){ return new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = rej; r.readAsDataURL(b); }); }
 // Read photos out of a .zip in the browser (stored or deflate entries; uses
 // DecompressionStream). Folders and macOS "__MACOSX" / "._" files are skipped.
 async function photosFromZip(zipFile){
@@ -8599,19 +8610,20 @@ function boatPaymentChoiceHTML(o){
   </div>`;
 }
 let _handoffPhotoData = null;
-function previewHandoffPhoto(e, orderId){
+async function previewHandoffPhoto(e, orderId){
   const f = e.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    _handoffPhotoData = reader.result;
+  let data;
+  try{ data = await blobToDataURL(await compressImage(f, { maxSide: 1280, quality: 0.75, keepUnder: 100*1024 })); }
+  catch(err){ toast('Could not read that photo. Try another one','bad'); return; }
+  {
+    _handoffPhotoData = data;
     const img = document.getElementById('handoffPhotoPreview_'+orderId);
     const wrap = document.getElementById('handoffPhotoPreviewWrap_'+orderId);
     if(img) img.src = _handoffPhotoData;
     if(wrap) wrap.style.display = 'block';
     const btn = document.getElementById('handoffConfirmBtn_'+orderId);
     if(btn) btn.disabled = false;
-  };
-  reader.readAsDataURL(f);
+  }
 }
 async function markOrderOutForDelivery(id){
   if(!_handoffPhotoData){ toast('Take a photo of the package first','bad'); return; }
@@ -8977,18 +8989,16 @@ function sheetBizUploadPhotos(){
 async function uploadMissingPhoto(itemId, e){
   const f = e.target.files[0]; if(!f) return;
   if(!IMAGE_ALLOWED_TYPES.includes(f.type)){ toast('Please choose a JPEG, PNG, WEBP, or GIF image','bad'); e.target.value=''; return; }
-  if(f.size > IMAGE_MAX_BYTES){ toast('Image must be under 5MB','bad'); e.target.value=''; return; }
   const item = DB.items.find(i=>i.id===itemId);
   if(!item || !sb) return;
   toast('Uploading…');
-  const ext = (f.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = `${state.customerId}/${uid('img')}.${ext}`;
-  const { error } = await sb.storage.from('product-images').upload(path, f, { cacheControl:'3600', upsert:false, contentType:f.type });
-  if(error){ toast('Photo upload failed: '+error.message,'bad'); return; }
-  const { data } = sb.storage.from('product-images').getPublicUrl(path);
-  item.imageUrl = data.publicUrl;
-  saveDB('items', [item]);
-  toast(`Photo added to ${item.name}`);
+  // Same path as every other photo: compressed, then saved by the
+  // upload-item-photo function (storage doesn't accept Firebase sign-ins).
+  const [url, print, hash] = await Promise.all([uploadItemPhoto(f), photoPrint(f), fileHash(f)]);
+  if(!url) return;   // uploadItemPhoto already said why
+  item.imageUrl = url; item.images = [url]; item.photoPrints = [print]; item.photoHashes = [hash];
+  const ok = await saveDB('items', [item]);
+  if(ok !== false) toast(`Photo added to ${item.name}`);
   render();
 }
 
@@ -13891,15 +13901,13 @@ function sheetUploadSlip(){
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
 }
 let _slipData = null;
-function previewSlip(e){
+async function previewSlip(e){
   const f = e.target.files[0]; if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    _slipData = reader.result;
-    const img=document.getElementById('slipPreview'); if(img) img.src=_slipData;
-    const wrap=document.getElementById('slipPreviewWrap'); if(wrap) wrap.style.display='block';
-  };
-  reader.readAsDataURL(f);
+  try{
+    _slipData = await blobToDataURL(await compressImage(f, { maxSide: 1600, quality: 0.8, keepUnder: 120*1024 }));
+  }catch(err){ toast('Could not read that photo. Try another one','bad'); return; }
+  const img=document.getElementById('slipPreview'); if(img) img.src=_slipData;
+  const wrap=document.getElementById('slipPreviewWrap'); if(wrap) wrap.style.display='block';
 }
 function removeSlip(){
   _slipData = null;

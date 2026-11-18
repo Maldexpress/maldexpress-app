@@ -960,7 +960,6 @@
   .ip-related h2{margin-bottom:14px;}
   @media (min-width:1024px){
     .item-page{padding:10px 0 20px;}
-    .ip-back{display:none;}
     .ip-main{display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:44px; align-items:start;}
     .ip-media{position:sticky; top:150px;}
     .ip-photo{border-radius:28px; font-size:8em;}
@@ -1235,6 +1234,10 @@
   .rail, .featured-scroll, .feat-grid, .desk-row-feat, .gal-track, .gal-thumbs{overflow-y:hidden !important; overscroll-behavior-y:auto; touch-action:pan-x pan-y;}
   .feat-loop{scroll-snap-type:none !important; scroll-behavior:auto !important;}
   .feat-loop .top-card{scroll-snap-align:none !important;}
+  .store-more{display:flex; justify-content:center; margin:18px 0 8px;}
+  .ip-back svg, .back-btn svg{display:block;}
+  .topbar .back-btn + .iconbtn{margin-left:-2px;}
+  .store-more .btn{width:auto; min-width:220px; padding:0 28px; border-radius:999px;}
   .feat-loop > .top-card{transform:translate3d(var(--fx, 0px), 0, 0); will-change:transform;}
   .feat-loop{padding-top:8px !important; margin-top:-8px !important;}   /* room for the gold outline and the hover lift */
   /* the nonstop row fades out at both ends instead of chopping cards off */
@@ -4628,18 +4631,39 @@ function toast(msg, kind='good'){
 // state - there's simply nothing further back than an empty stack, which is
 // exactly what keeps it from ever reaching past Home into a log-out.
 let _screenHistory = [];
-function rememberHomeScroll(){ if(state.role==='customer' && state.screen==='custHome' && !state.adminMode) _homeScrollY = pageScrollY(); }
-// Back to the same Home: put the page where it was (after the new render).
+// Home and store pages remember where they were scrolled, so Back from an
+// item puts you at the same spot (the store page by store, tab and category).
+const _storeScrollY = {};
+function storeScrollKey(){ return [state.browseBizId, state.storeTab, state.storeCategoryFilter].join('|'); }
+function rememberHomeScroll(){
+  if(state.adminMode || state.role!=='customer') return;
+  if(state.screen==='custHome') _homeScrollY = pageScrollY();
+  else if(state.screen==='custStore') _storeScrollY[storeScrollKey()] = pageScrollY();
+}
+// Back to the same Home / store: put the page where it was (after the new render).
 function restoreHomeScroll(){
-  if(!(state.role==='customer' && state.screen==='custHome') || !_homeScrollY) return false;
-  const y = _homeScrollY;
+  if(state.adminMode || state.role!=='customer') return false;
+  const y = state.screen==='custHome' ? _homeScrollY : state.screen==='custStore' ? _storeScrollY[storeScrollKey()] : 0;
+  if(!y) return false;
   const put = ()=>{ document.documentElement.scrollTop = y; document.body.scrollTop = y; window.scrollTo(0, y); };
   put(); requestAnimationFrame(put);
   return true;
 }
+// The browser's own Back (and a mouse's back button, Alt+←) steps back
+// through screens too: every screen change adds a browser history entry, and
+// popstate runs goBackScreen(). Back pressed in the app goes through
+// history.back() so the two stay in step.
+let _histDepth = 0, _skipPop = 0, _fromPop = false;
+window.addEventListener('popstate', ()=>{
+  if(_skipPop){ _skipPop--; return; }
+  _histDepth = Math.max(0, _histDepth - 1);
+  if(state.sheet){ closeSheet(); return; }
+  _fromPop = true; try{ goBackScreen(); } finally{ _fromPop = false; }
+});
 function go(screen, extra={}){
   rememberHomeScroll();
   if(state.screen && state.screen !== screen){
+    try{ history.pushState({ mx:_histDepth + 1 }, ''); _histDepth++; }catch(e){}
     _screenHistory.push({ role:state.role, screen:state.screen, activeBizId:state.activeBizId, activeDelId:state.activeDelId, browseBizId:state.browseBizId, storeTab:state.storeTab, homeListingType:state.homeListingType, homeCategory:state.homeCategory, homeSearch:state.homeSearch, viewItemId:state.viewItemId });
   }
   Object.assign(state, extra);
@@ -4666,6 +4690,7 @@ function closeTopmostOverlay(){
 // to sign anyone out.
 function goBackScreen(){
   if(_screenHistory.length){
+    if(!_fromPop && _histDepth > 0){ _histDepth--; _skipPop++; try{ history.back(); }catch(e){ _skipPop--; } }
     const prev = _screenHistory.pop();
     rememberHomeScroll();
     Object.assign(state, prev);
@@ -4718,7 +4743,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -4747,10 +4772,15 @@ function applyReveal(){
   const same = screenKey === _rvScreen; _rvScreen = screenKey;
   if(!same) _rvSeen = new Set();
   const vh = window.innerHeight;
-  document.querySelectorAll('#app ' + REVEAL_SEL.split(', ').join(', #app ')).forEach((el, i)=>{
-    if(el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar, .feat-loop') || el._rvOn) return;   // a nonstop row's cards never fade in / out
+  // Measure every new element first, then add classes: measuring after each
+  // class change made the browser lay the page out again for every card
+  // (~6 s on a store with 1,800 items).
+  const fresh = [...document.querySelectorAll('#app ' + REVEAL_SEL.split(', ').join(', #app '))]
+    .filter(el=>!el._rvOn && !el.closest('.sheet, .home-mini, .drawer, .open-ad, .topbar, .feat-loop'));   // a nonstop row's cards never fade in / out
+  const rects = fresh.map(el=>el.getBoundingClientRect());
+  fresh.forEach((el, i)=>{
     el._rvOn = true; el._rvKey = rvKey(el);
-    const r = el.getBoundingClientRect();
+    const r = rects[i];
     // A card taller than the screen (e.g. a store's long list of items to
     // approve) could never reach the 8% threshold while only its top shows,
     // so it would stay invisible: show such cards as they are.
@@ -5596,6 +5626,9 @@ const ICON_LINK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" s
 const ICON_SHARE = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13"/><path d="M7 8l5-5 5 5"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`;
 const ICON_GRID = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/></svg>`;
+const ICON_BACK = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>`;
+// A Back button for screen headers, shown only when there is a screen to go back to.
+function backBtnHTML(cls){ return _screenHistory.length ? `<button class="${cls||'iconbtn'} back-btn" aria-label="Back" title="Back" onclick="goBack()">${ICON_BACK}</button>` : ''; }
 const ICON_CHEVRON_DOWN = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
 // Cart line select/deselect circle - a thin white outline circle always, with a
 // thin white checkmark added inside only when selected (not a filled dot).
@@ -5606,6 +5639,7 @@ function iconCheckCircle(checked){
 function topbar(title, sub, opts={}){
   return `
   <div class="topbar glass">
+    ${backBtnHTML()}
     <button class="iconbtn" aria-label="Menu" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
     <div class="titles">
       <h1>${title}</h1>
@@ -6735,7 +6769,10 @@ function renderBizItems(biz,t){
         ${myItems.length ? `<button class="btn btn-ghost btn-sm sel-toggle" onclick="toggleBizSelect()">${state.bizSelect?'Done':'☑ Select'}</button>` : ''}
       </div>
       ${state.bizSelect ? bizSelectBarHTML(myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat)) : ''}
-      ${(()=>{ const h=myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat).map(i=>bizItemCard(i)).join(''); return h ? `<div class="card-list items-list">${h}</div>` : `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`; })()}
+      ${(()=>{ const all=myItems.filter(i=> state.filterCat==='All' || (i.category||'General')===state.filterCat);
+        const key=[biz.id, state.filterCat].join('|'); if(key!==_bizGridKey){ _bizGridKey=key; _bizShown=BIZ_GRID_STEP; }
+        const more = all.length > _bizShown ? `<div class="store-more" id="listMore"><button class="btn btn-ghost" onclick="listShowMore()">Show more <span class="muted">(${all.length-_bizShown} more)</span></button></div>` : '';
+        const h=all.slice(0,_bizShown).map(i=>bizItemCard(i)).join('') ; if(h) return `<div class="card-list items-list">${h}</div>${more}`; return `<div class="empty"><span class="ic">📦</span>No items yet. Tap + to add your first item.</div>`; })()}
     </div>
   `, canAdd && !state.bizSelect ? `<button class="fab" onclick="startAddItem()" aria-label="Add item">+</button>` : '');
   ensureCountdownTimer();
@@ -10969,7 +11006,7 @@ function renderCustItem(){
   document.getElementById('app').innerHTML = wrapShell('customer','custItem', `
     <div class="item-page">
       <div class="ip-top">
-        <button class="iconbtn ip-back" aria-label="Back" onclick="goBackScreen()">‹</button>
+        <button class="iconbtn ip-back" aria-label="Back" title="Back" onclick="goBack()">${ICON_BACK}</button>
         <nav class="ip-crumbs" aria-label="Breadcrumb"><button onclick="goHomeFromLogo()">Home</button><span>›</span><button onclick="deskPickCategory('${escapeAttr(item.category||'General')}')">${escapeAttr(item.category||'General')}</button><span>›</span><span class="ip-crumb-cur">${escapeAttr(item.name)}</span></nav>
       </div>
       <div class="ip-main">
@@ -11431,6 +11468,23 @@ function setStoreCategoryFilter(cat){
   const el = document.getElementById('storeAll');
   if(el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block:'start' });
 }
+const STORE_GRID_STEP = 40; let _storeShown = STORE_GRID_STEP, _storeGridKey = '', _storeMoreIO = null;
+const BIZ_GRID_STEP = 60; let _bizShown = BIZ_GRID_STEP, _bizGridKey = '';
+function keepScroll(fn){ const y = pageScrollY(); fn(); render(); document.documentElement.scrollTop = y; document.body.scrollTop = y; }
+function storeShowMore(){ keepScroll(()=>{ _storeShown += STORE_GRID_STEP; }); }
+function listShowMore(){ keepScroll(()=>{ _bizShown += BIZ_GRID_STEP; }); }   // store owner's My items
+// Loads the next batch on its own when Show more comes within ~800px
+// (the store page's All items and the owner's My items).
+function storeMoreObserve(){
+  const el = document.getElementById('storeMore') || document.getElementById('listMore');
+  if(!el || !('IntersectionObserver' in window)) return;
+  if(!_storeMoreIO) _storeMoreIO = new IntersectionObserver(en=>{
+    if(!en.some(e=>e.isIntersecting) || state.sheet) return;
+    _storeMoreIO.disconnect();
+    if(state.screen==='custStore') storeShowMore(); else if(state.screen==='bizItems') listShowMore();
+  }, { rootMargin:'0px 0px 800px 0px' });
+  _storeMoreIO.disconnect(); _storeMoreIO.observe(el);
+}
 function renderCustStore(){
   const biz = DB.businesses.find(b=>b.id===state.browseBizId);
   if(!biz){ go('custHome'); return; }
@@ -11450,7 +11504,13 @@ function renderCustStore(){
   const filteredBuyNow = catFilter==='All' ? buyNowItems : buyNowItems.filter(i=>(i.category||'General')===catFilter);
   const filteredAuction = catFilter==='All' ? auctionItems : auctionItems.filter(i=>(i.category||'General')===catFilter);
   const filteredRental = catFilter==='All' ? rentalItems : rentalItems.filter(i=>(i.category||'General')===catFilter);
-  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${filteredBuyNow.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div>` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
+  // All items is drawn STORE_GRID_STEP at a time (a 1,800-item store built
+  // 22,000 elements and 1,600 photos at once and took ~4 s to show); more are
+  // added as the end comes near (storeMoreObserve) or with Show more.
+  const gridKey = [biz.id, state.storeTab, catFilter].join('|');
+  if(gridKey !== _storeGridKey){ _storeGridKey = gridKey; _storeShown = STORE_GRID_STEP; }
+  const buyNowShown = filteredBuyNow.slice(0, _storeShown);
+  const buyNowHTML = filteredBuyNow.length ? `<div class="top-grid">${buyNowShown.map(i=>storeItemCardHTML(i, hasOptions(i) ? 0 : (state.cart[i.id]||0))).join('')}</div>${filteredBuyNow.length > buyNowShown.length ? `<div class="store-more" id="storeMore"><button class="btn btn-ghost" onclick="storeShowMore()">Show more <span class="muted">(${filteredBuyNow.length - buyNowShown.length} more)</span></button></div>` : ''}` : `<div class="empty"><span class="ic">📭</span>No items ${catFilter==='All'?'listed yet':'in this category'}</div>`;
   const auctionHTML = filteredAuction.map(i=>{
     const auction = auctionForItem(i.id);
     return auction ? auctionCard(i, auction) : '';
@@ -11562,6 +11622,7 @@ function sfSlidesHTML(biz, slides, preview, hero){
   const t = escapeAttr; const n = slides.length;
   return `<div class="sf-slides ${hero?'hero':''}" data-noswipe data-biz="${t(biz.id)}">
     ${hero ? `<div class="sf-hero-bar">
+      ${preview ? '' : backBtnHTML('sf-hero-btn')}
       <button class="sf-hero-btn" aria-label="Menu" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
       <h1>${t(biz.name)}</h1>
       <button class="sf-hero-btn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>

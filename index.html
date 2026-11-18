@@ -1920,11 +1920,15 @@
   @media (max-width:1023px){
     .home-hero > .home-header{padding-top:calc(6px + env(safe-area-inset-top)) !important;}
     /* the tab bar sits closer to the bottom: only part of the home-indicator gap */
-    .bottomnav{padding:4px 10px max(6px, calc(env(safe-area-inset-bottom) - 16px)) !important;}
-    .navbtn{padding:6px 4px !important;}
+    .bottomnav{padding:2px 10px max(4px, calc(env(safe-area-inset-bottom) - 22px)) !important;}
+    .navbtn{padding:4px 4px 2px !important; gap:1px !important;}
+    .navbtn .ic{padding:3px 16px !important;}
   }
   /* the gliding name never shows over the menu or a popup */
   body:has(.overlay.show) .word-fly, body:has(.sheet-wrap.show) .word-fly{display:none !important;}
+  .hs-tip{display:flex; gap:10px; align-items:flex-start; margin:0 0 14px; padding:12px 14px; border-radius:16px; background:#E8F5F3; border:1px solid #BFE3DE; font-size:.9em;}
+  .hs-tip p{margin:3px 0 0; color:var(--ink-dim); line-height:1.4;}
+  .hs-tip-x{flex:0 0 28px; height:28px; border-radius:50%; border:none; background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.1);}
   /* Values the customer can't change (transfer slip amount / account) */
   input.locked-field{background:var(--sand-2, #EEF4F3) !important; color:var(--ink) !important; font-weight:700; cursor:default; pointer-events:none;
     -webkit-user-select:none; user-select:none; border-style:dashed !important;}
@@ -9556,6 +9560,26 @@ function myAddresses(category){ return DB.addresses.filter(a=>a.customerId===sta
 function defaultAddress(category){ return DB.addresses.find(a=>a.customerId===state.customerId && a.category===category && a.isDefault) || null; }
 function openAddressBook(){ openSheet('addressBook'); }
 let _addrDefaultsApplied = false;
+// An app added to the iPhone Home Screen before 2026-11-19 keeps the old white
+// status bar (iOS only reads that setting when the icon is added). Such installs
+// run standalone with no top safe-area inset; tell them once how to refresh it.
+function oldHomeScreenInstall(){
+  try{
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+    if(!ios || !standalone) return false;
+    const t = document.createElement('div'); t.style.cssText = 'position:fixed;top:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+    document.body.appendChild(t); const h = t.getBoundingClientRect().height; t.remove();
+    return h < 1;
+  }catch(e){ return false; }
+}
+function homeScreenTipHTML(){
+  let seen = false; try{ seen = localStorage.getItem('mx_hs_tip') === '1'; }catch(e){}
+  if(seen || isDesktop() || !oldHomeScreenInstall()) return '';
+  return `<div class="hs-tip" role="note">
+    <div><strong>Get the full-screen look</strong><p>Remove Maarukeytu from your Home Screen, open it in Safari, then tap <b>Share</b> → <b>Add to Home Screen</b>. The header will reach the top of the screen.</p></div>
+    <button class="hs-tip-x" aria-label="Close tip" onclick="try{localStorage.setItem('mx_hs_tip','1')}catch(e){} this.closest('.hs-tip').remove()">✕</button>
+  </div>`;
+}
 function addressPromptHTML(){
   if(!sb || !state.authed || state.addrPromptHidden || myAddresses('own').length) return '';
   return `<div class="addr-prompt"><span class="ap-ic" aria-hidden="true">📍</span><div style="flex:1; min-width:0;"><strong>Add your delivery address</strong><p class="muted">Save it once and it's filled in at checkout. You can change it any time.</p></div><button class="btn btn-primary btn-sm" onclick="openAddAddress('own')">Add address</button><button class="ap-x" aria-label="Not now" onclick="state.addrPromptHidden=true; render();">✕</button></div>`;
@@ -11648,6 +11672,7 @@ function renderCustHome(){
       ${heroTabsHTML()}
     </div>
     <div style="padding:0 4px;">
+      ${homeScreenTipHTML()}
       ${addressPromptHTML()}
       <div class="cat-bar${state.homeCategory!=='All' ? '' : ' empty'}">
         ${state.homeCategory!=='All' ? `<button class="cat-chip" onclick="setHomeCategory('All')" aria-label="Clear ${escapeAttr(state.homeCategory)} filter">${categoryIcon(state.homeCategory)} ${escapeAttr(state.homeCategory)} <span aria-hidden="true">✕</span></button>` : ''}

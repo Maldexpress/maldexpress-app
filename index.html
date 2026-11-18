@@ -1925,6 +1925,9 @@
   }
   /* the gliding name never shows over the menu or a popup */
   body:has(.overlay.show) .word-fly, body:has(.sheet-wrap.show) .word-fly{display:none !important;}
+  /* Values the customer can't change (transfer slip amount / account) */
+  input.locked-field{background:var(--sand-2, #EEF4F3) !important; color:var(--ink) !important; font-weight:700; cursor:default; pointer-events:none;
+    -webkit-user-select:none; user-select:none; border-style:dashed !important;}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -14502,11 +14505,11 @@ function sheetUploadSlip(){
   ${biz?`<div class="acct-box" style="margin-top:10px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>`:''}
   <div class="field" style="margin-top:14px;">
     <label>Amount to be paid</label>
-    <input type="number" step="0.01" inputmode="decimal" id="slipAmountUpload" placeholder="${o.total.toFixed(2)}">
+    <input type="text" id="slipAmountUpload" value="${o.total.toFixed(2)}" readonly aria-readonly="true" tabindex="-1" class="locked-field">
   </div>
   <div class="field" style="margin-top:10px;">
     <label>Account number to be transferred</label>
-    <input id="slipAccountUpload" placeholder="${biz?biz.accountNumber:''}">
+    <input id="slipAccountUpload" value="${escapeAttr(biz?biz.accountNumber||'':'')}" readonly aria-readonly="true" tabindex="-1" class="locked-field">
   </div>
   <div class="field" style="margin-top:14px;">
     <label>Slip / screenshot</label>
@@ -14517,7 +14520,7 @@ function sheetUploadSlip(){
       <button type="button" class="slip-remove-btn" onclick="removeSlip()" title="Remove image">✕</button>
     </div>
   </div>
-  <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number above must match this order's total and the "Pay to" details, or the slip can't be submitted.</p>
+  <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number are filled in from this order and can't be changed. Transfer exactly this amount to this account, then add the slip.</p>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitSlip('${o.id}')">Submit for approval</button>`;
 }
 let _slipData = null;
@@ -14543,9 +14546,10 @@ async function submitSlip(id){
   const biz = o ? DB.businesses.find(b=>b.id===o.businessId) : null;
   const slipData = _slipData;
   if(!slipData){ toast('Choose a slip image first','bad'); return; }
-  const enteredAmount = Number(val('slipAmountUpload'));
-  const enteredAccount = val('slipAccountUpload');
-  if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
+  // The amount and account are locked to the order (customers can't edit them); the server still checks both.
+  const enteredAmount = o ? Number(o.total) : Number(val('slipAmountUpload'));
+  const enteredAccount = biz ? String(biz.accountNumber||'') : val('slipAccountUpload');
+  if(!enteredAmount || !enteredAccount){ toast('This store has no bank account set up yet','bad'); return; }
   if(o && Math.abs(enteredAmount - o.total) > 0.01){ toast(`That amount doesn't match this order's total (${money(o.total)})`, 'bad'); return; }
   if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
   if(sb){
@@ -14575,11 +14579,11 @@ function sheetUploadBookingSlip(){
   ${biz?`<div class="acct-box" style="margin-top:10px;"><div class="lbl">Pay to</div><div class="val">${acctValHTML(biz.accountName, biz.accountNumber)}</div></div>`:''}
   <div class="field" style="margin-top:14px;">
     <label>Amount to be paid</label>
-    <input type="number" step="0.01" inputmode="decimal" id="slipAmountUpload" placeholder="${bk.bookingCharge.toFixed(2)}">
+    <input type="text" id="slipAmountUpload" value="${bk.bookingCharge.toFixed(2)}" readonly aria-readonly="true" tabindex="-1" class="locked-field">
   </div>
   <div class="field" style="margin-top:10px;">
     <label>Account number to be transferred</label>
-    <input id="slipAccountUpload" placeholder="${biz?biz.accountNumber:''}">
+    <input id="slipAccountUpload" value="${escapeAttr(biz?biz.accountNumber||'':'')}" readonly aria-readonly="true" tabindex="-1" class="locked-field">
   </div>
   <div class="field" style="margin-top:14px;">
     <label>Slip / screenshot</label>
@@ -14590,7 +14594,7 @@ function sheetUploadBookingSlip(){
       <button type="button" class="slip-remove-btn" onclick="removeSlip()" title="Remove image">✕</button>
     </div>
   </div>
-  <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number above must match the booking charge and the "Pay to" details, or the slip can't be submitted.</p>
+  <p class="muted" style="font-size:.78em; margin-top:8px;">The amount and account number are filled in from this booking and can't be changed. Transfer exactly this amount to this account, then add the slip.</p>
   <button class="btn btn-primary" style="margin-top:14px;" onclick="submitBookingSlip('${bk.id}')">Submit for approval</button>`;
 }
 async function submitBookingSlip(id){
@@ -14598,9 +14602,10 @@ const bk = DB.bookings.find(x=>x.id===id);
 const biz = bk ? DB.businesses.find(b=>b.id===bk.businessId) : null;
 const slipData = _slipData;
 if(!slipData){ toast('Choose a slip image first','bad'); return; }
-const enteredAmount = Number(val('slipAmountUpload'));
-const enteredAccount = val('slipAccountUpload');
-if(!enteredAmount || !enteredAccount){ toast('Enter the amount and account number first','bad'); return; }
+// Locked to the booking (customers can't edit them).
+const enteredAmount = bk ? Number(bk.bookingCharge) : Number(val('slipAmountUpload'));
+const enteredAccount = biz ? String(biz.accountNumber||'') : val('slipAccountUpload');
+if(!enteredAmount || !enteredAccount){ toast('This store has no bank account set up yet','bad'); return; }
 if(bk && Math.abs(enteredAmount - bk.bookingCharge) > 0.01){ toast(`That amount doesn't match the booking charge (${money(bk.bookingCharge)})`, 'bad'); return; }
 if(biz && enteredAccount.replace(/\s+/g,'') !== String(biz.accountNumber).replace(/\s+/g,'')){ toast(`That account number doesn't match the store's account (${biz.accountNumber})`, 'bad'); return; }
 const dbRow = { slip_url: slipData };

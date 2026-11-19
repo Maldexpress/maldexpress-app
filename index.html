@@ -1973,6 +1973,39 @@
   @media (min-width:640px){ .auth-art:not(.has-photo)::after{background:linear-gradient(180deg, rgba(3,20,48,.82) 0%, rgba(3,20,48,.6) 26%, rgba(3,20,48,.12) 46%, rgba(3,20,48,0) 60%);} }
   .auth-art .aa-words{z-index:2;}
   @media (prefers-reduced-motion:reduce){ .aa-scene, .aa-pic, .aa-ring, .aa-sweep, .aa-bubbles i{animation:none !important;} .aa-bubbles{display:none;} }
+
+  /* ===== Line icons and store logos (2026-11-19) ===== */
+  svg.li{width:1.25em; height:1.25em; display:inline-block; vertical-align:-.25em; flex-shrink:0;}
+  .lic{display:inline-flex; align-items:center; justify-content:center; line-height:1;}
+  .lic + *{margin-left:0;}
+  button > .lic:first-child, h2 > .lic:first-child, h3 > .lic:first-child, label > .lic:first-child{margin-right:.35em;}
+  .ic .lic svg.li, .drawer-item .ic svg.li{width:20px; height:20px; color:var(--lagoon-700, #0B6E6E);}
+  .empty .ic svg.li{width:34px; height:34px; color:var(--lagoon-700, #0B6E6E); stroke-width:1.6;}
+  body.tab-tinted .empty .ic svg.li{color:var(--tab-accent);}
+  .cat-circle svg.li, .dt-art svg.li{width:26px; height:26px; color:var(--lagoon-700, #0B6E6E); stroke-width:1.6;}
+  .cat-drop-opt svg.li{width:20px; height:20px; color:var(--lagoon-700, #0B6E6E);}
+  .cat-chip svg.li, .sf-chip svg.li{width:16px; height:16px;}
+  .db-emoji svg.li{width:1em; height:1em; stroke-width:1.2; color:rgba(255,255,255,.92);}
+  .art-li{display:flex; color:rgba(11,110,110,.55);}
+  .art-li svg.li{width:42%; height:auto; aspect-ratio:1; max-width:76px; stroke-width:1.4;}
+  .mode-pill svg.li{width:18px; height:18px;}
+  .deliv-note svg.li, .sold-tag svg.li{width:1.15em; height:1.15em; margin-right:2px; color:var(--lagoon-700, #0B6E6E);}
+  @media (min-width:1024px){ .dt-art svg.li{width:44px; height:44px; stroke-width:1.4;} }
+  .hero-tabs .ht svg.li, .switcher-pill svg.li, .cat-bar-btn svg.li{width:17px; height:17px;}
+  /* store logo */
+  .store-logo{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; border-radius:50%; overflow:hidden; background:#fff;
+    box-shadow:0 0 0 2px #fff, 0 2px 8px rgba(13,43,51,.18); color:#fff; font-family:var(--display); font-weight:800; line-height:1;}
+  .store-logo img{width:100%; height:100%; object-fit:cover; display:block;}
+  .store-head{display:inline-flex !important; align-items:center; gap:10px; min-width:0;}
+  .store-head > span:last-child{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .sf-hero-name{display:flex !important; align-items:center; gap:10px;}
+  .sf-hero-name > span:last-child{min-width:0; overflow:hidden; text-overflow:ellipsis;}
+  .ip-store{display:inline-flex; align-items:center; gap:6px;}
+  .ip-store .store-logo{box-shadow:0 0 0 1px rgba(13,43,51,.1);}
+  .logo-field{display:flex; align-items:center; gap:14px;}
+  .logo-field .btn{width:auto !important; display:inline-flex !important; margin:0 6px 6px 0;}
+  /* the category list opens over the Buy now / Auctions / Rentals buttons, not under them */
+  .home-hero > .row.search-row{z-index:6 !important;}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -3711,7 +3744,7 @@ async function decryptOrderRow(order, dbRow){
 }
 
 function toDbRow(part, o){
-  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, ...(o.storefront?{storefront:o.storefront}:{}) };
+  if(part==='businesses') return { id:o.id, owner_id:o.ownerId, name:o.name, owner_name:o.ownerName, phone:o.phone, account_number:o.accountNumber, account_name:o.accountName, tier:o.tier, join_date:new Date(o.joinDate).toISOString(), paid_at:o.paidAt?new Date(o.paidAt).toISOString():null, category:o.category, category_other_name:o.categoryOtherName||null, rating:o.rating!=null?o.rating:null, address:o.address||null, island:o.island||null, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, ...(o.storefront?{storefront:o.storefront}:{}), ...(o.logoUrl!==undefined?{logo_url:o.logoUrl||null}:{}) };
   if(part==='items') return { id:o.id, business_id:o.businessId, name:o.name, price:o.price, stock:o.stock, category:o.category, category_other_name:o.categoryOtherName||null, image_url:o.imageUrl||null, listing_type:o.listingType||'buy_now', free_delivery:o.freeDelivery!==false, extra_delivery_fee:o.extraDeliveryFee||0, discount_percent:o.discountPercent||0, rental_deposit:o.rentalDeposit||0, rental_fulfillment:o.rentalFulfillment||'deliver', pickup_location:o.pickupLocation||null, rental_availability:o.rentalAvailability||'now', available_from:o.availableFrom||null, description:o.description||null, rental_rate_period:o.rentalRatePeriod||'day' , options: (o.options && Object.keys(o.options).length) ? o.options : null, images: (o.images && o.images.length) ? o.images.slice(0,5) : null, paused: !!o.paused , ...(o.photoPrints === undefined ? {} : { photo_prints: (o.photoPrints && o.photoPrints.some(Boolean)) ? o.photoPrints.map(x=>x||null) : null }), ...(o.photoHashes && o.photoHashes.some(Boolean) ? { photo_hashes: o.photoHashes.map(x=>x||null) } : {}) };
   if(part==='delivery') return { id:o.id, user_id:o.userId, name:o.name, phone:o.phone, island:o.island||null, online:!!o.online, lat:o.lat!=null?o.lat:null, lng:o.lng!=null?o.lng:null, location_updated_at:o.locationUpdatedAt?new Date(o.locationUpdatedAt).toISOString():null };
   if(part==='orders') return { id:o.id, business_id:o.businessId, business_name:o.businessName, customer_id:o.customerId||null, customer_email:o.customerEmail||null, customer_name:o.customerName, customer_phone:o.customerPhone, items:o.items, items_total:o.itemsTotal, delivery_fee:o.deliveryFee, extra_delivery_fee:o.extraDeliveryFee||0, total:o.total, zone:o.zone, delivery_person_id:o.deliveryPersonId, delivery_person_name:o.deliveryPersonName, payment_method:o.paymentMethod, payment_status:o.paymentStatus, status:o.status, slip_url:o.slipDataUrl, created_at:new Date(o.createdAt).toISOString(), delivery_type:o.deliveryType||'zone', delivery_partner_payout:o.deliveryPartnerPayout!=null?o.deliveryPartnerPayout:null, payout_status:o.payoutStatus||null, delivery_target_type:o.deliveryTargetType||'person', receiver_name:o.receiverName||null, receiver_phone:o.receiverPhone||null, receiver_address:o.receiverAddress||null, boat_departure_at:o.boatDepartureAt?new Date(o.boatDepartureAt).toISOString():null, rental_item_id:o.rentalItemId||null, rental_days:o.rentalDays||null, rental_fulfillment:o.rentalFulfillment||null, pickup_location:o.pickupLocation||null, needs_delivery_partner:!!o.needsDeliveryPartner, rental_payout_timing:o.rentalPayoutTiming||null, rental_fee_amount:o.rentalFeeAmount||null, rental_fee_timing:o.rentalFeeTiming||null, rental_returned_at:o.rentalReturnedAt?new Date(o.rentalReturnedAt).toISOString():null, rental_return_fee_status:o.rentalReturnFeeStatus||null, origin_island:o.originIsland||null, dest_island:o.destIsland||null, route:o.route||null };
@@ -3723,7 +3756,7 @@ function toDbRow(part, o){
   if(part==='addresses') return { id:o.id, customer_id:o.customerId, category:o.category, name:o.name||null, phone:o.phone||null, address:o.address||null, zone:o.zone||null, island:o.island||null, harbour:o.harbour||null, is_default:!!o.isDefault, created_at:new Date(o.createdAt).toISOString() };
 }
 function fromDbRow(part, r){
-  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null, itemLimit:r.item_limit!=null?Number(r.item_limit):null };
+  if(part==='businesses') return { id:r.id, ownerId:r.owner_id, name:r.name, ownerName:r.owner_name, phone:r.phone, accountNumber:r.account_number, accountName:r.account_name, tier:r.tier, joinDate:new Date(r.join_date).getTime(), paidAt:r.paid_at?new Date(r.paid_at).getTime():null, category:r.category, categoryOtherName:r.category_other_name||'', rating:r.rating!=null?Number(r.rating):null, address:r.address||'', island:r.island||null, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, storefront:r.storefront||null, logoUrl:r.logo_url||null, itemLimit:r.item_limit!=null?Number(r.item_limit):null };
   if(part==='items') return { id:r.id, businessId:r.business_id, name:r.name, price:Number(r.price), stock:r.stock, category:r.category, categoryOtherName:r.category_other_name||'', imageUrl:r.image_url||null, listingType:r.listing_type||'buy_now', freeDelivery:r.free_delivery!==false, extraDeliveryFee:Number(r.extra_delivery_fee||0), discountPercent:Number(r.discount_percent||0), rentalDeposit:Number(r.rental_deposit||0), rentalFulfillment:r.rental_fulfillment||'deliver', pickupLocation:r.pickup_location||'', rentalAvailability:r.rental_availability||'now', availableFrom:r.available_from||'', description:r.description||'', rentalRatePeriod:r.rental_rate_period||'day' , approvalStatus:r.approval_status||'approved', approvalNote:r.approval_note||'', submittedAt:r.submitted_at?new Date(r.submitted_at).getTime():null, featuredUntil:r.featured_until?new Date(r.featured_until).getTime():null, featuredSource:r.featured_source||null , options: parseOptions(r.options), images: Array.isArray(r.images) ? r.images.filter(Boolean).slice(0,5) : (r.image_url ? [r.image_url] : []), paused: !!r.paused , photoPrints: !('photo_prints' in r) ? undefined : Array.isArray(r.photo_prints) ? r.photo_prints : null, photoHashes: !('photo_hashes' in r) ? undefined : Array.isArray(r.photo_hashes) ? r.photo_hashes : null };
   if(part==='delivery') return { id:r.id, userId:r.user_id, name:r.name, phone:r.phone, island:r.island||null, online:!!r.online, lat:r.lat!=null?Number(r.lat):null, lng:r.lng!=null?Number(r.lng):null, locationUpdatedAt:r.location_updated_at?new Date(r.location_updated_at).getTime():null };
   if(part==='orders') return { id:r.id, businessId:r.business_id, businessName:r.business_name, customerId:r.customer_id, customerEmail:r.customer_email, customerName:r.customer_name, customerPhone:r.customer_phone, items:r.items, itemsTotal:Number(r.items_total), deliveryFee:Number(r.delivery_fee), extraDeliveryFee:Number(r.extra_delivery_fee||0), total:Number(r.total), zone:r.zone, deliveryPersonId:r.delivery_person_id, deliveryPersonName:r.delivery_person_name, paymentMethod:r.payment_method, paymentStatus:r.payment_status, status:r.status, slipDataUrl:r.slip_url, createdAt:new Date(r.created_at).getTime(), deliveryType:r.delivery_type||'zone', deliveryPartnerPayout:r.delivery_partner_payout!=null?Number(r.delivery_partner_payout):Number(r.delivery_fee), payoutStatus:r.payout_status||null, deliveryTargetType:r.delivery_target_type||'person', receiverName:r.receiver_name||null, receiverPhone:r.receiver_phone||null, receiverAddress:r.receiver_address||null, boatDepartureAt:r.boat_departure_at?new Date(r.boat_departure_at).getTime():null, rentalItemId:r.rental_item_id||null, rentalDays:r.rental_days||null, rentalFulfillment:r.rental_fulfillment||null, pickupLocation:r.pickup_location||null, needsDeliveryPartner:!!r.needs_delivery_partner, rentalPayoutTiming:r.rental_payout_timing||null, readyForPickup:!!r.ready_for_pickup, selfDelivery:!!r.self_delivery, handoffPhotoUrl:r.handoff_photo_url||null, rentalFeeAmount:r.rental_fee_amount!=null?Number(r.rental_fee_amount):null, rentalFeeTiming:r.rental_fee_timing||null, rentalReturnedAt:r.rental_returned_at?new Date(r.rental_returned_at).getTime():null, rentalReturnFeeStatus:r.rental_return_fee_status||null, pendingRiderId:r.pending_rider_id||null, discountAmount:Number(r.discount_amount||0), slipConfirmedAt:r.slip_confirmed_at?new Date(r.slip_confirmed_at).getTime():null, slipArchivedAt:r.slip_archived_at?new Date(r.slip_archived_at).getTime():null,
@@ -4967,6 +5000,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
+  try{ iconizeEmoji(); }catch(e){ console.error(e); }   // line icons instead of emoji
   requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); layoutAuthScene(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
@@ -5980,7 +6014,7 @@ function openWorkModeOnStart(){
 function workModeButtonsHTML(){
   const st = myStores().length, rd = myRiderProfiles().length;
   if(!st && !rd) return '';
-  return `<div class="mode-group${st && rd ? ' two' : ''}">${st ? `<button class="mode-pill" onclick="switchToStoreMode()" aria-label="Switch to my store">${'🏪'}<span>My store</span></button>` : ''}${rd ? `<button class="mode-pill" onclick="switchToRiderMode()" aria-label="Switch to my deliveries">${'🛵'}<span>Deliveries</span></button>` : ''}</div>`;
+  return `<div class="mode-group${st && rd ? ' two' : ''}">${st ? `<button class="mode-pill" onclick="switchToStoreMode()" aria-label="Switch to my store">${lineIcon('store')}<span>My store</span></button>` : ''}${rd ? `<button class="mode-pill" onclick="switchToRiderMode()" aria-label="Switch to my deliveries">${lineIcon('scooter')}<span>Deliveries</span></button>` : ''}</div>`;
 }
 
 /* =================== BUSINESS / DELIVERY PICKER (scoped to the signed-in account) === */
@@ -6214,7 +6248,7 @@ function confirmSwitchOverlayHTML(){
 // meantime a moment after it appeared. Every open/close bumps the generation;
 // a pending close only actually clears the sheet if nothing newer has happened.
 let _sheetGen = 0;
-function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _revDraft = 0; _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
+function openSheet(name, data=null){ _sheetGen++; if(name!==state.sheet){ _revDraft = 0; _logoDraft.url = undefined; _addrDefaultsApplied = false; _deliverTargetMode = 'person'; _boatAuto = false; _targetByUser = false; } state.sheet = name; state.sheetData = data; state.sheetClosing = false; render(); const el=document.getElementById('sheetWrap'); if(el) requestAnimationFrame(()=>el.classList.add('show')); }
 function closeSheet(){ if(state.sheet==='verifyEmail' || state.sheet==='setupMobile') return; if(state.sheet==='bulkItems' && _bulkSaving){ toast('Still saving your items. Keep this open until it finishes','bad'); return; } const myGen = ++_sheetGen; const el=document.getElementById('sheetWrap'); if(el){ el.classList.remove('show'); state.sheetClosing = true; setTimeout(()=>{ if(_sheetGen!==myGen) return; state.sheet=null; state.sheetData=null; state.sheetClosing=false; render(); },180);} else { state.sheet=null; render(); } }
 
 function sheetHTML(){
@@ -6281,11 +6315,51 @@ function sheetHTML(){
 }
 
 /* ---- Business signup ---- */
+// ---------- Store logo ----------
+// The store's own logo: a picture shown on its store page, in store lists and
+// on item pages; without one, the store's initial on a coloured circle.
+const STORE_LOGO_TINTS = ['#0B6E6E','#1D6DED','#C84641','#7A5200','#6B3FA0','#1C7C4B'];
+function storeLogoHTML(biz, size){
+  const px = size || 40, name = (biz && biz.name) || '?';
+  if(biz && biz.logoUrl) return `<span class="store-logo" style="width:${px}px;height:${px}px"><img src="${escapeAttr(biz.logoUrl)}" alt="" decoding="async"></span>`;
+  const tint = STORE_LOGO_TINTS[hashStr(biz && biz.id || name) % STORE_LOGO_TINTS.length];
+  return `<span class="store-logo initial" style="width:${px}px;height:${px}px;background:${tint};font-size:${Math.round(px*.44)}px">${escapeAttr(name.trim().charAt(0).toUpperCase())}</span>`;
+}
+let _logoDraft = { url:undefined };
+function storeLogoFieldHTML(biz){
+  const url = _logoDraft.url !== undefined ? _logoDraft.url : (biz && biz.logoUrl) || '';
+  const shown = url ? { ...(biz||{name:'?'}), logoUrl:url } : (biz || { name: (document.getElementById('f_name')||{}).value || '?' });
+  return `<div class="field"><label>Store logo</label>
+    <div class="logo-field" id="logoField">
+      ${storeLogoHTML(shown, 64)}
+      <div>
+        <input type="file" id="logoFile" accept="image/*" style="display:none;" onchange="onStoreLogoFile(event)">
+        <label for="logoFile" class="btn btn-ghost btn-sm">${url ? 'Change logo' : 'Upload a logo'}</label>
+        ${url ? `<button type="button" class="btn btn-ghost btn-sm" onclick="_logoDraft.url=''; refreshLogoField()">Remove</button>` : ''}
+        <p class="muted" style="font-size:.78em; margin-top:6px;">A square picture works best. It shows on your store page and next to your items.</p>
+      </div>
+    </div></div>`;
+}
+function refreshLogoField(){
+  const el = document.getElementById('logoField'); if(!el) return;
+  const biz = state.sheet==='bizSettings' ? currentBiz() : null;
+  el.parentElement.outerHTML = storeLogoFieldHTML(biz);
+}
+async function onStoreLogoFile(e){
+  const f = (e.target.files||[])[0]; e.target.value = ''; if(!f) return;
+  if(!/^image\//.test(f.type)){ toast('Choose a picture (JPG, PNG or WebP)','bad'); return; }
+  toast('Uploading logo…');
+  let file = f; try{ file = await compressImage(f, { maxSide:512, quality:.88, keepUnder:80*1024 }) || f; }catch(err){}
+  const url = sb ? await uploadItemPhoto(file) : URL.createObjectURL(file);
+  if(!url) return;
+  _logoDraft.url = url; refreshLogoField(); toast('Logo added');
+}
 function sheetBizSignup(){
   return `
   <h2>Register your business</h2>
   ${sb ? `<p class="muted" style="margin-bottom:10px;">Linked to ${state.customerEmail}</p>` : ''}
   <div class="field"><label>Store name</label><input id="f_name" placeholder="e.g. Reef Corner Store"></div>
+  ${storeLogoFieldHTML(null)}
   <div class="field"><label>Owner name</label><input id="f_owner" placeholder="Your full name" value="${escapeAttr(state.customerName && state.customerName!=='Guest' ? state.customerName : '')}"></div>
   <div class="field"><label>Phone</label><input id="f_phone" placeholder="7XXXXXX"></div>
   <div class="field"><label>Bank account number</label><input id="f_acc" placeholder="77700001234567"></div>
@@ -6340,9 +6414,10 @@ async function submitBizSignup(){
   // so "Other" items added later default to the same written-in name instead
   // of the seller retyping it every time - see itemCatFieldHTML().
   const catOtherName = cat.split(',').map(s=>s.trim()).includes('Other') ? getCatOtherName('f_cat') : '';
-  const biz = {id:uid('biz'), ownerId:state.customerId, island, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address')};
+  const biz = {id:uid('biz'), ownerId:state.customerId, island, name, ownerName:owner, phone, accountNumber:acc, accountName:accname, tier:'free', joinDate:Date.now(), paidAt:null, category:cat, categoryOtherName:catOtherName, address:val('f_address'), logoUrl:_logoDraft.url||null };
   DB.businesses.push(biz);
   if(await saveDB('businesses', [biz]) === false){ DB.businesses = DB.businesses.filter(b=>b!==biz); return; }
+  _logoDraft.url = undefined;
   maybeSubmitCategoryRequest('f_cat', biz);
   closeSheet();
   state.role='business';
@@ -6971,7 +7046,7 @@ function renderBizHome(biz,t){
   const trialBanner = '';
 
   document.getElementById('app').innerHTML = wrapShell('business','bizHome', `
-    ${topbar(biz.name, biz.category, {badge})}
+    ${topbar(`<span class="store-head">${storeLogoHTML(biz, 34)}<span>${escapeAttr(biz.name)}</span></span>`, biz.category, {badge})}
     <div style="padding:4px 0 0;">
       ${bizHasBank(biz) ? '' : bankNeededCardHTML('store')}
       ${trialBanner}
@@ -9313,6 +9388,7 @@ function sheetBizSettings(){
   <h2>Store settings</h2>
   ${settingsSectionLabel('Store info')}
   <div class="field"><label>Store name</label><input id="s_name" value="${biz.name}"></div>
+  ${storeLogoFieldHTML(biz)}
   <div class="field"><label>Owner name</label><input id="s_owner" value="${biz.ownerName||''}"></div>
   <div class="field"><label>Phone</label><input id="s_phone" value="${biz.phone||''}"></div>
   <div class="field"><label>Store address / pickup location</label><input id="s_address" value="${escapeAttr(biz.address||'')}" placeholder="e.g. H. Sample Building, Malé"></div>
@@ -9366,7 +9442,9 @@ async function saveBizSettings(){
   biz.accountName = accName;
   biz.accountNumber = accNo;
   biz.island = pickedIsland('s_isl') || biz.island || 'Malé';
-  if(await saveDB('businesses', [biz]) === false) return;
+  const oldLogo = biz.logoUrl; if(_logoDraft.url !== undefined) biz.logoUrl = _logoDraft.url || null;
+  if(await saveDB('businesses', [biz]) === false){ biz.logoUrl = oldLogo; return; }
+  _logoDraft.url = undefined;
   maybeSubmitCategoryRequest('s_cat', biz);
   closeSheet(); toast('Settings saved'); render();
 }
@@ -10407,7 +10485,7 @@ function renderCustStoresList(){
       ${stores.length ? stores.map(s=>`
         <div class="section">
           <div class="section-head">
-            <h2 style="cursor:pointer;" onclick="go('custStore', {browseBizId:'${s.biz.id}'})">${s.biz.name}</h2>
+            <h2 class="store-head" style="cursor:pointer;" onclick="go('custStore', {browseBizId:'${s.biz.id}'})">${storeLogoHTML(s.biz, 34)}<span>${escapeAttr(s.biz.name)}</span></h2>
             <button class="link-btn" onclick="go('custStore', {browseBizId:'${s.biz.id}'})">See all →</button>
           </div>
           <div class="featured-scroll">
@@ -10431,9 +10509,111 @@ function renderCustStoresList(){
 // category picker a business lists an item under stay in sync, rather than the
 // home row only ever showing whatever categories happen to already have an item
 // in them (which meant a brand-new category had nowhere to be discovered from).
+// Line icons, 24×24, drawn with stroke="currentColor". Paths follow the Lucide icon set (ISC licence).
+const LINE_ICON_PATHS = {
+  cart:'<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+  bread:'<path d="M5 11a4 4 0 0 1 0-8h14a4 4 0 0 1 0 8v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M9 7v.01M12 9v.01M15 7v.01"/>',
+  coffee:'<path d="M10 2v2M14 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1M6 2v2"/>',
+  shirt:'<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  phone:'<rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/>',
+  lipstick:'<path d="M9 21h6a1 1 0 0 0 1-1v-7H8v7a1 1 0 0 0 1 1z"/><path d="M8 13V11a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M10 10V5.5L14 3v7"/>',
+  home:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  pill:'<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+  ball:'<circle cx="12" cy="12" r="10"/><path d="m12 7 4.5 3.3-1.7 5.2H9.2l-1.7-5.2z"/><path d="M12 2v5M21.5 9l-5 1.3M17.9 20l-3.1-4.5M6.1 20l3.1-4.5M2.5 9l5 1.3"/>',
+  puzzle:'<path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/>',
+  book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
+  car:'<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+  paw:'<circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  gem:'<path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6M2 9h20"/>',
+  tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+  sparkles:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4M22 5h-4"/>',
+  bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/>',
+  gavel:'<path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8"/><path d="m16 16 6-6M8 8l6-6M9 7l8 8M21 11l-8-8"/>',
+  repeat:'<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  scooter:'<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
+  store:'<path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4M2 7h20M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7"/>',
+  box:'<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12M3.29 7 12 12l8.71-5M7.5 4.27l9 5.15"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  truck:'<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M15 18H9M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+  bank:'<path d="M10 18v-7M14 18v-7M18 18v-7M6 18v-7M3 22h18M2 9l10-6 10 6z"/>',
+  receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8M12 17.5v-11"/>',
+  headset:'<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
+  ship:'<path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6M12 10v4M12 2v3"/>',
+  party:'<path d="M5.8 11.3 2 22l10.7-3.79M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10M22 13l-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17M11 2l.33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/>',
+  clip:'<path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>',
+  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  card:'<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>',
+  gear:'<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+  check:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  lock:'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  image:'<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
+  inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  wallet:'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>',
+  alert:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+  camera:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  palette:'<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>',
+  hourglass:'<path d="M5 22h14M5 2h14M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/>',
+  calendar:'<path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  cash:'<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+  palm:'<path d="M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3"/><path d="M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-12-1-14"/>',
+  search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  bell:'<path d="M10.268 21a2 2 0 0 0 3.464 0M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+  mail:'<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  flame:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  trash:'<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  megaphone:'<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>',
+  eye:'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+  mask:'<path d="M3 9a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v3a3 3 0 0 1-3 3h-2.5l-1.6-1.8a1.2 1.2 0 0 0-1.8 0L10.5 15H6a3 3 0 0 1-3-3z"/><path d="M21 9h1v9a3 3 0 0 1-3 3h-2"/>',
+  grid:'<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+};
+
+function lineIcon(name, cls){
+  const d = LINE_ICON_PATHS[name] || LINE_ICON_PATHS.tag;
+  return `<svg class="li${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+}
+// Emoji the app used as icons -> the matching line icon (iconizeEmoji() swaps them after every render).
+const EMOJI_LINE = { '📍':'pin','📌':'pin','🛵':'scooter','🏪':'store','📦':'box','⭐':'star','🚚':'truck','🏦':'bank','🧾':'receipt','🎧':'headset',
+  '🚤':'ship','⛴':'ship','🛶':'ship','🔨':'gavel','🎉':'party','🏷':'tag','📎':'clip','🏠':'home','🛍':'bag','🕐':'clock','🕒':'clock','🕓':'clock',
+  '💳':'card','⚙':'gear','✅':'check','🛒':'cart','🔒':'lock','🖼':'image','❤':'heart','📭':'inbox','💸':'wallet','🚪':'logout','📄':'file','🔁':'repeat',
+  '✨':'sparkles','⚠':'alert','📷':'camera','📸':'camera','🎨':'palette','⏳':'hourglass','📅':'calendar','💵':'cash','🏝':'palm','🔍':'search','🔔':'bell',
+  '✉':'mail','📤':'upload','🔥':'flame','🗑':'trash','📣':'megaphone','👁':'eye','🤿':'mask','🍞':'bread','☕':'coffee','👗':'shirt','📱':'phone','💄':'lipstick',
+  '💊':'pill','⚽':'ball','🧸':'puzzle','📚':'book','🚗':'car','🐾':'paw','🔧':'wrench','🏺':'gem' };
+const _EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_LINE).map(e=>e.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')️?', 'u');
+const _ICON_HOSTS = '.deliv-note, .sold-tag, button, h1, h2, h3, h4, label, .tab, .ic, .sw-ic, .cat-circle, .dt-art, .db-emoji, .empty, .chip, .cat-chip, .sf-chip, .pill, .status-pill, .section-head, .stat-tile, .bq, .notice-warn, .acct-box .lbl, .pf-card, .drawer-item, .switcher-pill';
+// Replaces icon emoji with line icons inside app chrome: a text node that is just
+// an icon emoji, or starts with one, inside buttons, headings, labels, chips and
+// icon slots. Item names and descriptions (plain text elsewhere) are left alone.
+function iconizeEmoji(root){
+  root = root || document.getElementById('app'); if(!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode(n){
+    const t = n.nodeValue; if(!t || !_EMOJI_RE.test(t)) return NodeFilter.FILTER_REJECT;
+    const p = n.parentElement; if(!p || p.closest('input, textarea, script, style, .no-iconize, .rev-text, .ip-desc')) return NodeFilter.FILTER_REJECT;
+    return p.closest(_ICON_HOSTS) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; } });
+  const nodes = []; while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(n=>{
+    const t = n.nodeValue, m = t.match(new RegExp('^(\\s*)' + _EMOJI_RE.source + '(\\s*)', 'u'));
+    const only = t.trim().replace(_EMOJI_RE, '').trim() === '';
+    if(!m && !only) return;
+    const lead = m || t.match(new RegExp('^(\\s*)' + _EMOJI_RE.source, 'u')); if(!lead) return;
+    const emo = lead[2], rest = t.slice(lead[0].length);
+    const span = document.createElement('span'); span.className = 'lic'; span.innerHTML = lineIcon(EMOJI_LINE[emo]);
+    const frag = document.createDocumentFragment();
+    if(lead[1]) frag.appendChild(document.createTextNode(lead[1]));
+    frag.appendChild(span);
+    if(rest) frag.appendChild(document.createTextNode((lead[3] ? ' ' : '') + rest));
+    n.parentNode.replaceChild(frag, n);
+  });
+}
 const MARKETPLACE_CATEGORIES = ['Grocery','Bakery','Café','Fashion','Electronics','Beauty & Personal Care','Home & Living','Health & Wellness','Sports & Outdoors','Toys & Games','Books & Stationery','Automotive','Pet Supplies','Hardware','Collectibles','Other'];
-const CATEGORY_ICONS = { Grocery:'🛒', Bakery:'🍞', 'Café':'☕', Fashion:'👗', Electronics:'📱', 'Beauty & Personal Care':'💄', 'Home & Living':'🏠', 'Health & Wellness':'💊', 'Sports & Outdoors':'⚽', 'Toys & Games':'🧸', 'Books & Stationery':'📚', Automotive:'🚗', 'Pet Supplies':'🐾', Hardware:'🔧', Collectibles:'🏺', Other:'🏷️', General:'🏷️' };
-function categoryIcon(cat){ return CATEGORY_ICONS[cat] || '🏷️'; }
+// Category icons are line drawings (LINE_ICON_PATHS names).
+const CATEGORY_ICONS = { Grocery:'cart', Bakery:'bread', 'Café':'coffee', Fashion:'shirt', Electronics:'phone', 'Beauty & Personal Care':'lipstick', 'Home & Living':'home', 'Health & Wellness':'pill', 'Sports & Outdoors':'ball', 'Toys & Games':'puzzle', 'Books & Stationery':'book', Automotive:'car', 'Pet Supplies':'paw', Hardware:'wrench', Collectibles:'gem', Other:'tag', General:'tag' };
+function categoryIcon(cat){ return lineIcon(cat==='All' ? 'sparkles' : (CATEGORY_ICONS[cat] || 'tag'), 'cat-li'); }
 // Approved "Other" category suggestions (see category_requests /
 // adminResolveCategoryRequest()) are stored in their own table so they
 // survive a reload - merged into the app's built-in category list here
@@ -10445,7 +10625,7 @@ function mergeCustomCategories(){
   DB.customCategories.forEach(name=>{
     if(name && !MARKETPLACE_CATEGORIES.includes(name)){
       MARKETPLACE_CATEGORIES.push(name);
-      if(!CATEGORY_ICONS[name]) CATEGORY_ICONS[name] = '🏷️';
+      if(!CATEGORY_ICONS[name]) CATEGORY_ICONS[name] = 'tag';
     }
   });
 }
@@ -10470,8 +10650,7 @@ const ITEM_NAME_GLYPHS = [
 const ITEM_ART_TINTS = ['radial-gradient(circle at 50% 40%, #FFFFFF 0%, #DDF5F2 70%)','radial-gradient(circle at 50% 40%, #FFFFFF 0%, #FFE6DE 70%)','radial-gradient(circle at 50% 40%, #FFFFFF 0%, #E2ECFF 70%)','radial-gradient(circle at 50% 40%, #FFFFFF 0%, #E3F4E7 70%)','radial-gradient(circle at 50% 40%, #FFFFFF 0%, #FFF1D9 70%)','radial-gradient(circle at 50% 40%, #FFFFFF 0%, #F0E6FF 70%)'];
 function itemArtHTML(item){
   const name = ((item && item.name) || '').toLowerCase();
-  const hit = ITEM_NAME_GLYPHS.find(([re])=>re.test(name));
-  const glyph = hit ? hit[1] : (CATEGORY_ICONS[item && item.category] || '🛍️');
+  const glyph = `<span class="art-li">${lineIcon(CATEGORY_ICONS[item && item.category] || 'bag')}</span>`;   // line drawing of the item's category
   const h = hashStr((item && (item.id || item.name)) || 'x');
   const tint = ITEM_ART_TINTS[h % ITEM_ART_TINTS.length];
   return `<div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:${tint};">${glyph}</div>`;
@@ -10611,7 +10790,7 @@ function itemPriceLine(item){
 // concept of buyer-pays delivery.
 function itemDeliveryNoteHTML(item){
   if(item.listingType!=='buy_now') return '';
-  if(item.freeDelivery!==false) return `<p class="muted" style="font-size:.72em; margin-top:2px;">🚚 Free delivery</p>`;
+  if(item.freeDelivery!==false) return `<p class="muted deliv-note" style="font-size:.72em; margin-top:2px;">${lineIcon('truck')} Free delivery</p>`;
   const fee = cardDeliveryFee(item);
   if(fee==null) return `<p class="muted" style="font-size:.72em; margin-top:2px;">+ delivery fee</p>`;
   return `<p class="muted" style="font-size:.72em; margin-top:2px;">${money(fee)} delivery</p>`;
@@ -10991,9 +11170,9 @@ document.addEventListener('touchstart', handleEdgeSwipeStart, { passive:true });
 document.addEventListener('touchmove', handleEdgeSwipeMove, { passive:true });
 document.addEventListener('touchend', handleEdgeSwipeEnd, { passive:true });
 const LISTING_TYPE_META = {
-  buy_now: { icon:'🛍️', label:'Buy now' },
-  auction: { icon:'🔨', label:'Auctions' },
-  rental:  { icon:'🔁', label:'Rentals' }
+  buy_now: { icon:lineIcon('bag'), label:'Buy now' },
+  auction: { icon:lineIcon('gavel'), label:'Auctions' },
+  rental:  { icon:lineIcon('repeat'), label:'Rentals' }
 };
 // where = 'hero' (the search under the island scene) or 'mini' (the small
 // header that slides in once Home is scrolled past the hero).
@@ -11023,7 +11202,7 @@ function pickCatDrop(c){ state.catDropOpen = false; setHomeCategory(c); }
 function catDropHTML(){
   const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-drop" role="listbox" aria-label="Categories" onclick="event.stopPropagation()">
-    ${cats.map(c=>`<button role="option" aria-selected="${state.homeCategory===c}" class="cat-drop-opt ${state.homeCategory===c?'on':''}" onclick="pickCatDrop('${escapeAttr(c)}')"><span aria-hidden="true">${c==='All'?'✨':categoryIcon(c)}</span>${c==='All'?'All categories':escapeAttr(c)}</button>`).join('')}
+    ${cats.map(c=>`<button role="option" aria-selected="${state.homeCategory===c}" class="cat-drop-opt ${state.homeCategory===c?'on':''}" onclick="pickCatDrop('${escapeAttr(c)}')"><span aria-hidden="true">${categoryIcon(c)}</span>${c==='All'?'All categories':escapeAttr(c)}</button>`).join('')}
   </div>`;
 }
 document.addEventListener('click', ()=>{ if(state.catDropOpen){ state.catDropOpen = false; render(); } });
@@ -11214,7 +11393,7 @@ function categoryGridHTML(){
   const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
   return `<div class="cat-grid">${cats.map(c=>`
     <button class="cat-pill ${state.homeCategory===c?'active':''}" onclick="pickCategoryFromSheet('${escapeAttr(c)}')">
-      <span class="cat-circle">${c==='All'?'✨':categoryIcon(c)}</span>
+      <span class="cat-circle">${categoryIcon(c)}</span>
       <span class="cat-label">${c}</span>
     </button>`).join('')}</div>`;
 }
@@ -11491,7 +11670,7 @@ function renderCustItem(){
         </div>
         <div class="ip-info">
           <div class="ip-store-row">
-            <button class="ip-store" onclick="openFeedItem('${item.id}')">${escapeAttr(biz?biz.name:'Store')}</button>
+            <button class="ip-store" onclick="openFeedItem('${item.id}')">${biz?storeLogoHTML(biz, 22):''}${escapeAttr(biz?biz.name:'Store')}</button>
             ${biz && biz.rating!=null ? `<span class="rating-badge-static">⭐ ${Number(biz.rating).toFixed(1)}</span>` : ''}
             <span class="ip-type">${typeLbl}</span>
           </div>
@@ -11517,7 +11696,7 @@ function renderCustItem(){
           ${itemReviewsHTML(item)}
           ${biz ? `
           <div class="ip-seller">
-            <span class="admin-av">${escapeAttr((biz.name||'?').trim().charAt(0).toUpperCase())}</span>
+            ${storeLogoHTML(biz, 44)}
             <div style="flex:1; min-width:0;"><strong>${escapeAttr(biz.name)}</strong><p class="muted" style="font-size:.86em;">${escapeAttr(bizIsland(biz))}${biz.category?` · ${escapeAttr(String(biz.category).split(',').slice(0,3).join(', '))}`:''}</p></div>
             <button class="btn btn-outline btn-sm" onclick="openFeedItem('${item.id}')">Visit store</button>
           </div>` : ''}
@@ -11844,7 +12023,7 @@ function deskBannerShow(i, user){
   const el = document.querySelector('.desk-banner');
   if(!el){ render(); return; }
   const tmp = document.createElement('div'); tmp.innerHTML = deskBannerHTML().trim();
-  const nu = tmp.firstElementChild; nu.classList.add('db-swap'); el.replaceWith(nu);
+  const nu = tmp.firstElementChild; nu.classList.add('db-swap'); el.replaceWith(nu); iconizeEmoji(nu);
   if(user) ensureDeskBannerTimer(true);
 }
 function deskBannerStep(d){ deskBannerShow(_deskBanner + d, true); }
@@ -12026,7 +12205,7 @@ function renderCustStore(){
   const sfBody = state.storeTab==='buyNow' ? sfBodyHTML(biz, buyNowItems) : '';
   const rentalHTML = filteredRental.length ? rentalSectionsHTML(filteredRental) : `<div class="empty"><span class="ic">🔁</span>Nothing ${catFilter==='All'?'listed for rent yet':'in this category'}</div>`;
   document.getElementById('app').innerHTML = wrapShell('customer','custHome', `
-    ${heroSlides.length ? sfSlidesHTML(biz, heroSlides, false, true) : topbar(escapeAttr(biz.name), '', { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
+    ${heroSlides.length ? sfSlidesHTML(biz, heroSlides, false, true) : topbar(`<span class="store-head">${storeLogoHTML(biz, 32)}<span>${escapeAttr(biz.name)}</span></span>`, '', { badge:`<button class="iconbtn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>` })}
     <div style="padding:4px 0 0;">
       <div class="tabs">
         <button class="tab ${state.storeTab==='buyNow'?'active':''}" onclick="setStoreTab('buyNow')">Buy Now</button>
@@ -12127,7 +12306,7 @@ function sfSlidesHTML(biz, slides, preview, hero){
     ${hero ? `<div class="sf-hero-bar">
       ${preview ? '' : backBtnHTML('sf-hero-btn')}
       <button class="sf-hero-btn" aria-label="Menu" onclick="toggleDrawer(true)">${ICON_HAMBURGER}</button>
-      <h1>${t(biz.name)}</h1>
+      <h1 class="sf-hero-name">${storeLogoHTML(biz, 34)}<span>${t(biz.name)}</span></h1>
       <button class="sf-hero-btn" aria-label="Share this store" onclick="openShare('store','${biz.id}')">${ICON_SHARE}</button>
     </div>` : ''}
     <div class="sf-slides-track" onscroll="sfSlideScrolled(this)" ontouchstart="sfSlideHold(this)" onpointerdown="sfSlideHold(this)" onpointerenter="if(event.pointerType==='mouse') sfSlideHold(this, 1)" onpointerleave="if(event.pointerType==='mouse') sfSlideHold(this)">
@@ -12184,7 +12363,7 @@ function sfBodyHTML(biz, items, preview){
   const cats = storeCategoriesForItems(items);
   if(!secs.some(s=>s.type==='row' || s.type==='grid') && cats.length>=2 && items.length>=6){
     const byCount = cats.slice().sort((a,b)=>items.filter(i=>(i.category||'General')===b).length - items.filter(i=>(i.category||'General')===a).length);
-    secs = secs.concat(byCount.slice(0, SF_STRIP_AFTER).map(c=>({ id:'auto_'+c, type:'row', title:categoryIcon(c)+' '+c, source:'cat:'+c })));
+    secs = secs.concat(byCount.slice(0, SF_STRIP_AFTER).map(c=>({ id:'auto_'+c, type:'row', title:c, source:'cat:'+c })));
   }
   const strip = items.length>=4 ? sfTopStripHTML(items, preview) : '';
   if(!secs.length && !strip) return '';
@@ -12462,7 +12641,7 @@ function auctionCard(item, auction){
       <p class="price" style="font-size:1.1em;">${money(highBid)}</p>
       <p class="muted" style="font-size:.78em; margin-top:2px;">+${money(auction.bidIncrement)} minimum increment</p>
       <p class="muted" style="font-size:.78em; margin-top:2px;">🔨 ${auction.bidCount||0} bid${auction.bidCount===1?'':'s'} so far</p>
-      ${item.freeDelivery!==false?`<p class="muted" style="font-size:.75em; margin-top:2px;">🚚 Free delivery</p>`:''}
+      ${item.freeDelivery!==false?`<p class="muted deliv-note" style="font-size:.75em; margin-top:2px;">${lineIcon('truck')} Free delivery</p>`:''}
     </div>
     <div style="width:100%; margin-top:10px;">
       <div class="row between" style="margin-bottom:8px;">

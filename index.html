@@ -1937,6 +1937,42 @@
   /* Values the customer can't change (transfer slip amount / account) */
   input.locked-field{background:var(--sand-2, #EEF4F3) !important; color:var(--ink) !important; font-weight:700; cursor:default; pointer-events:none;
     -webkit-user-select:none; user-select:none; border-style:dashed !important;}
+
+  /* ===== Sign-in / sign-up scene (2026-11-19): the owner's picture, animated =====
+     The picture keeps its shape (1376×768) and covers the art panel, anchored so
+     the subjects (boat, snorkel set, gavel) sit at the right: width = cover, left
+     = put the subjects' middle (78% of the picture) at 62% of the panel, clamped.
+     The neon rings are soft glows placed in the picture's own coordinates, so they
+     stay on the rings at any size. Opening: the scene settles in from a zoom; then
+     it drifts slowly, the rings glow one after another, a light sweeps across and
+     bubbles rise. Everything stops with reduced motion. */
+  .aa-scene{position:absolute; top:var(--aa-t, 50%); width:var(--aa-w, 100%); aspect-ratio:1376/768; left:var(--aa-l, 0px); transform:translateY(-50%);
+    animation:aaSettle 1.6s cubic-bezier(.16,.84,.3,1) both;}
+  .aa-pic{position:absolute; inset:0; width:100%; height:100%; display:block; transform-origin:78% 50%; animation:aaDrift 22s ease-in-out 1.6s infinite alternate;}
+  .aa-ring{position:absolute; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; mix-blend-mode:screen; opacity:0;
+    background:radial-gradient(closest-side, transparent 80%, rgba(140,245,255,.55) 92%, rgba(140,245,255,0) 100%);
+    filter:blur(3px); animation:aaRing 4.8s ease-in-out infinite;}
+  .aa-ring.r1{left:78.5%; top:29.7%; width:23.7%; aspect-ratio:1;}
+  .aa-ring.r2{left:68.5%; top:57.8%; width:21.8%; aspect-ratio:1; animation-delay:1.6s;}
+  .aa-ring.r3{left:84.2%; top:68.8%; width:18.9%; aspect-ratio:1; animation-delay:3.2s;}
+  .aa-sweep{position:absolute; inset:0; pointer-events:none; mix-blend-mode:soft-light; opacity:.0;
+    background:linear-gradient(105deg, transparent 35%, rgba(255,255,255,.65) 50%, transparent 65%); background-size:250% 100%; animation:aaSweep 7s ease-in-out 2.2s infinite;}
+  .aa-bubbles{position:absolute; inset:0; overflow:hidden; pointer-events:none;}
+  .aa-bubbles i{position:absolute; bottom:-14px; left:var(--x); width:var(--s); height:var(--s); border-radius:50%;
+    background:radial-gradient(circle at 35% 35%, rgba(255,255,255,.95), rgba(190,250,255,.35) 55%, rgba(190,250,255,0) 72%); box-shadow:0 0 6px rgba(160,240,255,.5);
+    opacity:0; animation:aaBubble var(--t) linear var(--d) infinite;}
+  @keyframes aaSettle{from{opacity:0; transform:translateY(-50%) scale(1.14);} to{opacity:1; transform:translateY(-50%) scale(1);}}
+  @keyframes aaDrift{from{transform:scale(1) translate3d(0,0,0);} to{transform:scale(1.07) translate3d(-1.5%,-1%,0);}}
+  @keyframes aaRing{0%,100%{opacity:0;} 40%{opacity:1;} 70%{opacity:.25;}}
+  @keyframes aaSweep{0%{opacity:0; background-position:120% 0;} 15%{opacity:.9;} 55%{opacity:.9; background-position:-20% 0;} 70%,100%{opacity:0; background-position:-20% 0;}}
+  @keyframes aaBubble{0%{transform:translate3d(0,0,0); opacity:0;} 10%{opacity:.85;} 50%{transform:translate3d(8px,calc(var(--aa-h, 300px) * -.48),0);} 85%{opacity:.6;} 100%{transform:translate3d(-6px,calc(var(--aa-h, 300px) * -1.04),0); opacity:0;}}
+  /* the words sit on the deep-blue side; a soft wash keeps them crisp */
+  .auth-art:not(.has-photo)::after{content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(3,20,48,.55) 0%, rgba(3,20,48,.15) 40%, rgba(3,20,48,0) 60%), linear-gradient(90deg, rgba(3,20,48,.35) 0%, rgba(3,20,48,0) 55%);}
+  .auth-art:not(.has-photo) .aa-glow{display:none;}
+  @media (min-width:640px){ .auth-art:not(.has-photo)::after{background:linear-gradient(180deg, rgba(3,20,48,.82) 0%, rgba(3,20,48,.6) 26%, rgba(3,20,48,.12) 46%, rgba(3,20,48,0) 60%);} }
+  .auth-art .aa-words{z-index:2;}
+  @media (prefers-reduced-motion:reduce){ .aa-scene, .aa-pic, .aa-ring, .aa-sweep, .aa-bubbles i{animation:none !important;} .aa-bubbles{display:none;} }
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -4931,7 +4967,7 @@ function render(){
   const _scrKey = [state.adminMode?'admin':state.role, state.screen, state.viewItemId||''].join(':');
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); layoutAuthScene(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -13664,58 +13700,31 @@ function toggleAuthPass(btn){
 // ocean, an atoll ring of turquoise reef around a pale lagoon, white-sand
 // islands with palms, a dhoni crossing the lagoon, and slow light on the water.
 // Pure SVG + CSS; the drifting parts stop with reduced motion.
+// Sizes the sign-in picture to cover its panel, with the subjects (78% across
+// the picture) placed at 62% of the panel, clamped so no edge shows.
+function layoutAuthScene(){
+  const art = document.querySelector('.auth-art'), sc = art && art.querySelector('.aa-scene'); if(!sc) return;
+  const r = art.getBoundingClientRect(); if(!r.width || !r.height) return;
+  // A tall panel (PC dialog) shows the picture larger and lower, so the name has the top to itself.
+  const tall = r.height > r.width;
+  // In a tall panel the subjects fill the lower 62%, so they sit below the name.
+  const w = tall ? Math.max(r.width, r.height * 1376 / 768 * 1.13) : Math.max(r.width, r.height * 1376 / 768);
+  const l = Math.max(r.width - w, Math.min(0, r.width * (tall ? .5 : .62) - w * .78));
+  sc.style.setProperty('--aa-t', tall ? (r.height - w * 768 / 1376 / 2 + r.height * .06) + 'px' : '50%');
+  art.style.setProperty('--aa-h', r.height.toFixed(0) + 'px');
+  sc.style.setProperty('--aa-w', w.toFixed(1) + 'px'); sc.style.setProperty('--aa-l', l.toFixed(1) + 'px');
+}
+window.addEventListener('resize', layoutAuthScene);
 function authArtHTML(){
   const sign = state.sheet==='signUp';
   const photo = siteImg('auth_art');   // Admin -> Settings -> Home pictures -> Sign in / sign up picture
   return `<div class="auth-art${photo?' has-photo':''}" aria-hidden="true" ${photo?`style="--aa-img:url('${escapeAttr(photo)}')"`:''}>
-    ${photo ? '' : `<svg class="aa-sea" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice">
-      <defs>
-        <linearGradient id="aaOcean" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#062B4F"/><stop offset=".55" stop-color="#0A4F7E"/><stop offset="1" stop-color="#0C6F96"/></linearGradient>
-        <radialGradient id="aaReef" cx=".5" cy=".5" r=".5"><stop offset=".7" stop-color="#9AF0E4"/><stop offset=".84" stop-color="#36CBC3"/><stop offset=".95" stop-color="#1590A6" stop-opacity=".85"/><stop offset="1" stop-color="#0C6F96" stop-opacity="0"/></radialGradient>
-        <radialGradient id="aaLagoon" cx=".48" cy=".46" r=".58"><stop offset="0" stop-color="#1FA2B4"/><stop offset=".55" stop-color="#2DB9BF"/><stop offset=".86" stop-color="#6ADBD2"/><stop offset="1" stop-color="#B9F4EA"/></radialGradient>
-        <radialGradient id="aaSand" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#FFFBEF"/><stop offset="1" stop-color="#F3DFAE"/></radialGradient>
-        <filter id="aaSoft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5"/></filter>
-        <filter id="aaSoft2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>
-      </defs>
-      <rect width="400" height="320" fill="url(#aaOcean)"/>
-      <g class="aa-swell" stroke="#fff" stroke-opacity=".07" fill="none" stroke-width="1.2" stroke-linecap="round">
-        <path d="M-20 40 q30 -8 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
-        <path d="M-20 92 q30 -8 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
-        <path d="M-20 270 q30 -8 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
-        <path d="M-20 300 q30 -8 60 0 t60 0 t60 0 t60 0 t60 0 t60 0 t60 0"/>
-      </g>
-      <!-- small atoll, top right -->
-      <g transform="translate(70 286) rotate(-18)">
-        <ellipse rx="44" ry="26" fill="url(#aaReef)" filter="url(#aaSoft)"/>
-        <ellipse rx="26" ry="13" fill="url(#aaLagoon)" opacity=".95"/>
-        <ellipse cx="-14" cy="-10" rx="7" ry="3.2" fill="url(#aaSand)"/>
-      </g>
-      <!-- the main atoll -->
-      <g transform="translate(236 232) rotate(-8) scale(.82)">
-        <path d="M-150 -6 C-146 -64 -70 -98 4 -96 C88 -94 156 -58 152 2 C148 58 84 92 2 94 C-84 96 -154 50 -150 -6Z" fill="url(#aaReef)" filter="url(#aaSoft)"/>
-        <path d="M-136 -5 C-132 -56 -64 -86 3 -85 C78 -84 140 -51 136 2 C132 52 74 82 2 83 C-74 84 -139 44 -136 -5Z" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2.2" stroke-dasharray="26 9 12 14" filter="url(#aaSoft2)"/>
-        <path d="M-118 -4 C-114 -48 -58 -72 2 -71 C66 -70 120 -44 117 2 C114 44 64 68 2 69 C-62 70 -121 38 -118 -4Z" fill="url(#aaLagoon)"/>
-        <g class="aa-caustic" stroke="#fff" stroke-opacity=".28" fill="none" stroke-width="1" stroke-linecap="round">
-          <path d="M-90 -20 q14 -6 28 0 t28 0 t28 0"/><path d="M-30 18 q14 -6 28 0 t28 0 t28 0 t28 0"/><path d="M-70 40 q12 -5 24 0 t24 0"/><path d="M10 -40 q12 -5 24 0 t24 0 t24 0"/>
-        </g>
-        <!-- reef islands on the rim -->
-        <g filter="url(#aaSoft2)" fill="#BFF3EC" opacity=".8"><ellipse cx="-104" cy="-46" rx="18" ry="8" transform="rotate(-30 -104 -46)"/><ellipse cx="98" cy="50" rx="20" ry="8" transform="rotate(-24 98 50)"/></g>
-        <ellipse cx="-104" cy="-46" rx="12" ry="5" fill="url(#aaSand)" transform="rotate(-30 -104 -46)"/>
-        <ellipse cx="98" cy="50" rx="14" ry="5.5" fill="url(#aaSand)" transform="rotate(-24 98 50)"/>
-        <ellipse cx="34" cy="-74" rx="9" ry="3.5" fill="url(#aaSand)"/>
-        <ellipse cx="-40" cy="66" rx="8" ry="3.2" fill="url(#aaSand)"/>
-        <!-- the big island with palms -->
-        <ellipse cx="128" cy="-22" rx="30" ry="15" fill="#BFF3EC" opacity=".85" filter="url(#aaSoft2)" transform="rotate(62 128 -22)"/>
-        <ellipse cx="128" cy="-22" rx="23" ry="10" fill="url(#aaSand)" transform="rotate(62 128 -22)"/>
-        <g fill="#2E8B57"><circle cx="124" cy="-36" r="4"/><circle cx="131" cy="-27" r="4.6"/><circle cx="126" cy="-16" r="4"/><circle cx="133" cy="-8" r="3.4"/></g>
-        <g fill="#5FBF7F"><circle cx="122.8" cy="-37.4" r="1.6"/><circle cx="129.6" cy="-28.6" r="1.8"/><circle cx="124.6" cy="-17.6" r="1.6"/></g>
-        <!-- a dhoni crossing the lagoon, with its wake -->
-        <g class="aa-dhoni"><path d="M-80 10 C-60 14 -40 12 -24 6" stroke="#fff" stroke-opacity=".7" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-          <path d="M-24 3 l12 0 l-3 4 l-8 0z" fill="#fff"/><path d="M-18 3 l0 -9 l5 8z" fill="#FFE7C2"/></g>
-      </g>
-      <!-- a cloud drifting below the seaplane -->
-      <g class="aa-cloud" fill="#fff" opacity=".55" filter="url(#aaSoft)"><ellipse cx="70" cy="70" rx="46" ry="12"/><ellipse cx="96" cy="62" rx="28" ry="10"/></g>
-    </svg>`}
+    ${photo ? '' : `<div class="aa-scene">
+      <img class="aa-pic" src="img/signin-art.webp" alt="" decoding="async">
+      <span class="aa-ring r1"></span><span class="aa-ring r2"></span><span class="aa-ring r3"></span>
+      <span class="aa-sweep"></span>
+    </div>
+    <div class="aa-bubbles"><i style="--x:8%;--s:6px;--d:0s;--t:9s"></i><i style="--x:17%;--s:4px;--d:2.5s;--t:11s"></i><i style="--x:26%;--s:7px;--d:5s;--t:10s"></i><i style="--x:38%;--s:5px;--d:1.2s;--t:12s"></i><i style="--x:47%;--s:8px;--d:6.5s;--t:9.5s"></i><i style="--x:55%;--s:4px;--d:3.3s;--t:11.5s"></i><i style="--x:63%;--s:6px;--d:8s;--t:10.5s"></i><i style="--x:71%;--s:5px;--d:4.6s;--t:12.5s"></i><i style="--x:80%;--s:7px;--d:1.8s;--t:9s"></i><i style="--x:88%;--s:4px;--d:7.2s;--t:11s"></i><i style="--x:93%;--s:6px;--d:9.5s;--t:10s"></i></div>`}
     <div class="aa-glow"></div>
     <div class="aa-words">
       <div class="aa-mark">${BRAND_MARK_SVG}</div>

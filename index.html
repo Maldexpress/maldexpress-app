@@ -1880,7 +1880,11 @@
     var(--hero-img) var(--hero-x, 50%) calc(var(--hero-y, 50%) + var(--hero-shift,0px)) / var(--hero-size, cover) no-repeat !important;}
   .home-hero .hero-wordmark{margin:10px 0 34px !important; font-size:clamp(32px, 10vw, 40px) !important;}
   .home-hero > .row.search-row, .home-hero > .hero-tabs{position:relative; z-index:2;}
-  .word-fly{transition:color .18s, -webkit-text-fill-color .18s;}
+  .word-fly, .word-fly.glass-word{color:transparent !important; -webkit-text-fill-color:transparent !important; -webkit-text-stroke:0 !important; text-shadow:none !important;
+    background:linear-gradient(180deg, #fff 0, #fff var(--fly-cut, 9999px), var(--lagoon-700, #0B6E6E) var(--fly-cut, 9999px), var(--lagoon-700, #0B6E6E) 100%) !important;
+    -webkit-background-clip:text !important; background-clip:text !important; filter:drop-shadow(0 1px 6px rgba(4,30,42,.28));}
+  body.tab-tinted .word-fly{background:linear-gradient(180deg, #fff 0, #fff var(--fly-cut, 9999px), var(--tab-accent) var(--fly-cut, 9999px), var(--tab-accent) 100%) !important; -webkit-background-clip:text !important; background-clip:text !important;}
+
   .word-fly.on-sheet, .word-fly.glass-word.on-sheet{color:var(--lagoon-700, #0B6E6E) !important; -webkit-text-fill-color:var(--lagoon-700, #0B6E6E) !important;
     background:none !important; -webkit-text-stroke:.5px var(--lagoon-700, #0B6E6E) !important; text-shadow:none !important; filter:none !important;}
   /* search on the light sheet */
@@ -2006,6 +2010,7 @@
   .logo-field .btn{width:auto !important; display:inline-flex !important; margin:0 6px 6px 0;}
   /* the category list opens over the Buy now / Auctions / Rentals buttons, not under them */
   .home-hero > .row.search-row{z-index:6 !important;}
+  .cat-drop{overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;}
   /* Opening screen (in the page itself, so it shows the moment the app opens; kept until the first data arrives) */
   .splash{position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; overflow:hidden;
     background:radial-gradient(90% 60% at 80% 0%, rgba(255,255,255,.22), transparent 60%), linear-gradient(160deg, #19C3B4 0%, #0FA3A3 42%, #0B5E8E 100%);}
@@ -5001,7 +5006,7 @@ function render(){
   if(_scrKey !== render._last && !REDUCED_MOTION){ const first = app.querySelector('.shell, .admin, .landing, .wrap') || app.firstElementChild; if(first){ first.classList.remove('screen-in'); void first.offsetWidth; first.classList.add('screen-in'); } }
   render._last = _scrKey;
   try{ iconizeEmoji(); }catch(e){ console.error(e); }   // line icons instead of emoji
-  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); layoutAuthScene(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
+  requestAnimationFrame(()=>{ restoreGalleries(); applyReveal(); ensureFeatLoop(); storeMoreObserve(); fitHeroPhoto(); applyHomeAccent(); layoutAuthScene(); fitCatDrop(); if(document.querySelector('.desk-banner')) ensureDeskBannerTimer(); });
   if(SB_LIB_MISSING || FB_LIB_MISSING) app.insertAdjacentHTML('afterbegin', `<div class="offline-banner" role="status">Can't reach the Maarukeytu server, so you're seeing sample stores and nothing you do will be saved. Check your connection, then <button class="link-btn" style="padding:0; font-size:1em; color:inherit;" onclick="location.reload()">reload</button>.</div>`);
 }
 
@@ -11198,6 +11203,17 @@ function homeSearchRowHTML(where='hero'){
 }
 // Categories open as a drop-down under the search row (hero or small header).
 function toggleCatDrop(where){ state.catDropOpen = state.catDropOpen===where ? false : where; state.homeSwitcherOpen = false; render(); }
+// The category list never runs under the bottom tab bar (or off the screen):
+// it is capped to the room left and scrolls inside itself.
+function fitCatDrop(){
+  const d = document.querySelector('.cat-drop'); if(!d) return;
+  d.style.maxHeight = '';
+  const r = d.getBoundingClientRect(), nav = document.querySelector('.bottomnav');
+  const bottom = nav && getComputedStyle(nav).position === 'fixed' && nav.getBoundingClientRect().top < innerHeight ? nav.getBoundingClientRect().top : innerHeight;
+  const room = Math.floor(bottom - r.top - 10);
+  if(r.height > room) d.style.maxHeight = Math.max(160, room) + 'px';
+}
+window.addEventListener('resize', fitCatDrop);
 function pickCatDrop(c){ state.catDropOpen = false; setHomeCategory(c); }
 function catDropHTML(){
   const cats = ['All', ...viewShuffle(MARKETPLACE_CATEGORIES.filter(c=>c!=='Other'), 17), ...MARKETPLACE_CATEGORIES.filter(c=>c==='Other')];   // new order each Home visit; Other stays last
@@ -11354,7 +11370,13 @@ function flyWordmark(mini, row, past){
   // Shore header: while the name crosses the light sheet it turns lagoon, or white would vanish on it
   const hero = document.querySelector('.home-hero');
   const sheetH = hero ? parseFloat(getComputedStyle(hero, '::after').height) || 0 : 0;
-  fly.classList.toggle('on-sheet', !!sheetH && y + bigSize * sc * .55 > hero.getBoundingClientRect().bottom - sheetH);
+  // Shore header: white over the photo, lagoon over the light sheet, split exactly
+  // at the sheet's edge (in the name's own unscaled pixels), so no part ever fades
+  // into the background.
+  const sheetTop = sheetH ? hero.getBoundingClientRect().bottom - sheetH : Infinity;
+  const cut = Math.max(-1, (sheetTop - y) / sc);
+  fly.classList.remove('on-sheet');
+  fly.style.setProperty('--fly-cut', (isFinite(cut) ? cut.toFixed(1) : 9999) + 'px');
 }
 // The big header's photo is drawn with background-size:cover, centred. Show
 // the small header the same picture at the same size and offset, as if the

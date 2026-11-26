@@ -2166,6 +2166,27 @@
     .bottomnav .nav-brand .site-logo-word{color:#fff !important;}
   }
   @media (prefers-reduced-motion: reduce){ .cart-bump{animation:none;} .top-card:hover .img-wrap img{transform:none;} }
+
+  /* Worldives-style sliders everywhere (2026-11-26): phone Home header
+     slideshow, gold progress bars on every slider, slow zoom on photos. */
+  .home-hero > .hero-slides{position:absolute !important; z-index:0 !important; left:0; right:0; top:0; bottom:134px; overflow:hidden; pointer-events:none;}
+  .hs-slide{position:absolute; inset:-4% 0; background:center 35% / cover no-repeat; opacity:0; transition:opacity 1.1s ease;}
+  .hs-slide::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(4,20,34,.6) 0%, rgba(4,20,34,.12) 40%, rgba(4,20,34,.35) 100%);}
+  .hs-slide.on{opacity:1; animation:hs-kb 9s ease-out forwards;}
+  @keyframes hs-kb{from{transform:scale(1.08);} to{transform:scale(1);}}
+  .home-hero > .hs-bars{position:absolute !important; z-index:3 !important; right:16px; bottom:146px; display:flex; gap:6px;}
+  .hs-bar, .db-dot{position:relative; width:34px !important; height:16px !important; padding:0; border:0 !important; background:none !important; border-radius:0 !important; cursor:pointer;}
+  .hs-bar::before, .hs-bar::after, .db-dot::before, .db-dot::after{content:""; position:absolute; left:0; right:0; top:6px; height:3px; border-radius:3px; background:rgba(255,255,255,.35);}
+  .hs-bar::after, .db-dot::after{background:var(--gold); transform:scaleX(0); transform-origin:left;}
+  .hs-bar.done::after{transform:scaleX(1);}
+  .hs-bar.on::after{animation:hs-fill var(--slide-ms, 6000ms) linear forwards;}
+  .db-dot.on::after{animation:hs-fill 6000ms linear forwards;}
+  @keyframes hs-fill{to{transform:scaleX(1);}}
+  .sf-dot.on{background:var(--gold) !important;}
+  @media (prefers-reduced-motion: reduce){
+    .hs-slide{transition:none;} .hs-slide.on{animation:none;}
+    .hs-bar.on::after, .db-dot.on::after{animation:none; transform:scaleX(1);}
+  }
 </style>
 </head>
 <body>
@@ -11382,6 +11403,40 @@ document.addEventListener('scroll', closeDropdownsOnScroll, { passive:true, capt
 document.addEventListener('click', ()=>{ setTimeout(()=>{ _ddScrollY = openDropdown() ? pageScrollY() : null; }, 0); }, true);
 // Buy now / Auctions / Rentals as tabs along the bottom of the phone header
 // (they used to be a lone "Buy now ▾" menu under it).
+// Phone Home header slideshow (Worldives store style): on Buy now the
+// header cycles through every Home picture (main header picture, the
+// Auctions and Rentals pictures) with a slow zoom and a cross-fade; gold
+// bars at the bottom of the photo fill while a picture is shown. Only when
+// there are at least 2 pictures. The timer swaps classes, never re-renders.
+const HERO_SLIDE_MS = 6000;
+let _heroSlide = 0, _heroSlideTimer = null;
+function heroSlidePhotos(){
+  const list = [(DB.settings && DB.settings.heroImageUrl) || '', siteImg('banner_auction'), siteImg('banner_rental')].filter(Boolean);
+  return [...new Set(list)];
+}
+function heroSlidesHTML(){
+  if(isDesktop() || (state.homeListingType||'buy_now') !== 'buy_now') return '';
+  const ph = heroSlidePhotos(); if(ph.length < 2) return '';
+  if(_heroSlide >= ph.length) _heroSlide = 0;
+  setTimeout(ensureHeroSlideTimer, 0);
+  return `<div class="hero-slides" aria-hidden="true">${ph.map((u,i)=>`<div class="hs-slide${i===_heroSlide?' on':''}" style="background-image:url('${escapeAttr(u)}')"></div>`).join('')}</div>
+    <div class="hs-bars" role="group" aria-label="Header pictures">${ph.map((_,i)=>`<button class="hs-bar${i===_heroSlide?' on':''}${i<_heroSlide?' done':''}" aria-label="Picture ${i+1} of ${ph.length}" onclick="heroSlideGo(${i})" style="--slide-ms:${HERO_SLIDE_MS}ms"></button>`).join('')}</div>`;
+}
+function heroSlideShow(i){
+  const slides = document.querySelectorAll('.hero-slides .hs-slide'); if(!slides.length) return;
+  _heroSlide = (i + slides.length) % slides.length;
+  slides.forEach((el,k)=>el.classList.toggle('on', k===_heroSlide));
+  document.querySelectorAll('.hs-bars .hs-bar').forEach((el,k)=>{ el.classList.toggle('done', k<_heroSlide); el.classList.remove('on'); void el.offsetWidth; el.classList.toggle('on', k===_heroSlide); });
+}
+function heroSlideGo(i){ heroSlideShow(i); clearInterval(_heroSlideTimer); _heroSlideTimer = null; ensureHeroSlideTimer(); }
+function ensureHeroSlideTimer(){
+  if(_heroSlideTimer || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  _heroSlideTimer = setInterval(()=>{
+    if(!document.querySelector('.hero-slides')){ clearInterval(_heroSlideTimer); _heroSlideTimer = null; return; }
+    if(document.hidden || state.sheet || state.drawerOpen) return;
+    heroSlideShow(_heroSlide + 1);
+  }, HERO_SLIDE_MS);
+}
 function heroTabsHTML(){
   const cur = state.homeListingType || 'buy_now';
   return `<div class="hero-tabs" role="tablist" aria-label="What to browse">${Object.keys(LISTING_TYPE_META).map(k=>`<button role="tab" aria-selected="${k===cur}" class="ht${k===cur?' on':''}" onclick="setHomeListingType('${k}')"><span aria-hidden="true">${LISTING_TYPE_META[k].icon}</span>${LISTING_TYPE_META[k].label}</button>`).join('')}</div>`;
@@ -12061,6 +12116,7 @@ function renderCustHome(){
     ${homeMiniHeaderHTML()}
     <div class="home-hero ${phoneHeroPhoto()?'has-photo':''}" style="${phoneHeroPhoto()?`--hero-img:url('${escapeAttr(phoneHeroPhoto())}')`:''}">
       ${homeHeaderHTML()}
+      ${heroSlidesHTML()}
       ${phoneHeroPhoto() ? `<div class="hero-scene hero-photo-space" aria-hidden="true"></div>` : HERO_SCENE_SVG}
       <h1 class="hero-wordmark" aria-label="Maarukeytu.app by Worldives">Maarukeytu.app<span class="hw-by" aria-hidden="true">by Worldives</span></h1>
       ${homeSearchRowHTML('hero')}

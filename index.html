@@ -56,33 +56,33 @@
        ground, gold for the action that moves an order forward (dark ink on
        it), teal for labels, links and what's selected. Display: Sora.
        Body: Manrope. Token names are kept from Bright lagoon. */
-    --sand-bg:#F3F5F7;       /* page ground */
+    --sand-bg:#FBF7EE;       /* page ground: warm ivory */
     --surface:#FFFFFF;       /* cards */
-    --sand-2:#EAF0F4;        /* chips, inner fills */
-    --sand-3:#DBE3E8;
-    --edge:#DBE3E8;          /* hairlines */
-    --edge-2:#C3CFD7;
+    --sand-2:#F4ECDA;        /* chips, inner fills */
+    --sand-3:#EADDC0;
+    --edge:#EADFC6;          /* hairlines */
+    --edge-2:#D9C79E;
     --island:#F6EFE0;        /* sand on the illustrated island */
 
-    --navy:#0B2A3F;          /* bars, headers, closing bands */
-    --navy-2:#10364F;
-    --navy-ink:#9FDCE8;      /* light teal on navy */
+    --navy:#3A2A0C;          /* dark bronze: headings, prices, deep accents */
+    --navy-2:#4A3612;
+    --navy-ink:#F6E2B0;      /* light gold on dark bronze */
     --gold:#E3B552;          /* primary action, counts */
     --gold-hover:#ECC46E;
     --on-gold:#1B1405;       /* text on gold */
     --gold-text:#8A6512;     /* gold used as text on white */
 
-    --lagoon-500:#0B7186;    /* active / selected, links (AA on white and on the ground) */
-    --lagoon-600:#0B6C80;
-    --lagoon-700:#0A5F71;
-    --lagoon-50:#E3F3F7;
-    --ocean:#1FA9C2;         /* secondary teal */
+    --lagoon-500:#8A6512;    /* main colour: deep gold for active / selected / links (AA) */
+    --lagoon-600:#7A580F;
+    --lagoon-700:#6E500E;
+    --lagoon-50:#FBF0D8;
+    --ocean:#C9962E;         /* secondary gold */
     --sunset:var(--gold);    /* primary action: gold with --on-gold text */
     --sunset-dk:#0B2A3F;     /* prices: navy */
     --sunset-glow:var(--gold-hover);
-    --ink-900:#0D2434;       /* text */
-    --ink-600:#52677A;
-    --ink-400:#5F7385;
+    --ink-900:#2A1F0A;       /* text */
+    --ink-600:#6A5A3C;
+    --ink-400:#77664A;
     --amber:#8A5300;
     --palm:#0B6E47;
     --red:#B42318;
@@ -2186,6 +2186,103 @@
   @media (prefers-reduced-motion: reduce){
     .hs-slide{transition:none;} .hs-slide.on{animation:none;}
     .hs-bar.on::after, .db-dot.on::after{animation:none; transform:scaleX(1);}
+  }
+
+  /* =====================================================================
+     "Golden glass" (2026-11-26, the owner's pick) — wins over Harbour gold.
+     Gold is the main colour; bars, cards, the tab bar and popups are frosted
+     glass over a warm ivory ground with soft gold light behind it.
+     Dark text (--on-gold / --ink-900) on every gold surface.
+     ===================================================================== */
+  html{background:#FBF7EE;}
+  body{background:
+    radial-gradient(60% 40% at 90% 0%, rgba(227,181,82,.28), transparent 70%),
+    radial-gradient(50% 35% at 0% 30%, rgba(242,212,138,.30), transparent 70%),
+    radial-gradient(55% 40% at 100% 80%, rgba(201,150,46,.18), transparent 70%),
+    #FBF7EE;}
+  ::selection{background:rgba(227,181,82,.4);}
+  h1, h2, h3, h4, .section-head h2, .section > h2{color:var(--ink-900);}
+  .top-card h3, .top-card .price, .price{color:var(--ink-900);}
+
+  /* glass surfaces */
+  .glass, .card{background:rgba(255,255,255,.58) !important; -webkit-backdrop-filter:blur(16px) saturate(160%); backdrop-filter:blur(16px) saturate(160%);
+    border:1px solid rgba(255,255,255,.75) !important; box-shadow:0 10px 30px -16px rgba(138,101,18,.38), inset 0 1px 0 rgba(255,255,255,.85) !important;}
+  .top-card{background:rgba(255,255,255,.66); border:1px solid rgba(255,255,255,.8); box-shadow:0 10px 26px -18px rgba(138,101,18,.45), inset 0 1px 0 rgba(255,255,255,.9);}
+  .top-card .img-wrap{background:rgba(255,255,255,.9) !important; background-image:radial-gradient(120% 90% at 30% 20%, rgba(227,181,82,.16), rgba(227,181,82,.04)) !important;}
+  .top-card .img-wrap:has(img){background-image:none !important;}
+  .art-li{color:rgba(138,101,18,.6) !important;}
+  .sheet{background:rgba(255,253,248,.84) !important; -webkit-backdrop-filter:blur(22px) saturate(170%); backdrop-filter:blur(22px) saturate(170%); border:1px solid rgba(255,255,255,.8);}
+  .sheet-wrap .backdrop{background:rgba(42,31,10,.35); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);}
+  .drawer{background:rgba(255,252,245,.8) !important; -webkit-backdrop-filter:blur(22px) saturate(170%); backdrop-filter:blur(22px) saturate(170%);}
+  .bottomnav .bar{background:rgba(255,252,245,.66) !important; -webkit-backdrop-filter:blur(20px) saturate(170%); backdrop-filter:blur(20px) saturate(170%);
+    border-top:1px solid rgba(255,255,255,.8) !important; box-shadow:0 -10px 30px -20px rgba(138,101,18,.45) !important;}
+  .bottomnav .navbtn.active{color:var(--lagoon-700);}
+  .bottomnav .navbtn.active .ic, .bottomnav .navbtn.active::before{background:rgba(227,181,82,.28);}
+  .toast{background:rgba(58,42,12,.88) !important; -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:#FFF6DF !important;}
+  input, select, textarea{background-color:rgba(255,255,255,.72);}
+
+  /* screen bars: golden glass, dark text */
+  body:not(.site-desk) .topbar.glass{background:linear-gradient(135deg, rgba(242,212,138,.78), rgba(227,181,82,.74) 55%, rgba(201,150,46,.72)) !important;
+    -webkit-backdrop-filter:blur(18px) saturate(170%) !important; backdrop-filter:blur(18px) saturate(170%) !important;
+    border-bottom:1px solid rgba(255,255,255,.55) !important; box-shadow:0 10px 26px -18px rgba(138,101,18,.7) !important; color:var(--on-gold);}
+  body:not(.site-desk) .topbar.glass .titles h1{color:var(--on-gold);}
+  body:not(.site-desk) .topbar.glass .titles .sub{color:#4A3612;}
+  body:not(.site-desk) .topbar.glass .iconbtn{background:rgba(255,255,255,.38) !important; color:var(--on-gold) !important; border:1px solid rgba(255,255,255,.6) !important;}
+  body:not(.site-desk) .topbar.glass .link-btn{color:var(--on-gold);}
+
+  /* Home header without a photo, and the small header: gold */
+  .home-hero:not(.has-photo){background:
+    radial-gradient(90% 70% at 100% 0%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(160deg, #F2D48A 0%, #E3B552 50%, #C9962E 100%) !important;}
+  .home-mini:not(.has-photo){background:linear-gradient(160deg, rgba(242,212,138,.9), rgba(201,150,46,.88)) !important; -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);}
+  .home-hero:not(.has-photo) .hero-wordmark{color:#fff;}
+  .hero-tabs .ht, .search-row.hero .home-search-wrap{background:rgba(255,255,255,.62) !important; -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.8) !important;}
+  .hero-tabs .ht.on{background:linear-gradient(135deg, #F2D48A, #E3B552 60%, #C9962E) !important; color:var(--on-gold) !important; border-color:rgba(255,255,255,.7) !important;}
+  .search-row.hero .cat-open-btn, .home-mini .cat-open-btn{background:linear-gradient(135deg, #E3B552, #C9962E) !important; color:var(--on-gold) !important; border:1px solid rgba(255,255,255,.6) !important;}
+
+  /* chips and tabs */
+  .sf-chip, .tabs{background:rgba(255,255,255,.55); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-color:rgba(255,255,255,.8);}
+  .sf-chip.on, .cat-chip{background:linear-gradient(135deg, #E3B552, #C9962E) !important; border-color:rgba(255,255,255,.6) !important; color:var(--on-gold) !important;}
+  .sf-chip.on span{color:#4A3612 !important;}
+  .tabs .tab.active{background:linear-gradient(135deg, #E3B552, #C9962E) !important; color:var(--on-gold) !important;}
+  .top-add-btn.in{background:var(--navy) !important; color:var(--gold) !important;}
+
+  /* admin bar */
+  .admin-top{background:linear-gradient(135deg, rgba(242,212,138,.86), rgba(201,150,46,.84)) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);}
+  .admin-top .admin-logo .site-logo-word, .admin-top .admin-who{color:var(--on-gold) !important; -webkit-text-fill-color:var(--on-gold) !important; -webkit-text-stroke:.4px var(--on-gold) !important;}
+  .admin-top .admin-badge{background:rgba(58,42,12,.85); color:#F6E2B0;}
+  .admin-top .btn-ghost, .admin-top .btn-outline{background:rgba(255,255,255,.4); color:var(--on-gold); border-color:rgba(255,255,255,.7);}
+
+  @media (min-width:1024px){
+    .site-head{background:linear-gradient(135deg, rgba(242,212,138,.9), rgba(227,181,82,.88) 55%, rgba(201,150,46,.88)) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);}
+    .site-util{color:#4A3612 !important; border-bottom:1px solid rgba(255,255,255,.4) !important;}
+    .site-util button, .site-util a, .site-util span{color:#3A2A0C;}
+    .site-util .strong, .site-util .utext.strong{color:#2A1F0A !important;}
+    .site-logo .site-logo-word, .nav-brand .site-logo-word{-webkit-text-stroke:.4px var(--on-gold) !important; -webkit-text-fill-color:var(--on-gold) !important;}
+    .site-search{border:1px solid rgba(255,255,255,.8) !important; background:rgba(255,255,255,.85) !important;}
+    .site-search-btn{background:var(--navy) !important; color:#F6E2B0 !important;}
+    .site-act{color:var(--on-gold) !important;}
+    .site-act:hover, .site-act.on{background:rgba(255,255,255,.35) !important; color:var(--on-gold) !important;}
+    .site-act .site-av{background:var(--navy); color:#F6E2B0;}
+    .site-cats{background:rgba(255,252,245,.72) !important; -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);}
+    .desk-banner.tone-lagoon:not(.has-photo){background:radial-gradient(90% 80% at 100% 0%, rgba(255,255,255,.35), transparent 60%), linear-gradient(160deg, #F2D48A, #E3B552 55%, #C9962E) !important;}
+    .desk-banner.tone-lagoon:not(.has-photo) h1, .desk-banner.tone-lagoon:not(.has-photo) p, .desk-banner.tone-lagoon:not(.has-photo) .db-by{color:var(--on-gold) !important;}
+    .site-foot{background:linear-gradient(160deg, #3A2A0C, #2A1F0A) !important;}
+    .sf-cols h4{color:#F6E2B0 !important;}
+    .sf-cols button{color:#E5D3A8 !important;}
+    .sf-base{color:#CDB88A !important;}
+    .bottomnav{background:linear-gradient(135deg, rgba(242,212,138,.9), rgba(201,150,46,.88)) !important; -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);}
+    .bottomnav .navbtn{color:#3A2A0C !important;}
+    .bottomnav .navbtn.active{color:var(--on-gold) !important; background:rgba(255,255,255,.4) !important;}
+    .bottomnav .nav-brand .site-logo-word{color:var(--on-gold) !important; -webkit-text-fill-color:var(--on-gold) !important;}
+  }
+  .bq-ic, .sf-ed-ic{background:linear-gradient(150deg, #FBF0D8, #F3E3BE) !important; color:var(--lagoon-700) !important;}
+  .home-hero:not(.has-photo) .hero-wordmark{color:#3A2A0C !important; -webkit-text-stroke:.6px #3A2A0C !important; text-shadow:0 1px 10px rgba(255,255,255,.4) !important;}
+  .home-hero:not(.has-photo) .hero-wordmark .hw-by{color:#4A3612 !important; -webkit-text-fill-color:#4A3612 !important; text-shadow:none !important;}
+  .home-hero:not(.has-photo) .home-header .iconbtn, .home-hero:not(.has-photo) .home-header .avatar-btn{color:var(--on-gold) !important; background:rgba(255,255,255,.4) !important; border-color:rgba(255,255,255,.7) !important;}
+  @media (min-width:1024px){ .desk-banner.tone-lagoon:not(.has-photo) .db-word{color:#3A2A0C !important; -webkit-text-fill-color:#3A2A0C !important; -webkit-text-stroke:.5px #3A2A0C !important; background:none !important; text-shadow:none !important;} }
+  @media (prefers-reduced-transparency: reduce){
+    .glass, .card, .top-card, .sheet, .drawer, .bottomnav .bar{background:#fff !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important;}
   }
 </style>
 </head>
@@ -10811,7 +10908,7 @@ const ITEM_NAME_GLYPHS = [
 // Each placeholder tile glows in one of the theme's lights.
 // Art tiles for items without a photo (Worldives store look): a soft teal
 // wash, a gold wash for every third item. The line icon sits on top.
-const ITEM_ART_TINTS = ['radial-gradient(120% 90% at 30% 20%, #DDF0F5, #F1F7FA)','radial-gradient(120% 90% at 30% 20%, #E3F3F7, #F5F9FB)','radial-gradient(120% 90% at 30% 20%, #F7EBCF, #FBF6EA)'];
+const ITEM_ART_TINTS = ['radial-gradient(120% 90% at 30% 20%, #F7EBCF, #FCF7EC)','radial-gradient(120% 90% at 30% 20%, #F3E3BE, #FBF5E8)','radial-gradient(120% 90% at 30% 20%, #FAF0D9, #FFFBF2)'];
 function itemArtHTML(item){
   const name = ((item && item.name) || '').toLowerCase();
   const glyph = `<span class="art-li">${lineIcon(CATEGORY_ICONS[item && item.category] || 'bag')}</span>`;   // line drawing of the item's category
@@ -12144,7 +12241,6 @@ function renderCustHome(){
         </div>
       </div>
       ${moreRailsHTML(filtered.slice(topGridMax()))}`}
-      ${helpBandHTML()}
     </div>
   `);
   ensureCountdownTimer();
@@ -12314,7 +12410,6 @@ function renderDeskHome(){
           ${tiles.map((c,i)=>`<button class="desk-tile" onclick="deskPickCategory('${escapeAttr(c)}')"><span class="dt-art" style="background:${DESK_TILE_TINTS[i%DESK_TILE_TINTS.length]};">${categoryIcon(c)}</span><span class="dt-label">${c}</span></button>`).join('')}
         </div>
       </section>`}
-      ${helpBandHTML()}
     </div>
   `);
   ensureCountdownTimer();
@@ -12435,7 +12530,6 @@ function renderCustStore(){
       <div class="${catFilter!=='All'?'store-grid-expanded':''}">
         ${state.storeTab==='buyNow' ? buyNowHTML : state.storeTab==='auction' ? auctionHTML : rentalHTML}
       </div>
-      ${helpBandHTML(biz)}
     </div>
   `);
   ensureCountdownTimer();
